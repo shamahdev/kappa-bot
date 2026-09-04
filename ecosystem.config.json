@@ -1,0 +1,38 @@
+{
+  "apps": [
+    {
+      "name": "kappa-bot-gateway",
+      "cwd": "/Users/airmasperkasa/Documents/Codes/kappa-bot",
+      "script": "src/index.ts",
+      "interpreter": "/Users/airmasperkasa/.bun/bin/bun",
+      "instances": 1,
+      "exec_mode": "fork",
+      "autorestart": true,
+      "watch": false,
+      "time": true,
+      "error_file": "./logs/gateway-error.log",
+      "out_file": "./logs/gateway-out.log",
+      "env": {
+        "NODE_ENV": "production",
+        "BOT_ROLE": "gateway"
+      }
+    },
+    {
+      "name": "kappa-bot-worker",
+      "cwd": "/Users/airmasperkasa/Documents/Codes/kappa-bot",
+      "script": "src/index.ts",
+      "interpreter": "/Users/airmasperkasa/.bun/bin/bun",
+      "instances": 1,
+      "exec_mode": "fork",
+      "autorestart": false,
+      "watch": false,
+      "time": true,
+      "error_file": "./logs/worker-error.log",
+      "out_file": "./logs/worker-out.log",
+      "env": {
+        "NODE_ENV": "production",
+        "BOT_ROLE": "worker"
+      }
+    }
+  ]
+}

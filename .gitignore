@@ -1,0 +1,11 @@
+node_modules/
+.env
+.env.*
+!.env.example
+dist/
+logs/
+*.log
+.DS_Store
+.neon
+.agents/
+skills-lock.json
