@@ -22,7 +22,7 @@ export async function executeSubscribe(
   ctx: FeatureContext,
 ): Promise<void> {
   if (!(await requireManageGuild(interaction))) return;
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply();
 
   const source = interaction.options.getString('source', true);
   if (!isSupportedSource(source)) {

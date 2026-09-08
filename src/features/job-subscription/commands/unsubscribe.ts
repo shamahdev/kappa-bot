@@ -10,7 +10,7 @@ export async function executeUnsubscribe(
   ctx: FeatureContext,
 ): Promise<void> {
   if (!(await requireManageGuild(interaction))) return;
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply();
   if (!interaction.guildId) {
     await interaction.editReply({ embeds: [errorEmbed('run this inside a server')] });
     return;

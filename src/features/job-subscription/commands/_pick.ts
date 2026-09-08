@@ -89,7 +89,6 @@ export async function requireManageGuildComponent(interaction: Interaction): Pro
     if (interaction.isRepliable()) {
       await interaction.reply({
         content: '❌ You need the **Manage Server** permission to manage job subscriptions.',
-        ephemeral: true,
       });
     }
     return false;

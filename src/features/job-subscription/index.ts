@@ -96,7 +96,7 @@ async function executeJobs(interaction: ChatInputCommandInteraction, ctx: Featur
     case 'health':
       return executeHealth(interaction, ctx);
     default:
-      await interaction.reply({ content: 'Unknown subcommand.', ephemeral: true });
+      await interaction.reply({ content: 'Unknown subcommand.' });
   }
 }
 

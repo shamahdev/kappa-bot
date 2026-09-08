@@ -25,7 +25,7 @@ export async function onComponent(ctx: FeatureContext, interaction: unknown): Pr
   if (ns !== 'jobs' || (action !== 'unsub' && action !== 'fetch' && action !== 'latest')) return;
   if (!(await requireManageGuildComponent(inter))) return;
   if (!inter.guildId) {
-    await inter.reply({ content: 'Run this inside a server.', ephemeral: true });
+    await inter.reply({ content: 'Run this inside a server.' });
     return;
   }
   await inter.deferUpdate();

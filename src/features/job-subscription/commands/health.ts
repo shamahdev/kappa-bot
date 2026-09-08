@@ -62,11 +62,10 @@ export async function executeHealth(
   if (!(await requireManageGuild(interaction))) return;
   try {
     const rows = checkSources(process.env, circuitCount());
-    await interaction.reply({ embeds: [healthEmbed(rows)], ephemeral: true });
+    await interaction.reply({ embeds: [healthEmbed(rows)] });
   } catch (e) {
     await interaction.reply({
       embeds: [errorEmbed(`health check failed — ${e instanceof Error ? e.message : String(e)}`)],
-      ephemeral: true,
     });
   }
 }

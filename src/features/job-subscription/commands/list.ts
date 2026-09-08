@@ -10,7 +10,7 @@ export async function executeList(
 ): Promise<void> {
   if (!(await requireManageGuild(interaction))) return;
   if (!interaction.guildId) {
-    await interaction.reply({ content: 'Run this inside a server.', ephemeral: true });
+    await interaction.reply({ content: 'Run this inside a server.' });
     return;
   }
   const channel = interaction.options.getChannel('channel');
@@ -20,7 +20,7 @@ export async function executeList(
   const rows = await ctx.db.select().from(subscriptions).where(where);
 
   if (rows.length === 0) {
-    await interaction.reply({ content: 'No active subscriptions here yet. Try `/jobs subscribe`.', ephemeral: true });
+    await interaction.reply({ content: 'No active subscriptions here yet. Try `/jobs subscribe`.' });
     return;
   }
   const lines = rows.map(
@@ -29,6 +29,5 @@ export async function executeList(
   );
   await interaction.reply({
     embeds: [new EmbedBuilder().setColor(0x3f6b55).setTitle('Job subscriptions').setDescription(lines.join('\n'))],
-    ephemeral: true,
   });
 }

@@ -11,11 +11,11 @@ export async function executeShowLatest(
 ): Promise<void> {
   if (!(await requireManageGuild(interaction))) return;
   if (!interaction.guildId || !interaction.channelId) {
-    await interaction.reply({ content: 'Run this inside a server channel.', ephemeral: true });
+    await interaction.reply({ content: 'Run this inside a server channel.' });
     return;
   }
 
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply();
 
   const subs = await activeChannelSubs(ctx, interaction.guildId, interaction.channelId);
   if (subs.length === 0) {
