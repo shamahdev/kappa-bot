@@ -16,7 +16,7 @@ export type ServerApp = {
 
 export type GatewayDb = NodePgDatabase;
 
-export type SendPayload = {
+export type MessagePayload = {
   content?: string;
   embeds?: APIEmbed[];
 };
@@ -26,11 +26,12 @@ export type FeatureContext = {
   config: AppConfig;
   db: GatewayDb;
   log: Logger;
-  sendMessage: (channelId: string, payload: SendPayload) => Promise<void>;
+  /** Delivers to a channel; resolves the sent message id when the transport returns one. */
+  deliverMessage: (channelId: string, payload: MessagePayload) => Promise<{ messageId?: string }>;
 };
 
 export type CommandDef = {
-  /** Top-level slash command (e.g. /jobs). Dispatched by commandName. */
+  /** Top-level slash command (e.g. /jobs). Routed by commandName. */
   data: SlashCommandBuilder | SlashCommandSubcommandsOnlyBuilder;
   execute: (interaction: ChatInputCommandInteraction, ctx: FeatureContext) => Promise<void>;
 };

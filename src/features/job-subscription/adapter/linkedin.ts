@@ -12,6 +12,12 @@ const PAGE_SIZE = 10;
 const MAX_PAGES = 3;
 const MAX_RETRIES = 3;
 const CIRCUIT_TTL_MS = 60 * 60 * 1000;
+/** f_TPR value for "past month" (30 days, research-01 vocabulary). */
+const PAST_MONTH_TPR = 'r2592000';
+const MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+const AGO_RE = /(\d+)\s+(second|minute|hour|day|week|month|year)s?\s+ago/i;
+const CLOSED_RE =
+  /no longer accepting applications|this job is closed|job has been (closed|filled)|position has been filled|no longer available/i;
 
 const circuitOpenUntil = new Map<string, number>();
 
@@ -27,9 +33,34 @@ export function buildSearchUrl(query: FingerprintQuery, start: number): string {
   if (query.geoId) params.set('geoId', query.geoId);
   else if (query.location) params.set('location', query.location);
   if (query.distance) params.set('distance', String(query.distance));
+  // Deliveries are under-a-month-only: default to LinkedIn's own past-month
+  // window unless the subscription pinned an explicit f_TPR. Injected at URL
+  // build time, not fingerprinted, so existing subs/dedup keep their key.
+  if (!query.filters.f_TPR) params.set('f_TPR', PAST_MONTH_TPR);
   for (const [k, v] of Object.entries(query.filters)) params.set(k, v);
   params.set('start', String(start));
   return `${BASE}?${params.toString()}`;
+}
+
+/**
+ * Client-side backstop for the f_TPR window: only postings demonstrably < 1
+ * month old pass. Card <time datetime> wins; ago text ("2 weeks ago") is the
+ * fallback. Unknown age (no datetime, unparseable text) is dropped — the
+ * subscription contract is under-a-month-only.
+ */
+export function isRecent(job: Pick<JobPosting, 'datetime' | 'agoTime'>, now = Date.now()): boolean {
+  if (job.datetime) {
+    const t = Date.parse(job.datetime);
+    if (!Number.isNaN(t)) return now - t <= MAX_AGE_MS;
+  }
+  const ago = job.agoTime.trim().toLowerCase();
+  if (/just now|^now$|^today$/.test(ago)) return true;
+  const m = AGO_RE.exec(ago);
+  if (!m) return false;
+  const unit = m[2].toLowerCase();
+  if (unit === 'month' || unit === 'year') return false; // "1 month ago" is not under a month
+  const days = unit === 'week' ? Number(m[1]) * 7 : unit === 'day' ? Number(m[1]) : 0; // sec/min/hour
+  return days <= 30;
 }
 
 /** Pure parser over a guest HTML fragment — unit-testable without network. */
@@ -112,19 +143,25 @@ export async function searchLinkedIn(query: FingerprintQuery, fingerprint: strin
     all.push(...jobs);
     if (page < MAX_PAGES - 1) await sleep(jitter(2000));
   }
-  return all;
+  return all.filter(isRecent);
 }
 
 const DETAIL_BASE = 'https://www.linkedin.com/jobs-guest/jobs/api/jobPosting';
 
-/** Detail HTML → plain text (title/company/location parsed by caller-side selectors). */
+/**
+ * Detail HTML → plain text + closed flag. Closed banners sit outside the
+ * description markup, so the description text is stripped before matching to
+ * avoid false positives on jobs whose text merely mentions those phrases.
+ */
 export function parseDetailHtml(html: string): JobDetail {
   const $ = cheerio.load(html);
   const description = $('div.show-more-less-html__markup').text().replace(/\s+/g, ' ').trim();
   const salary = $('[class*="salary"]').first().text().replace(/\s+/g, ' ').trim();
+  const outer = html.replace(description ?? '', '');
   return {
     description: description || null,
     salary: salary || null,
+    closed: CLOSED_RE.test(outer),
   };
 }
 

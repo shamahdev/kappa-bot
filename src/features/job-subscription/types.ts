@@ -12,6 +12,7 @@ export type JobPosting = {
   salary: string | null;
   url: string;
   logo: string | null;
+  description?: string | null;
 };
 
 export type FingerprintQuery = {
@@ -26,16 +27,7 @@ export type FingerprintQuery = {
 export type JobDetail = {
   description: string | null; // plain text, truncated by the renderer
   salary: string | null; // only when the employer publishes a pay range
+  /** Detail page banner says the posting no longer accepts applications. */
+  closed: boolean;
 };
 
-/** AI enrichment over the detail description (feature-local ai.ts). */
-export type JobAiSummary = {
-  summary: string;
-  /** Condensed responsibilities/requirements — replaces the raw description in embeds. */
-  details: string | null;
-  seniority: string | null;
-  employmentType: string | null;
-  workMode: string | null; // onsite | remote | hybrid
-  skills: string[];
-  salary: string | null; // extracted from the description text, if stated
-};

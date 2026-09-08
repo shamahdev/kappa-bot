@@ -6,7 +6,7 @@
 import { REST, Routes } from 'discord.js';
 import { loadConfig } from './core/config';
 import { closeDb, createDb } from './core/db';
-import type { FeatureContext, SendPayload } from './core/feature';
+import type { FeatureContext, MessagePayload } from './core/feature';
 import { loadFeatures } from './core/loader';
 import { createLogger } from './core/logger';
 import { FeatureRegistry } from './core/registry';
@@ -18,10 +18,13 @@ export async function startWorker(): Promise<void> {
   const { db } = createDb(config.databaseUrl);
   const rest = new REST({ version: '10' }).setToken(config.discordToken);
 
-  const sendMessage = async (channelId: string, payload: SendPayload) => {
-    await rest.post(Routes.channelMessages(channelId), { body: payload });
+  const deliverMessage = async (channelId: string, payload: MessagePayload) => {
+    const res = (await rest.post(Routes.channelMessages(channelId), { body: payload })) as {
+      id?: unknown;
+    };
+    return { messageId: typeof res?.id === 'string' ? res.id : undefined };
   };
-  const ctx: FeatureContext = { config, db, log, sendMessage };
+  const ctx: FeatureContext = { config, db, log, deliverMessage };
 
   const registry = new FeatureRegistry();
   for (const feature of await loadFeatures()) registry.add(feature);

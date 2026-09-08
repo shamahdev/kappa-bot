@@ -1,7 +1,7 @@
 import { CronJob } from 'cron';
 import { Events, type Client } from 'discord.js';
 import { eq } from 'drizzle-orm';
-import { attachHandlers, createClient, gatewaySender, registerCommands } from './core/client';
+import { attachHandlers, createClient, gatewayDeliverer, registerCommands } from './core/client';
 import { loadConfig, type AppConfig } from './core/config';
 import { closeDb, createDb, runMigrations } from './core/db';
 import type { FeatureContext } from './core/feature';
@@ -25,7 +25,7 @@ export type Gateway = {
 /** /jobs config poll interval → cron (single feature knob, applied at boot). */
 async function pollCron(db: FeatureContext['db']): Promise<string> {
   const [row] = await db.select().from(botConfig).where(eq(botConfig.id, 1));
-  const minutes = row?.pollIntervalMinutes ?? 15;
+  const minutes = row?.pollIntervalMinutes ?? 30;
   if (minutes >= 60) {
     const hours = Math.min(23, Math.round(minutes / 60));
     return `0 */${hours} * * *`;
@@ -51,7 +51,7 @@ export async function createApp(): Promise<Gateway> {
   log.info({ features: registry.names() }, 'features loaded');
 
   const client = createClient();
-  const ctx: FeatureContext = { config, db, log, sendMessage: gatewaySender(client) };
+  const ctx: FeatureContext = { config, db, log, deliverMessage: gatewayDeliverer(client) };
   attachHandlers(client, registry, ctx);
 
   const server = createServer(registry);

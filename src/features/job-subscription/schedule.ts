@@ -2,18 +2,19 @@
 // fetch each fingerprint ONCE, fan out to matching subs with insert-first
 // dedup, then enforce per-subscription seen_jobs TTL (ADR-0003).
 import { createHash } from 'node:crypto';
-import { eq, sql } from 'drizzle-orm';
+import { eq, lt, sql } from 'drizzle-orm';
 import { incCounter, setGauge } from '../../core/metrics';
 import type { FeatureContext } from '../../core/feature';
-import { seenJobs, subscriptions } from './schema';
-import { circuitCount, fetchDetail, searchLinkedIn } from './adapter/linkedin';
-import { summarizeJob } from './ai';
-import { embedForJob } from './embed';
-import type { FingerprintQuery, JobAiSummary, JobDetail, JobPosting } from './types';
+import { deliveryMessages, seenJobs, subscriptions } from './schema';
+import { recordDelivery } from './events/reply';
+import { circuitCount, pollSources, searchJobPostings } from './adapter';
+import { embedsForDelivery, formatDeliveryTitle, renderJobPostingCard, type DeliveryItem } from './embed';
+import type { FingerprintQuery, JobPosting } from './types';
 
-type Sub = typeof subscriptions.$inferSelect;
+type Subscription = typeof subscriptions.$inferSelect;
 
-function fingerprintOf(sub: Sub): { key: string; query: FingerprintQuery } {
+function fingerprintOf(sub: Subscription, sourceOverride?: string): { key: string; query: FingerprintQuery } {
+  const source = sourceOverride ?? sub.source;
   const query: FingerprintQuery = {
     keywords: sub.keywords ?? '',
     location: sub.location,
@@ -22,19 +23,21 @@ function fingerprintOf(sub: Sub): { key: string; query: FingerprintQuery } {
     filters: (sub.filters ?? {}) as Record<string, string>,
   };
   const key = createHash('sha1')
-    .update(JSON.stringify([sub.source, query.keywords, query.location, query.geoId, query.distance, query.filters]))
+    .update(JSON.stringify([source, query.keywords, query.location, query.geoId, query.distance, query.filters]))
     .digest('hex')
     .slice(0, 16);
   return { key, query };
 }
 
-async function deliverIfNew(
+/**
+ * Claim-first collection: insert the seen row (dedup, covers horizontal
+ * duplicates). Does NOT fetch detail during collection to keep polling fast.
+ */
+async function collectIfNew(
   ctx: FeatureContext,
-  sub: Sub,
+  sub: Subscription,
   job: JobPosting,
-  details: Map<string, JobDetail | null>,
-  summaries: Map<string, JobAiSummary | null>,
-): Promise<boolean> {
+): Promise<DeliveryItem | null> {
   const inserted = await ctx.db
     .insert(seenJobs)
     .values({
@@ -46,28 +49,54 @@ async function deliverIfNew(
     })
     .onConflictDoNothing()
     .returning({ id: seenJobs.id });
-  if (inserted.length === 0) return false; // already seen (covers horizontal duplicates)
-  // Detail + AI enrichment per unique job (ADR-0005 correction); caches shared
-  // across subscriptions so a job is fetched/summarized at most once per tick.
-  // Either step failing is non-fatal: embed falls back, delivery proceeds.
-  if (!details.has(job.id)) {
-    const detail = await fetchDetail(job.id);
-    details.set(job.id, detail);
-    ctx.log.info({ feature: 'job-subscription', job: job.id, got: detail !== null }, 'detail fetched');
-    if (detail?.description) {
-      summaries.set(job.id, await summarizeJob(detail.description));
-      ctx.log.info(
-        { feature: 'job-subscription', job: job.id, summarized: summaries.get(job.id) !== null },
-        'ai summary',
-      );
+  if (inserted.length === 0) return null; // already seen (covers horizontal duplicates)
+  return { job };
+}
+
+function deliveryHeader(sub: Subscription, count: number, itemSource?: string): string {
+  return formatDeliveryTitle(count, sub.keywords, itemSource ?? sub.source);
+}
+
+/**
+ * One delivery per subscription per tick:
+ * - When items.length === 1: fetch detail to enrich description/salary and render rich card.
+ * - When items.length > 1: deliver numbered-list embeds without fetching details.
+ */
+export async function flushSub(
+  ctx: FeatureContext,
+  sub: Subscription,
+  items: DeliveryItem[],
+): Promise<number> {
+  if (items.length === 0) return 0;
+  try {
+    const keyword = sub.keywords;
+    if (items.length === 1) {
+      const job = items[0]!.job;
+      const card = await renderJobPostingCard(ctx.log, job, keyword);
+      await ctx.deliverMessage(sub.channelId, { embeds: [card.toJSON()] });
+      incCounter('jobs_delivered_total', { source: job.source });
+      ctx.log.info({ feature: 'job-subscription', sub: sub.id, single: true }, 'delivered single');
+      return 1;
     }
+    const source = items[0]?.job?.source ?? sub.source;
+    const title = deliveryHeader(sub, items.length, source);
+
+    const embeds = embedsForDelivery(title, items, keyword).map((e) => e.toJSON());
+    const sent = await ctx.deliverMessage(sub.channelId, { embeds });
+    if (sent?.messageId) await recordDelivery(ctx, sub.channelId, sent.messageId, items, keyword);
+    for (const item of items) incCounter('jobs_delivered_total', { source: item.job.source });
+    ctx.log.info(
+      { feature: 'job-subscription', sub: sub.id, count: items.length, list: true },
+      'delivered list',
+    );
+    return items.length;
+  } catch (e) {
+    ctx.log.warn(
+      { feature: 'job-subscription', sub: sub.id, count: items.length, err: e },
+      'delivery failed (dedup rows kept)',
+    );
+    return 0;
   }
-  await ctx.sendMessage(
-    sub.channelId,
-    { embeds: [embedForJob(job, details.get(job.id), summaries.get(job.id)).toJSON()] },
-  );
-  incCounter('jobs_delivered_total', { source: job.source });
-  return true;
 }
 
 async function enforceTtl(ctx: FeatureContext): Promise<void> {
@@ -76,44 +105,74 @@ async function enforceTtl(ctx: FeatureContext): Promise<void> {
     WHERE ${seenJobs.subscriptionId} = ${subscriptions.id}
       AND ${subscriptions.retentionDays} IS NOT NULL
       AND ${seenJobs.firstSeenAt} < now() - ((${subscriptions.retentionDays}::text || ' days'))::interval`);
+  // Reply-by-number recall window for old deliveries (30d, fixed).
+  await ctx.db
+    .delete(deliveryMessages)
+    .where(lt(deliveryMessages.createdAt, new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)));
 }
 
-export async function pollAll(ctx: FeatureContext): Promise<void> {
+export type PollResult = {
+  subscriptionsCount: number;
+  newJobsDelivered: number;
+  durationMs: number;
+};
+
+export async function pollSubscriptions(
+  ctx: FeatureContext,
+  targetSubs?: Subscription[],
+): Promise<PollResult> {
   const started = Date.now();
-  const subs = await ctx.db.select().from(subscriptions).where(eq(subscriptions.isActive, true));
+  const subs =
+    targetSubs ??
+    (await ctx.db.select().from(subscriptions).where(eq(subscriptions.isActive, true)));
+
   if (subs.length === 0) {
     ctx.log.info({ feature: 'job-subscription' }, 'poll tick: no active subscriptions');
-    return;
+    return { subscriptionsCount: 0, newJobsDelivered: 0, durationMs: Date.now() - started };
   }
-  const groups = new Map<string, { query: FingerprintQuery; source: string; subs: Sub[] }>();
+
+  const groups = new Map<string, { query: FingerprintQuery; source: string; subs: Subscription[] }>();
   for (const sub of subs) {
-    const { key, query } = fingerprintOf(sub);
-    const group = groups.get(key) ?? { query, source: sub.source, subs: [] };
-    group.subs.push(sub);
-    groups.set(key, group);
+    const sourcesToPoll = sub.source === 'all' ? pollSources() : [sub.source];
+    for (const src of sourcesToPoll) {
+      const { key, query } = fingerprintOf(sub, src);
+      const group = groups.get(key) ?? { query, source: src, subs: [] };
+      group.subs.push(sub);
+      groups.set(key, group);
+    }
   }
   ctx.log.info({ feature: 'job-subscription', subs: subs.length, fingerprints: groups.size }, 'poll tick start');
 
-  const details = new Map<string, JobDetail | null>();
-  const summaries = new Map<string, JobAiSummary | null>();
+  let newJobsDelivered = 0;
   for (const [key, group] of groups) {
     let jobs: JobPosting[];
     try {
-      jobs = await searchLinkedIn(group.query, key);
+      jobs = await searchJobPostings(group.source, group.query, key);
     } catch (e) {
-      ctx.log.warn({ feature: 'job-subscription', fingerprint: key, err: e }, 'fingerprint fetch failed');
+      ctx.log.warn({ feature: 'job-subscription', source: group.source, fingerprint: key, err: e }, 'fingerprint fetch failed');
       continue;
     }
+    const pending = new Map<number, DeliveryItem[]>();
     for (const job of jobs) {
       for (const sub of group.subs) {
         try {
-          await deliverIfNew(ctx, sub, job, details, summaries);
+          const item = await collectIfNew(ctx, sub, job);
+          if (!item) continue;
+          const list = pending.get(sub.id);
+          if (list) list.push(item);
+          else pending.set(sub.id, [item]);
         } catch (e) {
           ctx.log.warn(
             { feature: 'job-subscription', sub: sub.id, job: job.id, err: e },
-            'delivery failed (dedup row kept)',
+            'collect failed (skipped)',
           );
         }
+      }
+    }
+    for (const sub of group.subs) {
+      const items = pending.get(sub.id);
+      if (items && items.length > 0) {
+        newJobsDelivered += await flushSub(ctx, sub, items);
       }
     }
   }
@@ -121,8 +180,19 @@ export async function pollAll(ctx: FeatureContext): Promise<void> {
   await enforceTtl(ctx);
   setGauge('linkedin_circuit_open', circuitCount());
   incCounter('cron_ticks_total', { feature: 'job-subscription' });
+  const durationMs = Date.now() - started;
   ctx.log.info(
-    { feature: 'job-subscription', ms: Date.now() - started },
+    { feature: 'job-subscription', ms: durationMs, delivered: newJobsDelivered },
     'poll tick done',
   );
+
+  return {
+    subscriptionsCount: subs.length,
+    newJobsDelivered,
+    durationMs,
+  };
+}
+
+export async function pollAll(ctx: FeatureContext): Promise<void> {
+  await pollSubscriptions(ctx);
 }

@@ -12,6 +12,7 @@ import {
   check,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
+import type { JobPosting } from './types';
 
 export const guilds = pgTable('guilds', {
   id: text('id').primaryKey(), // Discord snowflake
@@ -83,8 +84,26 @@ export const botConfig = pgTable(
   'bot_config',
   {
     id: smallint('id').primaryKey(), // singleton: only row allowed (CHECK id=1)
-    pollIntervalMinutes: integer('poll_interval_minutes').notNull().default(15),
+    pollIntervalMinutes: integer('poll_interval_minutes').notNull().default(30),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [check('bot_config_id_check', sql`${t.id} = 1`)],
+);
+
+/**
+ * Persisted delivery contents for reply-by-number. The in-memory map in
+ * events/reply.ts is only an L1 cache: it is capped, wiped on restart, and
+ * never shared with worker polls — without this table, replying to an old
+ * delivery silently does nothing.
+ */
+export const deliveryMessages = pgTable(
+  'delivery_messages',
+  {
+    messageId: text('message_id').primaryKey(), // bot delivery message id
+    channelId: text('channel_id').notNull(),
+    jobs: jsonb('jobs').$type<JobPosting[]>().notNull(), // display order (flattened, capped)
+    keyword: text('keyword'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index('delivery_messages_created_at_idx').on(t.createdAt)],
 );

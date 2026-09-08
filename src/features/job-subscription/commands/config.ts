@@ -4,25 +4,25 @@ import type { FeatureContext } from '../../../core/feature';
 import { botConfig, subscriptions } from '../schema';
 import { errorEmbed, requireManageGuild } from './_shared';
 
-/** Poll interval from the singleton, or 15 (schema default) when unset. */
+/** Poll interval from the singleton, or 30 (schema default) when unset. */
 async function currentPollMinutes(ctx: FeatureContext): Promise<number> {
   const [row] = await ctx.db.select().from(botConfig).where(eq(botConfig.id, 1));
-  return row?.pollIntervalMinutes ?? 15;
+  return row?.pollIntervalMinutes ?? 30;
 }
 
-/** Where job listings go: one line per subscription → target channel. */
+/** Where JobPostings go: one line per subscription → target channel. */
 async function subscriptionLines(ctx: FeatureContext, guildId: string): Promise<string[]> {
   const rows = await ctx.db.select().from(subscriptions).where(eq(subscriptions.guildId, guildId));
   return rows.map(
     (s) =>
-      `**#${s.id}** ${s.isActive ? '🟢' : '⚪'} \`${s.source}\` ${s.keywords ?? '—'}${s.location ? ` · ${s.location}` : ''} → <#${s.channelId}>`,
+      `${s.isActive ? '🟢' : '⚪'} \`${s.source}\` ${s.keywords ?? '—'}${s.location ? ` · ${s.location}` : ''} → <#${s.channelId}>`,
   );
 }
 
 /**
  * /jobs config: with options → update (poll → bot_config singleton, effective
  * on restart; retention → bulk-update this guild's subscriptions); always
- * ends by showing current state (poll interval + where listings are delivered).
+ * ends by showing current state (poll interval + where JobPostings are delivered).
  */
 export async function executeConfig(
   interaction: ChatInputCommandInteraction,
@@ -64,14 +64,14 @@ export async function executeConfig(
   if (retention !== null) sections.push(`🗑️ Retention: **${retention}d** applied to this server's subscriptions`);
   sections.push(
     lines.length > 0
-      ? `📡 Subscribed channels (where job listings arrive):\n${lines.join('\n')}`
-      : '📡 No subscriptions yet — run `/jobs subscribe` inside the channel you want listings in.',
+      ? `📡 Subscribed channels (where JobPostings arrive):\n${lines.join('\n')}`
+      : '📡 No subscriptions yet — run `/jobs subscribe` inside the channel you want JobPostings in.',
   );
 
   await interaction.editReply({
     embeds: [
       new EmbedBuilder()
-        .setColor(0x2b4ffe)
+        .setColor(0x3f6b55)
         .setTitle(poll !== null || retention !== null ? '⚙️ Config updated' : '⚙️ Job config')
         .setDescription(sections.join('\n\n')),
     ],

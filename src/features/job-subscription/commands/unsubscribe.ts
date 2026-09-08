@@ -1,8 +1,9 @@
 import { EmbedBuilder, type ChatInputCommandInteraction } from 'discord.js';
-import { and, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import type { FeatureContext } from '../../../core/feature';
 import { subscriptions } from '../schema';
 import { errorEmbed, requireManageGuild } from './_shared';
+import { activeGuildSubs, pickerRow } from './_pick';
 
 export async function executeUnsubscribe(
   interaction: ChatInputCommandInteraction,
@@ -14,21 +15,37 @@ export async function executeUnsubscribe(
     await interaction.editReply({ embeds: [errorEmbed('run this inside a server')] });
     return;
   }
-  const id = interaction.options.getInteger('id', true);
+  const subs = await activeGuildSubs(ctx, interaction.guildId);
+  if (subs.length === 0) {
+    await interaction.editReply({ embeds: [errorEmbed('no active subscriptions in this server')] });
+    return;
+  }
+  await interaction.editReply({
+    content: 'Pick a subscription to remove:',
+    components: [pickerRow('jobs:unsub', subs, interaction).toJSON()],
+  });
+}
+
+/** Shared by the command (no-op now) and the select-menu handler. */
+export async function removeSubscription(
+  ctx: FeatureContext,
+  guildId: string,
+  subId: number,
+): Promise<{ ok: boolean; summary: string }> {
   const [row] = await ctx.db
     .select()
     .from(subscriptions)
-    .where(and(eq(subscriptions.id, id), eq(subscriptions.guildId, interaction.guildId)));
-  if (!row) {
-    await interaction.editReply({ embeds: [errorEmbed(`no subscription #${id} in this server`)] });
-    return;
-  }
-  await ctx.db.delete(subscriptions).where(eq(subscriptions.id, id)); // cascades seen_jobs
-  await interaction.editReply({
-    embeds: [
-      new EmbedBuilder()
-        .setColor(0x2b4ffe)
-        .setDescription(`🗑️ Removed subscription **#${id}** (\`${row.source}\` ${row.keywords ?? ''}). Past deliveries stay deleted with it.`),
-    ],
-  });
+    .where(eq(subscriptions.id, subId));
+  if (!row || row.guildId !== guildId) return { ok: false, summary: 'subscription not found in this server' };
+  await ctx.db.delete(subscriptions).where(eq(subscriptions.id, subId)); // cascades seen_jobs
+  return {
+    ok: true,
+    summary: `\`${row.source}\` ${row.keywords ?? ''}${row.location ? ` · ${row.location}` : ''}`,
+  };
+}
+
+export function removedEmbed(summary: string): EmbedBuilder {
+  return new EmbedBuilder()
+    .setColor(0x3f6b55)
+    .setDescription(`🗑️ Removed subscription (${summary}). Past deliveries stay deleted with it.`);
 }

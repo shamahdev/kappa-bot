@@ -6,13 +6,17 @@ import {
   Routes,
   type ChatInputCommandInteraction,
 } from 'discord.js';
-import type { FeatureContext, SendPayload } from './feature';
+import type { FeatureContext, MessagePayload } from './feature';
 import type { Logger } from './logger';
 import type { FeatureRegistry } from './registry';
 import { runGuarded } from './supervisor';
 
 export function createClient(): Client {
-  return new Client({ intents: [GatewayIntentBits.Guilds] });
+  // GuildMessages + privileged MessageContent power reply-by-number on delivery
+  // messages. Requires the Message Content Intent toggle in the portal (Bot tab).
+  return new Client({
+    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
+  });
 }
 
 export function commandBodies(registry: FeatureRegistry): unknown[] {
@@ -42,7 +46,7 @@ function isChatInput(interaction: unknown): interaction is ChatInputCommandInter
   return (interaction as ChatInputCommandInteraction).isChatInputCommand?.() === true;
 }
 
-/** Dispatches interactionCreate by commandName + binds feature event handlers. */
+/** Routes interactionCreate by commandName + binds feature event handlers. */
 export function attachHandlers(
   client: Client,
   registry: FeatureRegistry,
@@ -68,12 +72,13 @@ export function attachHandlers(
 }
 
 /** Gateway sender: resolves the channel from the logged-in client. */
-export function gatewaySender(client: Client): FeatureContext['sendMessage'] {
-  return async (channelId: string, payload: SendPayload) => {
+export function gatewayDeliverer(client: Client): FeatureContext['deliverMessage'] {
+  return async (channelId: string, payload: MessagePayload) => {
     const channel = await client.channels.fetch(channelId);
     if (!channel || !channel.isSendable()) {
       throw new Error(`channel ${channelId} is not sendable`);
     }
-    await channel.send(payload);
+    const sent = await channel.send(payload);
+    return { messageId: sent.id };
   };
 }

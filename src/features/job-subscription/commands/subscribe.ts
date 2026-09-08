@@ -2,7 +2,20 @@ import { EmbedBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import { eq } from 'drizzle-orm';
 import type { FeatureContext } from '../../../core/feature';
 import { channels, guilds, subscriptions } from '../schema';
-import { errorEmbed, parseFilters, requireManageGuild } from './_shared';
+import { errorEmbed, requireManageGuild } from './_shared';
+import { isSupportedSource, SUPPORTED_SOURCES } from '../adapter';
+
+/**
+ * Indonesia-jobseeker defaults (no per-subscription overrides — the command
+ * exposes only source/keywords/channel). Rationale, verified 2026-09-08:
+ * - location "Indonesia" matches "Jakarta"/ID-city postings AND worldwide/APAC
+ *   remote roles via the shared `matchesLocation` predicate, while excluding
+ *   EU/US-scoped remote roles;
+ * - Kalibrr/TechInAsia already default to country Indonesia server-side;
+ * - Greenhouse defaults include Xendit (Jakarta postings live);
+ * - distance only applies to LinkedIn geoId searches — null keeps text search.
+ */
+const DEFAULT_LOCATION = 'Indonesia';
 
 export async function executeSubscribe(
   interaction: ChatInputCommandInteraction,
@@ -12,23 +25,19 @@ export async function executeSubscribe(
   await interaction.deferReply({ ephemeral: true });
 
   const source = interaction.options.getString('source', true);
-  if (source !== 'linkedin') {
-    await interaction.editReply({ embeds: [errorEmbed(`unknown source "${source}" (only linkedin is supported)`)] });
+  if (!isSupportedSource(source)) {
+    await interaction.editReply({
+      embeds: [errorEmbed(`unknown source "${source}" (supported: ${SUPPORTED_SOURCES.join(', ')})`)],
+    });
     return;
   }
   const keywords = interaction.options.getString('keywords', true);
-  const location = interaction.options.getString('location');
-  const distance = interaction.options.getInteger('distance');
+  const location = DEFAULT_LOCATION;
+  const distance = null;
+  const filters: Record<string, string> = {};
   const channel = interaction.options.getChannel('channel') ?? interaction.channel;
   if (!channel || !('id' in channel)) {
     await interaction.editReply({ embeds: [errorEmbed('pick a text channel (or run this inside one)')] });
-    return;
-  }
-  let filters: Record<string, string>;
-  try {
-    filters = parseFilters(interaction.options.getString('filters'));
-  } catch (e) {
-    await interaction.editReply({ embeds: [errorEmbed((e as Error).message)] });
     return;
   }
   if (!interaction.guildId || !interaction.guild?.name) {
@@ -56,14 +65,13 @@ export async function executeSubscribe(
   await interaction.editReply({
     embeds: [
       new EmbedBuilder()
-        .setColor(0x2b4ffe)
+        .setColor(0x3f6b55)
         .setTitle('✅ Subscription created')
         .setDescription(
           [
-            `**#${saved.id}** · \`${saved.source}\` → <#${saved.channelId}>`,
-            `Keywords: ${saved.keywords ?? '—'}${saved.location ? ` · ${saved.location}` : ''}`,
-            `Filters: \`${JSON.stringify(saved.filters)}\``,
-            'New jobs arrive here every ~15 minutes.',
+            `\`${saved.source}\` → <#${saved.channelId}>`,
+            `Keywords: ${saved.keywords ?? '—'}`,
+            'jobs will be searched every 30 minutes.',
           ].join('\n'),
         ),
     ],

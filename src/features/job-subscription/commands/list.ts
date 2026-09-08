@@ -25,10 +25,10 @@ export async function executeList(
   }
   const lines = rows.map(
     (s) =>
-      `**#${s.id}** ${s.isActive ? '🟢' : '⚪'} \`${s.source}\` ${s.keywords ?? '—'}${s.location ? ` · ${s.location}` : ''} → <#${s.channelId}>`,
+      `${s.isActive ? '🟢' : '⚪'} \`${s.source}\` ${s.keywords ?? '—'}${s.location ? ` · ${s.location}` : ''} → <#${s.channelId}>`,
   );
   await interaction.reply({
-    embeds: [new EmbedBuilder().setColor(0x2b4ffe).setTitle('Job subscriptions').setDescription(lines.join('\n'))],
+    embeds: [new EmbedBuilder().setColor(0x3f6b55).setTitle('Job subscriptions').setDescription(lines.join('\n'))],
     ephemeral: true,
   });
 }

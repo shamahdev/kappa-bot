@@ -1,0 +1,1 @@
+ALTER TABLE "bot_config" ALTER COLUMN "poll_interval_minutes" SET DEFAULT 30;

@@ -23,3 +23,7 @@ _Avoid_: DeliveredJob, SentJob
 **Source Adapter**:
 A feature-local adapter that fetches and normalizes JobPostings from one upstream (LinkedIn Guest, Arbeitnow, etc.) behind a shared `JobSource` interface.
 _Avoid_: Provider, Fetcher
+
+**Delivery**:
+The poll-to-channel send of new JobPostings for a Subscription, either as a single rich card or a numbered digest list.
+_Avoid_: Dispatch, Send, Digest
