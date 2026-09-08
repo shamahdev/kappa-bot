@@ -2,9 +2,9 @@
   "apps": [
     {
       "name": "kappa-bot-gateway",
-      "cwd": "/Users/airmasperkasa/Documents/Codes/kappa-bot",
+      "cwd": "./",
       "script": "src/index.ts",
-      "interpreter": "/Users/airmasperkasa/.bun/bin/bun",
+      "interpreter": "bun",
       "instances": 1,
       "exec_mode": "fork",
       "autorestart": true,
@@ -19,9 +19,9 @@
     },
     {
       "name": "kappa-bot-worker",
-      "cwd": "/Users/airmasperkasa/Documents/Codes/kappa-bot",
+      "cwd": "./",
       "script": "src/index.ts",
-      "interpreter": "/Users/airmasperkasa/.bun/bin/bun",
+      "interpreter": "bun",
       "instances": 1,
       "exec_mode": "fork",
       "autorestart": false,
