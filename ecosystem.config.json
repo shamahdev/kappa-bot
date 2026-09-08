@@ -3,8 +3,9 @@
     {
       "name": "kappa-bot-gateway",
       "cwd": "./",
-      "script": "src/index.ts",
-      "interpreter": "bun",
+      "script": "bun",
+      "args": "src/index.ts",
+      "interpreter": "none",
       "instances": 1,
       "exec_mode": "fork",
       "autorestart": true,
@@ -20,8 +21,9 @@
     {
       "name": "kappa-bot-worker",
       "cwd": "./",
-      "script": "src/index.ts",
-      "interpreter": "bun",
+      "script": "bun",
+      "args": "src/index.ts",
+      "interpreter": "none",
       "instances": 1,
       "exec_mode": "fork",
       "autorestart": false,
