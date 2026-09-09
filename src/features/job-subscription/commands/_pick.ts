@@ -10,6 +10,7 @@ import {
 import { and, eq, type SQL } from 'drizzle-orm';
 import type { FeatureContext } from '../../../core/feature';
 import { subscriptions } from '../schema';
+import { isDMInteraction } from './_shared';
 
 export type Subscription = typeof subscriptions.$inferSelect;
 
@@ -83,6 +84,9 @@ export function pickerRow(
 
 /** ManageGuild gate for component interactions (no command router there). */
 export async function requireManageGuildComponent(interaction: Interaction): Promise<boolean> {
+  // DMs have no member permissions: the DM owner acts only on their own
+  // DM-scoped subscriptions (queries scope by dm guild below), so allow.
+  if (isDMInteraction(interaction)) return true;
   const perms =
     'memberPermissions' in interaction ? interaction.memberPermissions : undefined;
   if (!perms?.has?.(PermissionFlagsBits.ManageGuild)) {

@@ -5,7 +5,7 @@ import { and, eq } from 'drizzle-orm';
 import type { StringSelectMenuInteraction } from 'discord.js';
 import type { FeatureContext } from '../../../core/feature';
 import { subscriptions } from '../schema';
-import { errorEmbed } from '../commands/_shared';
+import { errorEmbed, scopeGuildId } from '../commands/_shared';
 import { requireManageGuildComponent } from '../commands/_pick';
 import { fetchResultEmbed, runFetch } from '../commands/fetch';
 import { showLatestJob } from '../commands/latest';
@@ -24,10 +24,9 @@ export async function onComponent(ctx: FeatureContext, interaction: unknown): Pr
   const [ns, action] = (inter.customId ?? '').split(':');
   if (ns !== 'jobs' || (action !== 'unsub' && action !== 'fetch' && action !== 'latest')) return;
   if (!(await requireManageGuildComponent(inter))) return;
-  if (!inter.guildId) {
-    await inter.reply({ content: 'Run this inside a server.' });
-    return;
-  }
+  // Guild menus scope to the guild; DM menus scope to the caller's synthetic
+  // per-user guild, so users can only touch their own DM subscriptions.
+  const scope = scopeGuildId(inter);
   await inter.deferUpdate();
 
   const fail = async (message: string) => {
@@ -37,13 +36,13 @@ export async function onComponent(ctx: FeatureContext, interaction: unknown): Pr
   if (action === 'unsub') {
     const id = Number(inter.values[0]);
     if (!Number.isInteger(id)) return fail('pick a subscription from the menu');
-    const { ok, summary } = await removeSubscription(ctx, inter.guildId, id);
+    const { ok, summary } = await removeSubscription(ctx, scope, id);
     if (!ok) return fail(summary);
     await inter.editReply({ content: null, embeds: [removedEmbed(summary)], components: [] });
     return;
   }
 
-  // fetch + latest: single sub or (fetch only) 'all', scoped to this guild.
+  // fetch + latest: single sub or (fetch only) 'all', scoped to this scope.
   const value = inter.values[0] ?? '';
   const rows = await ctx.db
     .select()
@@ -51,12 +50,12 @@ export async function onComponent(ctx: FeatureContext, interaction: unknown): Pr
     .where(
       value === 'all' && action === 'fetch'
         ? and(
-            eq(subscriptions.guildId, inter.guildId),
+            eq(subscriptions.guildId, scope),
             eq(subscriptions.channelId, inter.channelId),
             eq(subscriptions.isActive, true),
           )
         : and(
-            eq(subscriptions.guildId, inter.guildId),
+            eq(subscriptions.guildId, scope),
             eq(subscriptions.id, Number(value)),
             eq(subscriptions.isActive, true),
           ),
@@ -75,7 +74,7 @@ export async function onComponent(ctx: FeatureContext, interaction: unknown): Pr
       await inter.editReply({ content: null, embeds: found.embeds, components: [] });
     }
   } catch (err) {
-    ctx.log.error({ err, guildId: inter.guildId }, 'component job fetch failed');
+    ctx.log.error({ err, guildId: scope }, 'component job fetch failed');
     return fail('Failed to fetch jobs due to an internal error.');
   }
 }

@@ -2,6 +2,7 @@ import {
   Client,
   Events,
   GatewayIntentBits,
+  Partials,
   REST,
   Routes,
   type ChatInputCommandInteraction,
@@ -14,8 +15,16 @@ import { runGuarded } from './supervisor';
 export function createClient(): Client {
   // GuildMessages + privileged MessageContent power reply-by-number on delivery
   // messages. Requires the Message Content Intent toggle in the portal (Bot tab).
+  // DirectMessages + Partial Channel extend the same reply-by-number path to
+  // bot DMs (DM subscriptions deliver there).
   return new Client({
-    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
+    intents: [
+      GatewayIntentBits.Guilds,
+      GatewayIntentBits.GuildMessages,
+      GatewayIntentBits.DirectMessages,
+      GatewayIntentBits.MessageContent,
+    ],
+    partials: [Partials.Channel],
   });
 }
 

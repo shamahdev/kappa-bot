@@ -2,7 +2,7 @@ import { EmbedBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import { eq } from 'drizzle-orm';
 import type { FeatureContext } from '../../../core/feature';
 import { channels, guilds, subscriptions } from '../schema';
-import { errorEmbed, requireManageGuild } from './_shared';
+import { errorEmbed, requireManageGuild, scopeGuildId } from './_shared';
 import { isSupportedSource, SUPPORTED_SOURCES } from '../adapter';
 
 /**
@@ -35,23 +35,26 @@ export async function executeSubscribe(
   const location = DEFAULT_LOCATION;
   const distance = null;
   const filters: Record<string, string> = {};
-  const channel = interaction.options.getChannel('channel') ?? interaction.channel;
-  if (!channel || !('id' in channel)) {
+  // The channel option is guild-only: in DMs always deliver to this DM
+  // channel, so a DM caller can never point a dm-scoped sub at a guild channel.
+  const channel = interaction.guildId ? interaction.options.getChannel('channel') : null;
+  const target = channel ?? interaction.channel;
+  if (!target || !('id' in target)) {
     await interaction.editReply({ embeds: [errorEmbed('pick a text channel (or run this inside one)')] });
     return;
   }
-  if (!interaction.guildId || !interaction.guild?.name) {
-    await interaction.editReply({ embeds: [errorEmbed('this command only works inside a server')] });
-    return;
-  }
+  // Guilds scope to the guild; DMs scope to a synthetic per-user guild and
+  // always deliver to this DM channel (the channel option is guild-only).
+  const scope = scopeGuildId(interaction);
+  const scopeName = interaction.guild?.name ?? `DM with ${interaction.user.tag}`;
 
-  await ctx.db.insert(guilds).values({ id: interaction.guildId, name: interaction.guild.name }).onConflictDoNothing();
-  await ctx.db.insert(channels).values({ id: channel.id, guildId: interaction.guildId }).onConflictDoNothing();
+  await ctx.db.insert(guilds).values({ id: scope, name: scopeName }).onConflictDoNothing();
+  await ctx.db.insert(channels).values({ id: target.id, guildId: scope }).onConflictDoNothing();
   const [row] = await ctx.db
     .insert(subscriptions)
     .values({
-      guildId: interaction.guildId,
-      channelId: channel.id,
+      guildId: scope,
+      channelId: target.id,
       keywords,
       location,
       distance,

@@ -1,6 +1,6 @@
 import { EmbedBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import type { FeatureContext } from '../../../core/feature';
-import { errorEmbed, requireManageGuild } from './_shared';
+import { errorEmbed, requireManageGuild, scopeGuildId } from './_shared';
 import { activeChannelSubs, pickerRow, type Subscription } from './_pick';
 import { pollSubscriptions, type PollResult } from '../schedule';
 
@@ -9,14 +9,14 @@ export async function executeFetch(
   ctx: FeatureContext,
 ): Promise<void> {
   if (!(await requireManageGuild(interaction))) return;
-  if (!interaction.guildId || !interaction.channelId) {
-    await interaction.reply({ content: 'Run this inside a server channel.' });
+  if (!interaction.channelId) {
+    await interaction.reply({ content: 'Run this inside a server channel or DM.' });
     return;
   }
 
   await interaction.deferReply();
 
-  const subs = await activeChannelSubs(ctx, interaction.guildId, interaction.channelId);
+  const subs = await activeChannelSubs(ctx, scopeGuildId(interaction), interaction.channelId);
   if (subs.length === 0) {
     await interaction.editReply({
       embeds: [errorEmbed('No active subscriptions in this channel. Try `/jobs subscribe`.')],

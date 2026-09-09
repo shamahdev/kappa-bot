@@ -1,5 +1,7 @@
 import {
+  ApplicationIntegrationType,
   ChannelType,
+  InteractionContextType,
   PermissionFlagsBits,
   SlashCommandBuilder,
   type ChatInputCommandInteraction,
@@ -22,6 +24,17 @@ const jobsCommand = new SlashCommandBuilder()
   .setName('jobs')
   .setDescription('Manage job subscriptions')
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+  // Guild default above still gates guild installs; contexts + user-install
+  // make /jobs usable in DMs, where the caller manages their own DM subs.
+  .setContexts(
+    InteractionContextType.Guild,
+    InteractionContextType.BotDM,
+    InteractionContextType.PrivateChannel,
+  )
+  .setIntegrationTypes(
+    ApplicationIntegrationType.GuildInstall,
+    ApplicationIntegrationType.UserInstall,
+  )
   .addSubcommand((s) =>
     s
       .setName('subscribe')

@@ -10,6 +10,7 @@ _Avoid_: Module (overloaded), Plugin (implies third-party), Cog
 
 **Subscription**:
 A persisted tuple of (guild, channel, filter) that drives scheduled job delivery to a channel.
+_In DM scope_: the guild slot holds a synthetic per-user id (`dm:<userId>`), isolating one user's DM subscriptions without a schema change (see ADR-0003); the channel is the bot DM channel.
 _Avoid_: Watch, Feed, Alert
 
 **JobPosting**:

@@ -2,7 +2,7 @@ import { EmbedBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import { eq } from 'drizzle-orm';
 import type { FeatureContext } from '../../../core/feature';
 import { botConfig, subscriptions } from '../schema';
-import { errorEmbed, requireManageGuild } from './_shared';
+import { errorEmbed, requireManageGuild, scopeGuildId } from './_shared';
 
 /** Poll interval from the singleton, or 30 (schema default) when unset. */
 async function currentPollMinutes(ctx: FeatureContext): Promise<number> {
@@ -30,12 +30,17 @@ export async function executeConfig(
 ): Promise<void> {
   if (!(await requireManageGuild(interaction))) return;
   await interaction.deferReply();
-  if (!interaction.guildId) {
-    await interaction.editReply({ embeds: [errorEmbed('run this inside a server')] });
-    return;
-  }
+  const scope = scopeGuildId(interaction);
   const retention = interaction.options.getInteger('retention_days');
   const poll = interaction.options.getInteger('poll_interval_minutes');
+
+  // Poll interval is a global singleton: DM callers must not mutate shared state.
+  if (poll !== null && !interaction.guildId) {
+    await interaction.editReply({
+      embeds: [errorEmbed('poll_interval_minutes is server-managed — change it from a server, or set retention_days here')],
+    });
+    return;
+  }
 
   if (poll !== null) {
     if (poll < 1 || poll > 1440) {
@@ -55,17 +60,17 @@ export async function executeConfig(
     await ctx.db
       .update(subscriptions)
       .set({ retentionDays: retention })
-      .where(eq(subscriptions.guildId, interaction.guildId));
+      .where(eq(subscriptions.guildId, scope));
   }
 
   const pollMinutes = await currentPollMinutes(ctx);
-  const lines = await subscriptionLines(ctx, interaction.guildId);
+  const lines = await subscriptionLines(ctx, scope);
   const sections = [`🔁 Poll: every **${pollMinutes}m** (change applies on restart)`];
-  if (retention !== null) sections.push(`🗑️ Retention: **${retention}d** applied to this server's subscriptions`);
+  if (retention !== null) sections.push(`🗑️ Retention: **${retention}d** applied to your subscriptions here`);
   sections.push(
     lines.length > 0
       ? `📡 Subscribed channels (where JobPostings arrive):\n${lines.join('\n')}`
-      : '📡 No subscriptions yet — run `/jobs subscribe` inside the channel you want JobPostings in.',
+      : '📡 No subscriptions yet — run `/jobs subscribe` to get JobPostings here.',
   );
 
   await interaction.editReply({

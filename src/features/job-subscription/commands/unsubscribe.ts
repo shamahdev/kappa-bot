@@ -2,7 +2,7 @@ import { EmbedBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import { eq } from 'drizzle-orm';
 import type { FeatureContext } from '../../../core/feature';
 import { subscriptions } from '../schema';
-import { errorEmbed, requireManageGuild } from './_shared';
+import { errorEmbed, requireManageGuild, scopeGuildId } from './_shared';
 import { activeGuildSubs, pickerRow } from './_pick';
 
 export async function executeUnsubscribe(
@@ -11,13 +11,9 @@ export async function executeUnsubscribe(
 ): Promise<void> {
   if (!(await requireManageGuild(interaction))) return;
   await interaction.deferReply();
-  if (!interaction.guildId) {
-    await interaction.editReply({ embeds: [errorEmbed('run this inside a server')] });
-    return;
-  }
-  const subs = await activeGuildSubs(ctx, interaction.guildId);
+  const subs = await activeGuildSubs(ctx, scopeGuildId(interaction));
   if (subs.length === 0) {
-    await interaction.editReply({ embeds: [errorEmbed('no active subscriptions in this server')] });
+    await interaction.editReply({ embeds: [errorEmbed('no active subscriptions here')] });
     return;
   }
   await interaction.editReply({
@@ -36,7 +32,7 @@ export async function removeSubscription(
     .select()
     .from(subscriptions)
     .where(eq(subscriptions.id, subId));
-  if (!row || row.guildId !== guildId) return { ok: false, summary: 'subscription not found in this server' };
+  if (!row || row.guildId !== guildId) return { ok: false, summary: 'subscription not found here' };
   await ctx.db.delete(subscriptions).where(eq(subscriptions.id, subId)); // cascades seen_jobs
   return {
     ok: true,

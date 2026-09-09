@@ -2,21 +2,18 @@ import { EmbedBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import { and, eq } from 'drizzle-orm';
 import type { FeatureContext } from '../../../core/feature';
 import { subscriptions } from '../schema';
-import { requireManageGuild } from './_shared';
+import { requireManageGuild, scopeGuildId } from './_shared';
 
 export async function executeList(
   interaction: ChatInputCommandInteraction,
   ctx: FeatureContext,
 ): Promise<void> {
   if (!(await requireManageGuild(interaction))) return;
-  if (!interaction.guildId) {
-    await interaction.reply({ content: 'Run this inside a server.' });
-    return;
-  }
-  const channel = interaction.options.getChannel('channel');
+  const scope = scopeGuildId(interaction);
+  const channel = interaction.guildId ? interaction.options.getChannel('channel') : null;
   const where = channel
-    ? and(eq(subscriptions.guildId, interaction.guildId), eq(subscriptions.channelId, channel.id))
-    : eq(subscriptions.guildId, interaction.guildId);
+    ? and(eq(subscriptions.guildId, scope), eq(subscriptions.channelId, channel.id))
+    : eq(subscriptions.guildId, scope);
   const rows = await ctx.db.select().from(subscriptions).where(where);
 
   if (rows.length === 0) {
