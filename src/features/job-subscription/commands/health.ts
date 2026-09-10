@@ -1,6 +1,6 @@
 import { EmbedBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import type { FeatureContext } from '../../../core/feature';
-import { circuitCount, CONCRETE_SOURCES, OPT_IN_SOURCES, SOURCE_COOKIE_ENV } from '../adapter';
+import { linkedinCircuitCount, CONCRETE_SOURCES, OPT_IN_SOURCES, SOURCE_COOKIE_ENV } from '../adapter';
 import { formatSourceName } from '../embed';
 import { errorEmbed, requireManageGuild } from './_shared';
 
@@ -61,7 +61,7 @@ export async function executeHealth(
 ): Promise<void> {
   if (!(await requireManageGuild(interaction))) return;
   try {
-    const rows = checkSources(process.env, circuitCount());
+    const rows = checkSources(process.env, linkedinCircuitCount());
     await interaction.reply({ embeds: [healthEmbed(rows)] });
   } catch (e) {
     await interaction.reply({

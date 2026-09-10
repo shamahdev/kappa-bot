@@ -44,22 +44,20 @@ export async function onComponent(ctx: FeatureContext, interaction: unknown): Pr
 
   // fetch + latest: single sub or (fetch only) 'all', scoped to this scope.
   const value = inter.values[0] ?? '';
-  const rows = await ctx.db
-    .select()
-    .from(subscriptions)
-    .where(
-      value === 'all' && action === 'fetch'
-        ? and(
-            eq(subscriptions.guildId, scope),
-            eq(subscriptions.channelId, inter.channelId),
-            eq(subscriptions.isActive, true),
-          )
-        : and(
-            eq(subscriptions.guildId, scope),
-            eq(subscriptions.id, Number(value)),
-            eq(subscriptions.isActive, true),
-          ),
+  let where = and(
+    eq(subscriptions.guildId, scope),
+    eq(subscriptions.id, Number(value)),
+    eq(subscriptions.isActive, true),
+  );
+  if (value === 'all' && action === 'fetch') {
+    if (!inter.channelId) return fail('Run this from a channel.');
+    where = and(
+      eq(subscriptions.guildId, scope),
+      eq(subscriptions.channelId, inter.channelId),
+      eq(subscriptions.isActive, true),
     );
+  }
+  const rows = await ctx.db.select().from(subscriptions).where(where);
   if (rows.length === 0) {
     return fail('No matching active subscription. It may have been removed.');
   }

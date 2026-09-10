@@ -18,7 +18,7 @@ import { onGuildDelete } from './events/guildDelete';
 import { onChannelDelete } from './events/channelDelete';
 import { onComponent } from './events/components';
 import { onMessage } from './events/reply';
-import { pollAll } from './schedule';
+import { pollAll, pollCron } from './schedule';
 
 const jobsCommand = new SlashCommandBuilder()
   .setName('jobs')
@@ -123,5 +123,5 @@ export default defineFeature({
     { event: 'interactionCreate', handler: onComponent },
     { event: 'messageCreate', handler: onMessage },
   ],
-  schedule: { cron: '*/30 * * * *', run: pollAll },
+  schedule: { cron: '*/30 * * * *', resolveCron: pollCron, run: pollAll },
 });

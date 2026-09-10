@@ -5,13 +5,29 @@ import { createHash } from 'node:crypto';
 import { eq, lt, sql } from 'drizzle-orm';
 import { incCounter, setGauge } from '../../core/metrics';
 import type { FeatureContext } from '../../core/feature';
-import { deliveryMessages, seenJobs, subscriptions } from './schema';
+import { botConfig, deliveryMessages, seenJobs, subscriptions } from './schema';
 import { recordDelivery } from './events/reply';
-import { circuitCount, pollSources, searchJobPostings } from './adapter';
+import { linkedinCircuitCount, pollSources, searchJobPostings } from './adapter';
 import { embedsForDelivery, formatDeliveryTitle, renderJobPostingCard, type DeliveryItem } from './embed';
 import type { FingerprintQuery, JobPosting } from './types';
 
 type Subscription = typeof subscriptions.$inferSelect;
+
+/**
+ * `/jobs config poll_interval_minutes` → cron. Resolved at boot via
+ * `ScheduleDef.resolveCron`. Rounds to whole hours for ≥ 60m; 1440m maps to a
+ * daily midnight job instead of an out-of-range hourly cron.
+ */
+export async function pollCron(ctx: FeatureContext): Promise<string> {
+  const [row] = await ctx.db.select().from(botConfig).where(eq(botConfig.id, 1));
+  const minutes = row?.pollIntervalMinutes ?? 30;
+  if (minutes >= 60) {
+    const hours = Math.round(minutes / 60);
+    if (hours >= 24) return '0 0 * * *';
+    return `0 */${Math.max(1, hours)} * * * *`;
+  }
+  return `*/${Math.min(59, Math.max(1, minutes))} * * * *`;
+}
 
 function fingerprintOf(sub: Subscription, sourceOverride?: string): { key: string; query: FingerprintQuery } {
   const source = sourceOverride ?? sub.source;
@@ -178,7 +194,7 @@ export async function pollSubscriptions(
   }
 
   await enforceTtl(ctx);
-  setGauge('linkedin_circuit_open', circuitCount());
+  setGauge('linkedin_circuit_open', linkedinCircuitCount());
   incCounter('cron_ticks_total', { feature: 'job-subscription' });
   const durationMs = Date.now() - started;
   ctx.log.info(

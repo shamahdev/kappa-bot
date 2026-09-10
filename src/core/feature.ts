@@ -45,6 +45,8 @@ export type EventDef = {
 
 export type ScheduleDef = {
   cron: string;
+  /** Optional boot-time override (e.g. resolve the interval from DB config). */
+  resolveCron?: (ctx: FeatureContext) => Promise<string>;
   run: (ctx: FeatureContext) => Promise<void>;
 };
 

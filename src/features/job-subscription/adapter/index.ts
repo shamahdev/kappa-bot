@@ -1,13 +1,13 @@
 // Unified Source Adapter registry for all job sources.
 import type { FingerprintQuery, JobDetail, JobPosting } from '../types';
-import { circuitCount, fetchDetail as fetchLinkedInDetail, searchLinkedIn } from './linkedin';
+import { linkedinCircuitCount, fetchDetail as fetchLinkedInDetail, searchLinkedIn } from './linkedin';
 import { searchKalibrr } from './kalibrr';
 import { searchTechInAsia } from './techinasia';
 import { searchGlints, ENV as GLINTS_ENV } from './glints';
 import { searchIndeed, ENV as INDEED_ENV } from './indeed';
 import { searchJobstreet, ENV as JOBSTREET_ENV } from './jobstreet';
 
-export { circuitCount };
+export { linkedinCircuitCount };
 
 export const CONCRETE_SOURCES = ['linkedin', 'kalibrr', 'techinasia'] as const;
 export type ConcreteSource = (typeof CONCRETE_SOURCES)[number];

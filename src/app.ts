@@ -1,6 +1,5 @@
 import { CronJob } from 'cron';
 import { Events, type Client } from 'discord.js';
-import { eq } from 'drizzle-orm';
 import { attachHandlers, createClient, gatewayDeliverer, registerCommands } from './core/client';
 import { loadConfig, type AppConfig } from './core/config';
 import { closeDb, createDb, runMigrations } from './core/db';
@@ -10,7 +9,6 @@ import { createLogger, type Logger } from './core/logger';
 import { FeatureRegistry } from './core/registry';
 import { createServer, type AppServer } from './core/server';
 import { runGuarded } from './core/supervisor';
-import { botConfig } from './db/schema';
 
 export type Gateway = {
   config: AppConfig;
@@ -21,17 +19,6 @@ export type Gateway = {
   jobs: CronJob[];
   close: () => Promise<void>;
 };
-
-/** /jobs config poll interval → cron (single feature knob, applied at boot). */
-async function pollCron(db: FeatureContext['db']): Promise<string> {
-  const [row] = await db.select().from(botConfig).where(eq(botConfig.id, 1));
-  const minutes = row?.pollIntervalMinutes ?? 30;
-  if (minutes >= 60) {
-    const hours = Math.min(23, Math.round(minutes / 60));
-    return `0 */${hours} * * *`;
-  }
-  return `*/${Math.min(59, Math.max(1, minutes))} * * * *`;
-}
 
 /** Boots everything except the network listeners (login + listen). */
 export async function createApp(): Promise<Gateway> {
@@ -60,10 +47,9 @@ export async function createApp(): Promise<Gateway> {
   for (const feature of registry.all()) {
     const schedules = Array.isArray(feature.schedule) ? feature.schedule : feature.schedule ? [feature.schedule] : [];
     for (const schedule of schedules) {
-      // The job-subscription poll follows /jobs config; other schedules use
-      // their declared cron as-is.
-      const cron =
-        feature.name === 'job-subscription' ? await pollCron(db) : schedule.cron;
+      // Schedules may resolve their cron at boot (job-subscription reads
+      // /jobs config); others use the declared cron as-is.
+      const cron = schedule.resolveCron ? await schedule.resolveCron(ctx) : schedule.cron;
       const job = new CronJob(cron, () =>
         runGuarded(feature.name, 'schedule', log, () => schedule.run(ctx)),
       );

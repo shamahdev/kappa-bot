@@ -22,7 +22,7 @@ export async function executeUnsubscribe(
   });
 }
 
-/** Shared by the command (no-op now) and the select-menu handler. */
+/** Used by the select-menu handler (`jobs:unsub`); the command only renders the picker. */
 export async function removeSubscription(
   ctx: FeatureContext,
   guildId: string,

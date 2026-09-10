@@ -14,10 +14,7 @@ import { isDMInteraction } from './_shared';
 
 export type Subscription = typeof subscriptions.$inferSelect;
 
-async function activeWhere(
-  ctx: FeatureContext,
-  where: SQL | undefined,
-): Promise<Subscription[]> {
+function activeWhere(ctx: FeatureContext, where: SQL | undefined) {
   return ctx.db.select().from(subscriptions).where(where);
 }
 

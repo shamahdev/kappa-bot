@@ -21,7 +21,7 @@ const CLOSED_RE =
 
 const circuitOpenUntil = new Map<string, number>();
 
-export function circuitCount(): number {
+export function linkedinCircuitCount(): number {
   const now = Date.now();
   for (const [k, v] of circuitOpenUntil) if (v <= now) circuitOpenUntil.delete(k);
   return circuitOpenUntil.size;

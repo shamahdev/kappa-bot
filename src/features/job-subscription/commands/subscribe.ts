@@ -12,7 +12,6 @@ import { isSupportedSource, SUPPORTED_SOURCES } from '../adapter';
  *   remote roles via the shared `matchesLocation` predicate, while excluding
  *   EU/US-scoped remote roles;
  * - Kalibrr/TechInAsia already default to country Indonesia server-side;
- * - Greenhouse defaults include Xendit (Jakarta postings live);
  * - distance only applies to LinkedIn geoId searches — null keeps text search.
  */
 const DEFAULT_LOCATION = 'Indonesia';
