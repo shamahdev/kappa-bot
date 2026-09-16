@@ -1,8 +1,8 @@
 {
   "apps": [
     {
-      "name": "kappa-bot-gateway",
-      "cwd": "./",
+      "name": "kappa-service",
+      "cwd": "./apps/service",
       "script": "bun",
       "args": "src/index.ts",
       "interpreter": "none",
@@ -11,16 +11,54 @@
       "autorestart": true,
       "watch": false,
       "time": true,
-      "error_file": "./logs/gateway-error.log",
-      "out_file": "./logs/gateway-out.log",
+      "error_file": "../../logs/service-error.log",
+      "out_file": "../../logs/service-out.log",
       "env": {
         "NODE_ENV": "production",
-        "BOT_ROLE": "gateway"
+        "PORT": "3001",
+        "DOTENV_CONFIG_PATH": "../../.env"
+      }
+    },
+    {
+      "name": "kappa-web",
+      "cwd": "./apps/web",
+      "script": "bun",
+      "args": ".output/server/index.mjs",
+      "interpreter": "none",
+      "instances": 1,
+      "exec_mode": "fork",
+      "autorestart": true,
+      "watch": false,
+      "time": true,
+      "error_file": "../../logs/web-error.log",
+      "out_file": "../../logs/web-out.log",
+      "env": {
+        "NODE_ENV": "production",
+        "PORT": "3000"
+      }
+    },
+    {
+      "name": "kappa-bot-gateway",
+      "cwd": "./apps/discord",
+      "script": "bun",
+      "args": "src/index.ts",
+      "interpreter": "none",
+      "instances": 1,
+      "exec_mode": "fork",
+      "autorestart": true,
+      "watch": false,
+      "time": true,
+      "error_file": "../../logs/gateway-error.log",
+      "out_file": "../../logs/gateway-out.log",
+      "env": {
+        "NODE_ENV": "production",
+        "BOT_ROLE": "gateway",
+        "DOTENV_CONFIG_PATH": "../../.env"
       }
     },
     {
       "name": "kappa-bot-worker",
-      "cwd": "./",
+      "cwd": "./apps/discord",
       "script": "bun",
       "args": "src/index.ts",
       "interpreter": "none",
@@ -29,11 +67,12 @@
       "autorestart": false,
       "watch": false,
       "time": true,
-      "error_file": "./logs/worker-error.log",
-      "out_file": "./logs/worker-out.log",
+      "error_file": "../../logs/worker-error.log",
+      "out_file": "../../logs/worker-out.log",
       "env": {
         "NODE_ENV": "production",
-        "BOT_ROLE": "worker"
+        "BOT_ROLE": "worker",
+        "DOTENV_CONFIG_PATH": "../../.env"
       }
     }
   ]

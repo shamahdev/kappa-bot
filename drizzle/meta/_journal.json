@@ -36,6 +36,13 @@
       "when": 1789547134569,
       "tag": "0004_funny_prodigy",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1789552743960,
+      "tag": "0005_thin_nomad",
+      "breakpoints": true
     }
   ]
 }

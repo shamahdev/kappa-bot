@@ -1,0 +1,29 @@
+{
+  "name": "@kappa/discord",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "module": "src/index.ts",
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "start": "bun src/index.ts",
+    "start:worker": "BOT_ROLE=worker bun src/index.ts",
+    "deploy:commands": "bun src/core/commands/deploy.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ai-sdk/groq": "^4.0.37",
+    "@kappa/db": "workspace:*",
+    "ai": "^7.0.93",
+    "cheerio": "^1.2.0",
+    "cron": "^4.4.0",
+    "discord.js": "^14.14.1",
+    "dotenv": "16.4.5",
+    "drizzle-orm": "0.45.2",
+    "pino": "^10.3.1"
+  },
+  "devDependencies": {
+    "@types/bun": "1.1.6",
+    "typescript": "5.5.4"
+  }
+}

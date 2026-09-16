@@ -9,3 +9,4 @@ logs/
 .neon
 .agents/
 skills-lock.json
+.output/
