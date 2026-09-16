@@ -91,6 +91,22 @@ export const botConfig = pgTable(
 );
 
 /**
+ * Last fetched listing per filter fingerprint (schedule.ts cross-tick skip).
+ * When a cron tick fetches a listing identical to the stored hash with
+ * unchanged group membership, the per-subscription collect/delivery is
+ * skipped. Membership is stored so a new or reactivated subscription still
+ * receives the current listing on its first tick instead of being skipped.
+ */
+export const fingerprintSnapshots = pgTable('fingerprint_snapshots', {
+  fingerprint: text('fingerprint').primaryKey(), // 16-char filter key from schedule.ts
+  source: text('source').notNull(),
+  listingHash: text('listing_hash').notNull(), // sha1 over sorted source:id pairs
+  jobCount: integer('job_count').notNull().default(0),
+  subscriptionIds: jsonb('subscription_ids').$type<number[]>().notNull().default([]),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+/**
  * Persisted delivery contents for reply-by-number. The in-memory map in
  * events/reply.ts is only an L1 cache: it is capped, wiped on restart, and
  * never shared with worker polls — without this table, replying to an old

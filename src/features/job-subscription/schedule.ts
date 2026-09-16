@@ -1,11 +1,12 @@
 // Poll pipeline (ADR-0004): group active subscriptions by filter fingerprint,
-// fetch each fingerprint ONCE, fan out to matching subs with insert-first
-// dedup, then enforce per-subscription seen_jobs TTL (ADR-0003).
+// fetch each fingerprint ONCE, skip when the listing is unchanged since the
+// last tick, else fan out to matching subs with insert-first dedup, then
+// enforce per-subscription seen_jobs TTL (ADR-0003).
 import { createHash } from 'node:crypto';
-import { eq, lt, sql } from 'drizzle-orm';
+import { eq, lt, notInArray, sql } from 'drizzle-orm';
 import { incCounter, setGauge } from '../../core/metrics';
 import type { FeatureContext } from '../../core/feature';
-import { botConfig, deliveryMessages, seenJobs, subscriptions } from './schema';
+import { botConfig, deliveryMessages, fingerprintSnapshots, seenJobs, subscriptions } from './schema';
 import { recordDelivery } from './events/reply';
 import { linkedinCircuitCount, pollSources, searchJobPostings } from './adapter';
 import { embedsForDelivery, formatDeliveryTitle, renderJobPostingCard, type DeliveryItem } from './embed';
@@ -73,6 +74,94 @@ function deliveryHeader(sub: Subscription, count: number, itemSource?: string): 
   return formatDeliveryTitle(count, sub.keywords, itemSource ?? sub.source);
 }
 
+type FingerprintSnapshot = typeof fingerprintSnapshots.$inferSelect;
+
+/**
+ * Order-insensitive identity of one fetched listing: sorted `source:id`
+ * pairs. Same ids → same dedup/delivery outcome, so a tick whose hash
+ * matches the stored snapshot can skip the per-subscription collect.
+ */
+export function listingHashFor(jobs: JobPosting[]): string {
+  const ids = jobs.map((job) => `${job.source}:${job.id}`).sort();
+  return createHash('sha1').update(JSON.stringify(ids)).digest('hex');
+}
+
+function sameIds(a: number[], b: number[]): boolean {
+  return a.length === b.length && a.every((v, i) => v === b[i]);
+}
+
+/**
+ * Skip conditions for one fingerprint group on a full cron tick: the listing
+ * is identical to last tick (same ids), the group membership is unchanged (a
+ * new/reactivated sub must still receive the current listing on its first
+ * tick), and the snapshot is fresher than the group's tightest seen_jobs TTL
+ * (so a long outage still re-delivers after retention expiry, as before).
+ */
+export function shouldSkipGroup(
+  snapshot: FingerprintSnapshot | undefined,
+  listingHash: string,
+  subIds: number[],
+  minRetentionDays: number,
+  now = Date.now(),
+): boolean {
+  if (!snapshot) return false;
+  if (snapshot.listingHash !== listingHash) return false;
+  const stored = [...(snapshot.subscriptionIds ?? [])].sort((x, y) => x - y);
+  if (!sameIds(stored, subIds)) return false;
+  const ttlMs = Math.max(1, minRetentionDays) * 24 * 60 * 60 * 1000;
+  return now - snapshot.updatedAt.getTime() < ttlMs;
+}
+
+/** Snapshot reads never block a tick: on failure the group is processed. */
+async function readSnapshot(
+  ctx: FeatureContext,
+  fingerprint: string,
+): Promise<FingerprintSnapshot | undefined> {
+  try {
+    const [row] = await ctx.db
+      .select()
+      .from(fingerprintSnapshots)
+      .where(eq(fingerprintSnapshots.fingerprint, fingerprint));
+    return row;
+  } catch (e) {
+    ctx.log.warn(
+      { feature: 'job-subscription', fingerprint, err: e },
+      'snapshot read failed (processing anyway)',
+    );
+    return undefined;
+  }
+}
+
+async function storeSnapshot(
+  ctx: FeatureContext,
+  fingerprint: string,
+  source: string,
+  listingHash: string,
+  jobCount: number,
+  subIds: number[],
+): Promise<void> {
+  try {
+    await ctx.db
+      .insert(fingerprintSnapshots)
+      .values({ fingerprint, source, listingHash, jobCount, subscriptionIds: subIds })
+      .onConflictDoUpdate({
+        target: fingerprintSnapshots.fingerprint,
+        set: {
+          source,
+          listingHash,
+          jobCount,
+          subscriptionIds: subIds,
+          updatedAt: new Date(),
+        },
+      });
+  } catch (e) {
+    ctx.log.warn(
+      { feature: 'job-subscription', fingerprint, err: e },
+      'snapshot store failed (next tick reprocesses)',
+    );
+  }
+}
+
 /**
  * One delivery per subscription per tick:
  * - When items.length === 1: fetch detail to enrich description/salary and render rich card.
@@ -130,6 +219,7 @@ async function enforceTtl(ctx: FeatureContext): Promise<void> {
 export type PollResult = {
   subscriptionsCount: number;
   newJobsDelivered: number;
+  fingerprintsSkipped: number;
   durationMs: number;
 };
 
@@ -138,13 +228,22 @@ export async function pollSubscriptions(
   targetSubs?: Subscription[],
 ): Promise<PollResult> {
   const started = Date.now();
+  // Manual /jobs fetch passes a channel subset: it always processes fresh and
+  // never reads/writes snapshots, so a subset tick can't poison the stored
+  // membership the full cron tick compares against.
+  const isFullTick = targetSubs === undefined;
   const subs =
     targetSubs ??
     (await ctx.db.select().from(subscriptions).where(eq(subscriptions.isActive, true)));
 
   if (subs.length === 0) {
     ctx.log.info({ feature: 'job-subscription' }, 'poll tick: no active subscriptions');
-    return { subscriptionsCount: 0, newJobsDelivered: 0, durationMs: Date.now() - started };
+    return {
+      subscriptionsCount: 0,
+      newJobsDelivered: 0,
+      fingerprintsSkipped: 0,
+      durationMs: Date.now() - started,
+    };
   }
 
   const groups = new Map<string, { query: FingerprintQuery; source: string; subs: Subscription[] }>();
@@ -160,6 +259,7 @@ export async function pollSubscriptions(
   ctx.log.info({ feature: 'job-subscription', subs: subs.length, fingerprints: groups.size }, 'poll tick start');
 
   let newJobsDelivered = 0;
+  let fingerprintsSkipped = 0;
   for (const [key, group] of groups) {
     let jobs: JobPosting[];
     try {
@@ -167,6 +267,21 @@ export async function pollSubscriptions(
     } catch (e) {
       ctx.log.warn({ feature: 'job-subscription', source: group.source, fingerprint: key, err: e }, 'fingerprint fetch failed');
       continue;
+    }
+    const subIds = group.subs.map((sub) => sub.id).sort((a, b) => a - b);
+    const listingHash = listingHashFor(jobs);
+    if (isFullTick) {
+      const snapshot = await readSnapshot(ctx, key);
+      const minRetention = Math.min(...group.subs.map((sub) => sub.retentionDays ?? 30));
+      if (shouldSkipGroup(snapshot, listingHash, subIds, minRetention)) {
+        fingerprintsSkipped += 1;
+        incCounter('fingerprint_skipped_total', { source: group.source });
+        ctx.log.info(
+          { feature: 'job-subscription', fingerprint: key, jobs: jobs.length },
+          'poll tick: listing unchanged since last tick (skipped)',
+        );
+        continue;
+      }
     }
     const pending = new Map<number, DeliveryItem[]>();
     for (const job of jobs) {
@@ -191,6 +306,20 @@ export async function pollSubscriptions(
         newJobsDelivered += await flushSub(ctx, sub, items);
       }
     }
+    if (isFullTick) {
+      await storeSnapshot(ctx, key, group.source, listingHash, jobs.length, subIds);
+    }
+  }
+
+  // Drop snapshots for filters with no active subscription left behind.
+  if (isFullTick && groups.size > 0) {
+    try {
+      await ctx.db
+        .delete(fingerprintSnapshots)
+        .where(notInArray(fingerprintSnapshots.fingerprint, [...groups.keys()]));
+    } catch (e) {
+      ctx.log.warn({ feature: 'job-subscription', err: e }, 'snapshot prune failed (harmless)');
+    }
   }
 
   await enforceTtl(ctx);
@@ -198,13 +327,19 @@ export async function pollSubscriptions(
   incCounter('cron_ticks_total', { feature: 'job-subscription' });
   const durationMs = Date.now() - started;
   ctx.log.info(
-    { feature: 'job-subscription', ms: durationMs, delivered: newJobsDelivered },
+    {
+      feature: 'job-subscription',
+      ms: durationMs,
+      delivered: newJobsDelivered,
+      skipped: fingerprintsSkipped,
+    },
     'poll tick done',
   );
 
   return {
     subscriptionsCount: subs.length,
     newJobsDelivered,
+    fingerprintsSkipped,
     durationMs,
   };
 }
