@@ -27,6 +27,8 @@ export { UserDto, AuthMeResponse } from './auth';
 export type { UserDto as UserDtoType, AuthMeResponse as AuthMeResponseType } from './auth';
 export { GuildDto, GuildsResponse } from './guilds';
 export type { GuildDto as GuildDtoType, GuildsResponse as GuildsResponseType } from './guilds';
+export { JobDto, JobsResponse } from './jobs';
+export type { JobDto as JobDtoType, JobsResponse as JobsResponseType } from './jobs';
 export { AccountSummary, DeleteAccountResponse } from './account';
 export type {
   AccountSummary as AccountSummaryType,

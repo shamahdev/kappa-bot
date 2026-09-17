@@ -12,6 +12,7 @@ export const PATHS = {
   authMe: `${API_V1}/auth/me`,
   subscriptions: `${API_V1}/subscriptions`,
   guilds: `${API_V1}/guilds`,
+  jobs: `${API_V1}/jobs`,
   subscriptionById: (id: number): string => `${API_V1}/subscriptions/${id}`,
   accountSummary: `${API_V1}/account/summary`,
   account: `${API_V1}/account`,

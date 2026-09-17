@@ -103,6 +103,14 @@ Subscriptions (all require session; authz per row: `guildId == dm:<uid> OR creat
 - `DELETE /api/v1/subscriptions/:id` → `{ summary }` (cascades seen_jobs).
 - Poll-now (`fetch`) stays Discord-only v1.
 
+Jobs (delivered-posting history from `seen_jobs`; same session + scope authz as subscriptions):
+
+- `GET /api/v1/jobs?scope=dm|guild=<id>` (exactly one required) + `subscription?`, `source?`
+  (concrete only), `q?` (title/company ilike), `page?` (≥1), `pageSize?` (1–100, default 20).
+  → `{ jobs: [{ id, subscriptionId, source, externalId, url, title, company, location,
+  firstSeenAt }], page, pageSize, total }`, newest first. Guild scope needs manage proof
+  (stale grant → 409; no access → 404); `subscription` must belong to the scope (else 404).
+
 Account:
 
 - `GET /api/v1/account/summary` → `{ discordId, username, dmSubscriptions, guildSubscriptionsCreated,
@@ -123,9 +131,10 @@ New env (service): `DISCORD_CLIENT_SECRET`, `SERVICE_URL` (e.g. `https://kappa.s
 ## 6. Web (TanStack Start + Effect + Astryx + StyleX)
 
 - Routes: `/` (landing + “Login with Discord” → service login URL), `/dashboard`
-  with `DM | Servers` tabs (DM: create form + own table; Servers: guild picker + per-server
-  table reusing the same row/edit/delete panels, no server-side create), `/dashboard/settings`
-  (account summary Brief + delete-account type-to-confirm), `/auth/error`.
+  (cards: DM + one per manageable server, with active/total sub counts), `/dashboard/dm` and
+  `/dashboard/servers/$guildId` (detail: `Jobs | Manage` tabs; Jobs = filterable, paginated
+  postings table; Manage = same row/edit/delete panels, DM create form only on DM),
+  `/dashboard/settings` (account summary Brief + delete-account type-to-confirm), `/auth/error`.
 - Data: Effect `HttpClient` layer + `packages/contracts` Schemas decode every response; `credentials:
   'include'` (same-origin via nginx, no token handling in JS). Mutations invalidate the subs query.
 - UI: Astryx components on the neutral theme (forced `light`, matching `color-scheme`);
@@ -182,3 +191,9 @@ New env (service): `DISCORD_CLIENT_SECRET`, `SERVICE_URL` (e.g. `https://kappa.s
 - Servers tab: `GET /guilds` + `?guild=` listing with live ManageGuild proof; guild-sub *create*
   stays Discord-only. Stale grants answer 409 `RECONNECT_REQUIRED`, DM features unaffected.
 - Theme: forced light + kappa-blurple accent; Astryx components stay neutral.
+
+## 13. Amendment 2026-09-17 (cards + jobs listing)
+
+- Dashboard is cards (DM + servers) → detail routes with `Jobs | Manage` tabs.
+- `GET /jobs` serves `seen_jobs` history with filters + pagination (no new tables);
+  `GET /guilds` carries per-guild sub counts for the cards.

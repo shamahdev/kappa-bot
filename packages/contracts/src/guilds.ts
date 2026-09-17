@@ -9,6 +9,10 @@ export const GuildDto = Schema.Struct({
   name: Schema.String,
   icon: Schema.NullOr(Schema.String),
   permissions: Schema.String,
+  subscriptions: Schema.Struct({
+    total: Schema.Number,
+    active: Schema.Number,
+  }),
 });
 export type GuildDto = typeof GuildDto.Type;
 

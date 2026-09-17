@@ -1,4 +1,6 @@
 import { Elysia } from 'elysia';
+import { inArray } from 'drizzle-orm';
+import { subscriptions } from '@kappa/db';
 import { readSessionToken } from '../core/cookies';
 import { err } from '../core/errors';
 import { resolveSession } from '../core/auth';
@@ -21,6 +23,31 @@ export function guildRoutes(deps: RouteDeps) {
     if (!guilds) {
       return status(409, err('RECONNECT_REQUIRED', 'reconnect Discord to manage servers'));
     }
-    return { guilds };
+    // Subscription counts per guild for the dashboard cards (aggregated in JS:
+    // a user's manageable guilds and their subs are both small).
+    const counts = new Map<string, { total: number; active: number }>();
+    if (guilds.length > 0) {
+      const rows = await db
+        .select({ guildId: subscriptions.guildId, isActive: subscriptions.isActive })
+        .from(subscriptions)
+        .where(
+          inArray(
+            subscriptions.guildId,
+            guilds.map((g) => g.id),
+          ),
+        );
+      for (const row of rows) {
+        const entry = counts.get(row.guildId) ?? { total: 0, active: 0 };
+        entry.total += 1;
+        if (row.isActive) entry.active += 1;
+        counts.set(row.guildId, entry);
+      }
+    }
+    return {
+      guilds: guilds.map((g) => ({
+        ...g,
+        subscriptions: counts.get(g.id) ?? { total: 0, active: 0 },
+      })),
+    };
   });
 }

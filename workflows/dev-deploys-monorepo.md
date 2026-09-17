@@ -8,7 +8,7 @@ Dockerfile builds the old single-app layout. Target: one command → VPS updated
 ## 1. Vocabulary binding
 
 - Trigger: **event** — dev runs the deploy command (manual event v1; push-to-main auto-deploy
-  deferred, see R1). No schedule. No AI.
+  deferred, see R1). No schedule, no AI.
 - Checkpoints: none pre-deploy — the manual trigger IS the deploy decision (nothing to push right
   past it). One post-deploy review, fully pushed right: the script does pull → install → build →
   migrate → reload → health-check, then presents a single Brief; the human reads the Brief, not logs.

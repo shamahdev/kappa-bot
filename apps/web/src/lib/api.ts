@@ -13,6 +13,7 @@ import {
   DeleteSubscriptionResponse,
   ErrorEnvelope,
   GuildsResponse,
+  JobsResponse,
   PATHS,
   SubscriptionsResponse,
   SubscriptionDto,
@@ -22,6 +23,8 @@ import {
   type CreateSubscriptionBodyType,
   type GuildDtoType,
   type GuildsResponseType,
+  type JobDtoType,
+  type JobsResponseType,
   type SubscriptionDtoType,
   type SubscriptionsResponseType,
   type UpdateSubscriptionBodyType,
@@ -31,6 +34,8 @@ export type {
   AccountSummaryType,
   CreateSubscriptionBodyType,
   GuildDtoType,
+  JobDtoType,
+  JobsResponseType,
   SubscriptionDtoType,
   UpdateSubscriptionBodyType,
 };
@@ -59,6 +64,13 @@ export function guildIconUrl(id: string, icon: string | null): string | null {
   if (!icon) return null;
   const ext = icon.startsWith('a_') ? 'gif' : 'png';
   return `https://cdn.discordapp.com/icons/${id}/${icon}.${ext}?size=64`;
+}
+
+/** CDN avatar URL for a user (null when unset). */
+export function userAvatarUrl(id: string, avatar: string | null): string | null {
+  if (!avatar) return null;
+  const ext = avatar.startsWith('a_') ? 'gif' : 'png';
+  return `https://cdn.discordapp.com/avatars/${id}/${avatar}.${ext}?size=64`;
 }
 
 const OkResponse = Schema.Struct({ ok: Schema.Boolean });
@@ -154,6 +166,28 @@ export function fetchGuilds(): Promise<GuildsResponseType['guilds']> {
   return runApi(request(HttpClientRequest.get(PATHS.guilds), GuildsResponse)).then(
     (res) => res.guilds,
   );
+}
+
+export type JobsParams = {
+  scope?: 'dm';
+  guild?: string;
+  subscription?: number;
+  source?: string;
+  q?: string;
+  page?: number;
+  pageSize?: number;
+};
+
+export function fetchJobs(params: JobsParams): Promise<JobsResponseType> {
+  const search = new URLSearchParams();
+  if (params.scope) search.set('scope', params.scope);
+  if (params.guild) search.set('guild', params.guild);
+  if (params.subscription !== undefined) search.set('subscription', String(params.subscription));
+  if (params.source) search.set('source', params.source);
+  if (params.q) search.set('q', params.q);
+  if (params.page !== undefined) search.set('page', String(params.page));
+  if (params.pageSize !== undefined) search.set('pageSize', String(params.pageSize));
+  return runApi(request(HttpClientRequest.get(`${PATHS.jobs}?${search}`), JobsResponse));
 }
 
 export function createSubscription(

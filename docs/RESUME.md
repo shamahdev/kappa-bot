@@ -7,9 +7,11 @@ Bun workspaces monorepo. Three apps, two shared packages, one Postgres.
 - `apps/service` (`@kappa/service`, Elysia :3443) — the only HTTP server. `/health`,
   `/metrics`, `/api/v1` (auth, subscriptions, account). Runs migrations at boot.
 - `apps/web` (`@kappa/web`, TanStack Start + Effect + Astryx neutral theme + StyleX,
-  :3444) — dashboard. Routes `/`, `/dashboard`, `/dashboard/settings`, `/auth/error`.
-  UI primitives (`ui.tsx`) are Astryx components; page layout/typography stays StyleX.
-  No DB access.
+  :3444) — dashboard. Routes `/`, `/dashboard` (DM + server cards),
+  `/dashboard/dm` + `/dashboard/servers/$guildId` (`Jobs | Manage` tabs),
+  `/dashboard/settings`, `/auth/error`. Jobs tab lists delivered postings
+  (`GET /jobs`, filterable + paginated). UI primitives are Astryx components;
+  page layout/typography stays StyleX. No DB access.
 - `apps/discord` (`@kappa/discord`, discord.js) — gateway + worker via `BOT_ROLE`.
   `/jobs` commands, events, `*/30m` cron poller. No HTTP.
 - `packages/db` (`@kappa/db`) — schema + pool + migrator. Tables: `guilds`,

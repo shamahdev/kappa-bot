@@ -1,4 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
+import { useEffect } from 'react';
 import {
   ApiError,
   createSubscription,
@@ -6,17 +8,20 @@ import {
   deleteSubscription,
   fetchAccountSummary,
   fetchGuilds,
+  fetchJobs,
   fetchMe,
   fetchSubscriptions,
   logout,
   updateSubscription,
   type GuildDtoType,
+  type JobDtoType,
+  type JobsParams,
   type SubscriptionDtoType,
   type UpdateSubscriptionBodyType,
 } from './api';
 
 export { ApiError };
-export type { GuildDtoType, SubscriptionDtoType };
+export type { GuildDtoType, JobDtoType, JobsParams, SubscriptionDtoType };
 
 export const queryKeys = {
   me: ['me'] as const,
@@ -41,6 +46,16 @@ export function useMe() {
   });
 }
 
+/** Redirects to `/` when signed out. Returns the `useMe()` query as-is. */
+export function useRequireAuth() {
+  const navigate = useNavigate();
+  const me = useMe();
+  useEffect(() => {
+    if (me.data === null) void navigate({ to: '/' });
+  }, [me.data, navigate]);
+  return me;
+}
+
 export function useSubscriptions(enabled: boolean, guildId?: string) {
   return useQuery({
     queryKey: queryKeys.subscriptionList(guildId),
@@ -57,6 +72,16 @@ export function useGuilds(enabled: boolean) {
     enabled,
     retry: false,
     staleTime: 60_000,
+  });
+}
+
+export function useJobs(enabled: boolean, params: JobsParams) {
+  return useQuery({
+    queryKey: ['jobs', params],
+    queryFn: () => fetchJobs(params),
+    enabled,
+    retry: false,
+    placeholderData: (previous) => previous,
   });
 }
 

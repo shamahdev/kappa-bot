@@ -7,6 +7,7 @@ import { renderMetrics } from './core/metrics';
 import { err } from './core/errors';
 import { authRoutes } from './routes/auth';
 import { guildRoutes } from './routes/guilds';
+import { jobRoutes } from './routes/jobs';
 import { subscriptionRoutes } from './routes/subscriptions';
 import { accountRoutes } from './routes/account';
 import type { RouteDeps } from './routes/deps';
@@ -45,6 +46,7 @@ const app = new Elysia()
   })
   .use(authRoutes(deps))
   .use(guildRoutes(deps))
+  .use(jobRoutes(deps))
   .use(subscriptionRoutes(deps))
   .use(accountRoutes(deps))
   .listen(config.port);
