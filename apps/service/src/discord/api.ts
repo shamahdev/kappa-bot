@@ -17,6 +17,64 @@ export class DiscordAuthError extends Error {
   }
 }
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** Seconds from a `Retry-After` header, clamped to [0, 5]. */
+function retryAfterSeconds(res: Response): number {
+  const raw = res.headers.get('retry-after');
+  const secs = raw === null ? NaN : Number(raw);
+  if (!Number.isFinite(secs) || secs < 0) return 1;
+  return Math.min(secs, 5);
+}
+
+/**
+ * Discord fetch with rate-limit/auth handling. 429s are retried once after
+ * `Retry-After` (safe for every call: a 429 is never processed server-side).
+ * 401/403 throw DiscordAuthError (caller: 409, never retried). When
+ * `retryTransport` is set (idempotent calls only), one retry also covers
+ * network failures and Discord 5xx. Anything else throws a plain Error.
+ */
+async function discordFetch(
+  url: string,
+  init: RequestInit,
+  what: string,
+  retryTransport: boolean,
+): Promise<Response> {
+  let transportRetries = retryTransport ? 1 : 0;
+  for (;;) {
+    let res: Response;
+    try {
+      res = await fetch(url, init);
+    } catch (cause) {
+      if (transportRetries > 0) {
+        transportRetries -= 1;
+        await sleep(300);
+        continue;
+      }
+      throw new Error(`discord ${what} unreachable (${String(cause)})`);
+    }
+    if (res.status === 401 || res.status === 403) {
+      throw new DiscordAuthError(res.status, what);
+    }
+    if (res.status === 429) {
+      await sleep(retryAfterSeconds(res) * 1000);
+      const retry = await fetch(url, init).catch((cause: unknown) => {
+        throw new Error(`discord ${what} unreachable (${String(cause)})`);
+      });
+      if (retry.status === 401 || retry.status === 403) {
+        throw new DiscordAuthError(retry.status, what);
+      }
+      return retry; // second 429/5xx: caller maps to 502, honestly rate-limited
+    }
+    if (res.status >= 500 && transportRetries > 0) {
+      transportRetries -= 1;
+      await sleep(500);
+      continue;
+    }
+    return res;
+  }
+}
+
 export type DiscordMe = {
   id: string;
   username: string;
@@ -73,17 +131,22 @@ export async function exchangeCode(args: {
   code: string;
   redirectUri: string;
 }): Promise<DiscordTokens> {
-  const res = await fetch(`${API}/oauth2/token`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: args.clientId,
-      client_secret: args.clientSecret,
-      grant_type: 'authorization_code',
-      code: args.code,
-      redirect_uri: args.redirectUri,
-    }),
-  });
+  const res = await discordFetch(
+    `${API}/oauth2/token`,
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: args.clientId,
+        client_secret: args.clientSecret,
+        grant_type: 'authorization_code',
+        code: args.code,
+        redirect_uri: args.redirectUri,
+      }),
+    },
+    'token exchange',
+    false,
+  );
   if (!res.ok) throw new Error(`discord token exchange failed (http ${res.status})`);
   return readTokens(await res.json(), 'token exchange');
 }
@@ -94,25 +157,33 @@ export async function refreshAccessToken(args: {
   clientSecret: string;
   refreshToken: string;
 }): Promise<DiscordTokens> {
-  const res = await fetch(`${API}/oauth2/token`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: args.clientId,
-      client_secret: args.clientSecret,
-      grant_type: 'refresh_token',
-      refresh_token: args.refreshToken,
-    }),
-  });
+  const res = await discordFetch(
+    `${API}/oauth2/token`,
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: args.clientId,
+        client_secret: args.clientSecret,
+        grant_type: 'refresh_token',
+        refresh_token: args.refreshToken,
+      }),
+    },
+    'token refresh',
+    false,
+  );
   if (!res.ok) throw new Error(`discord token refresh failed (http ${res.status})`);
   return readTokens(await res.json(), 'token refresh');
 }
 
 /** Fetches the OAuth user's profile (`identify` scope). Throws on failure. */
 export async function fetchMe(accessToken: string): Promise<DiscordMe> {
-  const res = await fetch(`${API}/users/@me`, {
-    headers: { authorization: `Bearer ${accessToken}` },
-  });
+  const res = await discordFetch(
+    `${API}/users/@me`,
+    { headers: { authorization: `Bearer ${accessToken}` } },
+    '/users/@me',
+    true,
+  );
   if (!res.ok) throw new Error(`discord /users/@me failed (http ${res.status})`);
   const json = (await res.json()) as { id?: unknown; username?: unknown; avatar?: unknown };
   if (typeof json.id !== 'string' || typeof json.username !== 'string') {
@@ -130,11 +201,16 @@ export async function fetchMe(accessToken: string): Promise<DiscordMe> {
  * Discord returns the existing channel when one is already open. Throws on failure.
  */
 export async function ensureDmChannel(botToken: string, recipientId: string): Promise<{ id: string }> {
-  const res = await fetch(`${API}/users/@me/channels`, {
-    method: 'POST',
-    headers: { authorization: `Bot ${botToken}`, 'content-type': 'application/json' },
-    body: JSON.stringify({ recipient_id: recipientId }),
-  });
+  const res = await discordFetch(
+    `${API}/users/@me/channels`,
+    {
+      method: 'POST',
+      headers: { authorization: `Bot ${botToken}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ recipient_id: recipientId }),
+    },
+    'DM channel create',
+    true,
+  );
   if (!res.ok) throw new Error(`discord DM channel create failed (http ${res.status})`);
   const json = (await res.json()) as { id?: unknown };
   if (typeof json.id !== 'string') throw new Error('discord DM channel create returned no id');
@@ -155,10 +231,12 @@ export type DiscordGuildEntry = {
  * or expired unrefreshably); other failures throw a plain Error.
  */
 export async function fetchUserGuilds(accessToken: string): Promise<DiscordGuildEntry[]> {
-  const res = await fetch(`${API}/users/@me/guilds`, {
-    headers: { authorization: `Bearer ${accessToken}` },
-  });
-  if (res.status === 401 || res.status === 403) throw new DiscordAuthError(res.status, '/users/@me/guilds');
+  const res = await discordFetch(
+    `${API}/users/@me/guilds`,
+    { headers: { authorization: `Bearer ${accessToken}` } },
+    '/users/@me/guilds',
+    true,
+  );
   if (!res.ok) throw new Error(`discord /users/@me/guilds failed (http ${res.status})`);
   const json = (await res.json()) as Array<{
     id?: unknown;
@@ -184,9 +262,12 @@ export async function fetchUserGuilds(accessToken: string): Promise<DiscordGuild
 
 /** Lists guild ids the bot itself is installed in. Throws on failure. */
 export async function fetchBotGuildIds(botToken: string): Promise<Set<string>> {
-  const res = await fetch(`${API}/users/@me/guilds`, {
-    headers: { authorization: `Bot ${botToken}` },
-  });
+  const res = await discordFetch(
+    `${API}/users/@me/guilds`,
+    { headers: { authorization: `Bot ${botToken}` } },
+    'bot guild list',
+    true,
+  );
   if (!res.ok) throw new Error(`discord bot guild list failed (http ${res.status})`);
   const json = (await res.json()) as Array<{ id?: unknown }>;
   if (!Array.isArray(json)) throw new Error('discord bot guild list returned a non-array');
@@ -209,14 +290,19 @@ export async function revokeDiscordToken(args: {
   token: string | null;
 }): Promise<void> {
   if (!args.token) return; // pre-guilds login: nothing persisted to revoke
-  const res = await fetch(`${API}/oauth2/token/revoke`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: args.clientId,
-      client_secret: args.clientSecret,
-      token: args.token,
-    }),
-  });
+  const res = await discordFetch(
+    `${API}/oauth2/token/revoke`,
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: args.clientId,
+        client_secret: args.clientSecret,
+        token: args.token,
+      }),
+    },
+    'token revoke',
+    false,
+  );
   if (!res.ok) throw new Error(`discord token revoke failed (http ${res.status})`);
 }

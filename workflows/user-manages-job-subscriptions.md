@@ -85,8 +85,9 @@ Servers (all require session):
   bot's guilds, filtered to ManageGuild/Administrator/owner, name-sorted. Tokens refreshed
   inline when expired. Stale/absent grant — including a stored grant without the
   `guilds` scope and any Discord 401/403 on the user token — → 409 `RECONNECT_REQUIRED`
-  (re-login); only bot-leg/transport/5xx Discord failures → 502. Legacy `identify`-only
-  sessions keep working for DM features.
+  (re-login); only bot-leg/transport/5xx Discord failures → 502. Guild lists are
+  singleflighted + briefly cached (30s user / 60s bot); 429s retried after
+  `Retry-After`. Legacy `identify`-only sessions keep working for DM features.
 
 Subscriptions (all require session; authz per row: `guildId == dm:<uid> OR createdBy == <uid>`
   wins locally, else live ManageGuild proof required; stale grant → 409, else 404):

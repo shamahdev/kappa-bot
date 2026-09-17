@@ -76,6 +76,65 @@ export type ManageableGuild = {
   permissions: string;
 };
 
+// Discord guild-list fan-out guard: one server-page load fires 3 API calls
+// (guilds, subscriptions, jobs), each needing the user's guilds ∩ the bot's
+// guilds. Without dedupe that's 6 Discord hits in one burst — enough to eat
+// a 429 and 502 part of the page. So: singleflight collapses concurrent
+// fetches per key, and a short TTL absorbs sequential navigations. Only
+// successes are cached; auth/transport failures always re-hit Discord.
+// Staleness window: membership changes land ≤30s (user) / ≤60s (bot) late.
+const USER_GUILDS_TTL_MS = 30_000;
+const BOT_GUILDS_TTL_MS = 60_000;
+const USER_CACHE_MAX = 1000;
+
+type CacheEntry<T> = { value: T; expiresAt: number };
+
+const userGuildsCache = new Map<string, CacheEntry<DiscordGuildEntry[]>>();
+let botGuildsCache: CacheEntry<Set<string>> | null = null;
+const inflight = new Map<string, Promise<unknown>>();
+
+async function deduped<T>(key: string, run: () => Promise<T>): Promise<T> {
+  const pending = inflight.get(key);
+  if (pending) return pending as Promise<T>;
+  const task = run().finally(() => {
+    if (inflight.get(key) === task) inflight.delete(key);
+  });
+  inflight.set(key, task);
+  return task;
+}
+
+function readUserGuildsCache(uid: string): DiscordGuildEntry[] | null {
+  const entry = userGuildsCache.get(uid);
+  if (!entry) return null;
+  if (entry.expiresAt <= Date.now()) {
+    userGuildsCache.delete(uid);
+    return null;
+  }
+  return entry.value;
+}
+
+function writeUserGuildsCache(uid: string, value: DiscordGuildEntry[]): void {
+  if (userGuildsCache.size >= USER_CACHE_MAX) {
+    userGuildsCache.delete(userGuildsCache.keys().next().value as string);
+  }
+  userGuildsCache.set(uid, { value, expiresAt: Date.now() + USER_GUILDS_TTL_MS });
+}
+
+async function cachedUserGuilds(uid: string, accessToken: string): Promise<DiscordGuildEntry[]> {
+  const hit = readUserGuildsCache(uid);
+  if (hit) return hit;
+  const fresh = await deduped(`user-guilds:${uid}`, () => fetchUserGuilds(accessToken));
+  writeUserGuildsCache(uid, fresh);
+  return fresh;
+}
+
+async function cachedBotGuildIds(botToken: string): Promise<Set<string>> {
+  if (botGuildsCache && botGuildsCache.expiresAt > Date.now()) return botGuildsCache.value;
+  const fresh = await deduped('bot-guilds', () => fetchBotGuildIds(botToken));
+  botGuildsCache = { value: fresh, expiresAt: Date.now() + BOT_GUILDS_TTL_MS };
+  return fresh;
+}
+
 /**
  * Guilds the user can manage subscriptions in: user's guilds ∩ bot's guilds,
  * filtered to manage permission. Returns null when a re-login is required
@@ -90,8 +149,8 @@ export async function listManageableGuilds(
   const accessToken = await getUserAccessToken(db, config, uid);
   if (!accessToken) return null;
   const [userSettled, botSettled] = await Promise.allSettled([
-    fetchUserGuilds(accessToken),
-    fetchBotGuildIds(config.discordToken),
+    cachedUserGuilds(uid, accessToken),
+    cachedBotGuildIds(config.discordToken),
   ]);
   if (userSettled.status === 'rejected') {
     if (userSettled.reason instanceof DiscordAuthError) return null;
