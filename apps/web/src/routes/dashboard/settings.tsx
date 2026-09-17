@@ -1,7 +1,7 @@
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router';
 import * as stylex from '@stylexjs/stylex';
 import { useEffect, useState } from 'react';
-import { Button, ErrorNote, Field, TextInput } from '../../components/ui';
+import { Button, ErrorNote, TextInput } from '../../components/ui';
 import { apiMessage, useAccountSummary, useDeleteAccount, useMe } from '../../lib/queries';
 import { fonts, tokens } from '../../theme.stylex';
 
@@ -129,15 +129,14 @@ function SettingsComponent() {
             }}
           >
             <div {...stylex.props(page.fieldGap)}>
-              <Field label={`Type "${CONFIRM_PHRASE}" to confirm`}>
-                <TextInput
-                  value={phrase}
-                  onChange={(e) => setPhrase(e.target.value)}
-                  placeholder={CONFIRM_PHRASE}
-                  disabled={destroy.isPending}
-                  autoComplete="off"
-                />
-              </Field>
+              <TextInput
+                label={`Type "${CONFIRM_PHRASE}" to confirm`}
+                value={phrase}
+                onChange={(e) => setPhrase(e.target.value)}
+                placeholder={CONFIRM_PHRASE}
+                disabled={destroy.isPending}
+                autoComplete="off"
+              />
             </div>
             {destroy.isError ? (
               <div {...stylex.props(page.errorGap)}>

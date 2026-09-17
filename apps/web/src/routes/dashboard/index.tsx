@@ -2,7 +2,7 @@ import { SUBSCRIPTION_SOURCES } from '@kappa/contracts';
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router';
 import * as stylex from '@stylexjs/stylex';
 import { useEffect, useState } from 'react';
-import { Badge, Button, ErrorNote, Field, InfoNote, Select, StatusDot, TextInput } from '../../components/ui';
+import { Badge, Button, ErrorNote, InfoNote, Select, StatusDot, TextInput } from '../../components/ui';
 import {
   apiMessage,
   useCreateSubscription,
@@ -107,26 +107,23 @@ function CreateForm() {
     >
       <div {...stylex.props(page.formGrid)}>
         <div {...stylex.props(page.formFieldFixed)}>
-          <Field label="Source">
-            <Select value={source} onChange={(e) => setSource(e.target.value)} disabled={create.isPending}>
-              {SUBSCRIPTION_SOURCES.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </Select>
-          </Field>
+          <Select
+            label="Source"
+            value={source}
+            onChange={setSource}
+            options={[...SUBSCRIPTION_SOURCES]}
+            disabled={create.isPending}
+          />
         </div>
         <div {...stylex.props(page.formFieldGrow)}>
-          <Field label="Keywords" hint="Delivered to your Discord DMs. Location defaults to Indonesia.">
-            <TextInput
-              value={keywords}
-              onChange={(e) => setKeywords(e.target.value)}
-              placeholder="e.g. backend engineer golang"
-              disabled={create.isPending}
-              maxLength={200}
-            />
-          </Field>
+          <TextInput
+            label="Keywords"
+            description="Delivered to your Discord DMs. Location defaults to Indonesia."
+            value={keywords}
+            onChange={(e) => setKeywords(e.target.value)}
+            placeholder="e.g. backend engineer golang"
+            disabled={create.isPending}
+          />
         </div>
         <Button type="submit" disabled={create.isPending || !keywords.trim()}>
           {create.isPending ? 'Creating…' : 'New DM subscription'}
@@ -168,34 +165,28 @@ function EditPanel({ sub, onDone }: { sub: SubscriptionDtoType; onDone: () => vo
     >
       <div {...stylex.props(page.inlineRow)}>
         <div {...stylex.props(page.formFieldGrow)}>
-          <Field label="Keywords">
-            <TextInput
-              value={keywords}
-              onChange={(e) => setKeywords(e.target.value)}
-              disabled={update.isPending}
-              maxLength={200}
-            />
-          </Field>
+          <TextInput
+            label="Keywords"
+            value={keywords}
+            onChange={(e) => setKeywords(e.target.value)}
+            disabled={update.isPending}
+          />
         </div>
         <div {...stylex.props(page.formFieldFixed)}>
-          <Field label="Location">
-            <TextInput
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              disabled={update.isPending}
-              maxLength={120}
-            />
-          </Field>
+          <TextInput
+            label="Location"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            disabled={update.isPending}
+          />
         </div>
         <div {...stylex.props(page.formFieldFixed)}>
-          <Field label="Retention (days)">
-            <TextInput
-              value={retentionDays}
-              onChange={(e) => setRetentionDays(e.target.value)}
-              disabled={update.isPending}
-              inputMode="numeric"
-            />
-          </Field>
+          <TextInput
+            label="Retention (days)"
+            value={retentionDays}
+            onChange={(e) => setRetentionDays(e.target.value)}
+            disabled={update.isPending}
+          />
         </div>
       </div>
       {update.isError ? (

@@ -1,183 +1,130 @@
-import * as stylex from '@stylexjs/stylex';
-import type { ButtonHTMLAttributes, ReactNode } from 'react';
-import { fonts, tokens } from '../theme.stylex';
-
-const button = stylex.create({
-  base: {
-    appearance: 'none',
-    borderWidth: 1,
-    borderStyle: 'solid',
-    borderColor: 'transparent',
-    borderRadius: tokens.radiusSm,
-    cursor: 'pointer',
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    fontFamily: fonts.sans,
-    fontSize: 14,
-    fontWeight: 600,
-    lineHeight: '20px',
-    padding: '8px 16px',
-    textDecoration: 'none',
-    transitionProperty: 'background-color, border-color, color',
-    transitionDuration: '120ms',
-    ':focus-visible': {
-      outlineWidth: 2,
-      outlineStyle: 'solid',
-      outlineColor: tokens.focus,
-      outlineOffset: 2,
-    },
-    ':disabled': {
-      cursor: 'not-allowed',
-      opacity: 0.55,
-    },
-  },
-  primary: { backgroundColor: tokens.accent, color: tokens.accentInk, ':hover': { backgroundColor: tokens.accentHover } },
-  brand: { backgroundColor: tokens.brand, color: '#ffffff', ':hover': { backgroundColor: tokens.brandHover } },
-  subtle: {
-    backgroundColor: tokens.surface,
-    borderColor: tokens.lineStrong,
-    color: tokens.ink,
-    ':hover': { backgroundColor: tokens.surfaceSunken },
-  },
-  danger: { backgroundColor: tokens.danger, color: '#ffffff', ':hover': { backgroundColor: tokens.dangerHover } },
-  dangerSubtle: {
-    backgroundColor: tokens.surface,
-    borderColor: tokens.lineStrong,
-    color: tokens.danger,
-    ':hover': { backgroundColor: tokens.dangerBg },
-  },
-  small: { fontSize: 13, padding: '5px 12px' },
-});
+import { Badge as AstryxBadge } from '@astryxdesign/core/Badge';
+import { Banner } from '@astryxdesign/core/Banner';
+import { Button as AstryxButton } from '@astryxdesign/core/Button';
+import { Selector } from '@astryxdesign/core/Selector';
+import { StatusDot as AstryxStatusDot } from '@astryxdesign/core/StatusDot';
+import { TextInput as AstryxTextInput } from '@astryxdesign/core/TextInput';
+import type { ChangeEventHandler, MouseEventHandler, ReactNode } from 'react';
 
 type ButtonVariant = 'primary' | 'brand' | 'subtle' | 'danger' | 'dangerSubtle';
+
+const VARIANT: Record<
+  ButtonVariant,
+  'primary' | 'secondary' | 'ghost' | 'destructive'
+> = {
+  primary: 'primary',
+  brand: 'primary',
+  subtle: 'secondary',
+  danger: 'destructive',
+  dangerSubtle: 'ghost',
+};
 
 export function Button({
   variant = 'primary',
   small = false,
-  ...rest
-}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: ButtonVariant; small?: boolean }) {
+  type = 'button',
+  disabled = false,
+  onClick,
+  children,
+}: {
+  variant?: ButtonVariant;
+  small?: boolean;
+  type?: 'button' | 'submit' | 'reset';
+  disabled?: boolean;
+  onClick?: MouseEventHandler<HTMLButtonElement>;
+  children: string;
+}) {
   return (
-    <button
-      {...rest}
-      {...stylex.props(button.base, button[variant], small && button.small)}
+    <AstryxButton
+      label={children}
+      variant={VARIANT[variant]}
+      size={small ? 'sm' : 'md'}
+      type={type}
+      isDisabled={disabled}
+      onClick={onClick}
     />
   );
 }
 
-const fieldStyles = stylex.create({
-  wrap: { display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 },
-  label: { fontFamily: fonts.sans, fontSize: 13, fontWeight: 600, color: tokens.ink, lineHeight: '18px' },
-  hint: { fontFamily: fonts.sans, fontSize: 13, color: tokens.muted, lineHeight: '18px' },
-  control: {
-    appearance: 'none',
-    backgroundColor: tokens.surface,
-    borderWidth: 1,
-    borderStyle: 'solid',
-    borderColor: tokens.lineStrong,
-    borderRadius: tokens.radiusSm,
-    color: tokens.ink,
-    fontFamily: fonts.sans,
-    fontSize: 14,
-    lineHeight: '20px',
-    padding: '8px 12px',
-    width: '100%',
-    boxSizing: 'border-box',
-    ':focus': { outline: 'none', borderColor: tokens.focus, boxShadow: `0 0 0 3px color-mix(in srgb, ${'#2563eb'} 18%, transparent)` },
-    ':disabled': { backgroundColor: tokens.surfaceSunken, cursor: 'not-allowed' },
-  },
-  mono: { fontFamily: fonts.mono },
-});
-
-export function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+export function TextInput({
+  label,
+  description,
+  value,
+  onChange,
+  placeholder,
+  disabled = false,
+  autoComplete,
+}: {
+  label: string;
+  description?: string;
+  value: string;
+  onChange: ChangeEventHandler<HTMLInputElement>;
+  placeholder?: string;
+  disabled?: boolean;
+  autoComplete?: React.InputHTMLAttributes<HTMLInputElement>['autoComplete'];
+}) {
   return (
-    <label {...stylex.props(fieldStyles.wrap)}>
-      <span {...stylex.props(fieldStyles.label)}>{label}</span>
-      {children}
-      {hint ? <span {...stylex.props(fieldStyles.hint)}>{hint}</span> : null}
-    </label>
+    <AstryxTextInput
+      label={label}
+      description={description}
+      value={value}
+      onChange={(_value, e) => onChange(e)}
+      placeholder={placeholder}
+      isDisabled={disabled}
+      autoComplete={autoComplete}
+    />
   );
 }
 
-type ControlProps = {
-  mono?: boolean;
-  invalid?: boolean;
-};
-
-export function TextInput({
-  mono = false,
-  ...rest
-}: React.InputHTMLAttributes<HTMLInputElement> & ControlProps) {
-  return <input {...rest} {...stylex.props(fieldStyles.control, mono && fieldStyles.mono)} />;
+export function Select({
+  label,
+  description,
+  value,
+  onChange,
+  options,
+  disabled = false,
+}: {
+  label: string;
+  description?: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: string[];
+  disabled?: boolean;
+}) {
+  return (
+    <Selector
+      label={label}
+      description={description}
+      value={value}
+      onChange={onChange}
+      options={options}
+      isDisabled={disabled}
+    />
+  );
 }
-
-export function Select({ ...rest }: React.SelectHTMLAttributes<HTMLSelectElement>) {
-  return <select {...rest} {...stylex.props(fieldStyles.control)} />;
-}
-
-const note = stylex.create({
-  base: {
-    borderWidth: 1,
-    borderStyle: 'solid',
-    borderRadius: tokens.radiusMd,
-    fontFamily: fonts.sans,
-    fontSize: 14,
-    lineHeight: '20px',
-    padding: '12px 14px',
-  },
-  error: { backgroundColor: tokens.dangerBg, borderColor: '#fecaca', color: tokens.danger },
-  info: { backgroundColor: tokens.surfaceSunken, borderColor: tokens.line, color: tokens.muted },
-});
 
 export function ErrorNote({ children }: { children: ReactNode }) {
-  return (
-    <p role="alert" {...stylex.props(note.base, note.error)}>
-      {children}
-    </p>
-  );
+  return <Banner status="error" title={children} />;
 }
 
 export function InfoNote({ children }: { children: ReactNode }) {
-  return (
-    <p {...stylex.props(note.base, note.info)}>
-      {children}
-    </p>
-  );
+  return <Banner status="info" title={children} />;
 }
 
-const badge = stylex.create({
-  base: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 6,
-    borderWidth: 1,
-    borderStyle: 'solid',
-    borderColor: tokens.line,
-    borderRadius: 999,
-    backgroundColor: tokens.surface,
-    color: tokens.muted,
-    fontFamily: fonts.sans,
-    fontSize: 12,
-    fontWeight: 600,
-    lineHeight: '16px',
-    padding: '2px 10px',
-    whiteSpace: 'nowrap',
-  },
-  dot: { width: 7, height: 7, borderRadius: '50%', backgroundColor: tokens.lineStrong },
-  dotOn: { backgroundColor: tokens.success },
-  strong: { color: tokens.ink, borderColor: tokens.lineStrong },
-});
-
-export function Badge({ children, strong = false }: { children: ReactNode; strong?: boolean }) {
-  return <span {...stylex.props(badge.base, strong && badge.strong)}>{children}</span>;
+export function Badge({
+  children,
+  strong = false,
+}: {
+  children: ReactNode;
+  strong?: boolean;
+}) {
+  return (
+    <AstryxBadge label={children} variant={strong ? 'info' : 'neutral'} />
+  );
 }
 
 export function StatusDot({ on, label }: { on: boolean; label: string }) {
   return (
-    <span {...stylex.props(badge.base, badge.strong)}>
-      <span {...stylex.props(badge.dot, on && badge.dotOn)} aria-hidden />
-      {label}
-    </span>
+    <AstryxStatusDot variant={on ? 'success' : 'neutral'} label={label} />
   );
 }

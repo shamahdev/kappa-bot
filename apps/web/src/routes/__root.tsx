@@ -1,3 +1,5 @@
+import { Theme } from '@astryxdesign/core/theme';
+import { neutralTheme } from '@astryxdesign/theme-neutral/built';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   HeadContent,
@@ -155,12 +157,13 @@ function TopNav() {
 function RootComponent() {
   const [queryClient] = useState(() => new QueryClient());
   return (
-    <html lang="en">
+    <html lang="en" data-astryx-theme="neutral">
       <head>
         <HeadContent />
       </head>
       <body>
         <QueryClientProvider client={queryClient}>
+          <Theme theme={neutralTheme}>
           <div {...stylex.props(layout.shell)}>
             <header {...stylex.props(layout.topbar)}>
               <div {...stylex.props(layout.topbarInner)}>
@@ -180,6 +183,7 @@ function RootComponent() {
               </div>
             </footer>
           </div>
+          </Theme>
         </QueryClientProvider>
         <Scripts />
       </body>
