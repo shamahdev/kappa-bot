@@ -6,6 +6,7 @@ import { createLogger } from './core/logger';
 import { renderMetrics } from './core/metrics';
 import { err } from './core/errors';
 import { authRoutes } from './routes/auth';
+import { guildRoutes } from './routes/guilds';
 import { subscriptionRoutes } from './routes/subscriptions';
 import { accountRoutes } from './routes/account';
 import type { RouteDeps } from './routes/deps';
@@ -43,6 +44,7 @@ const app = new Elysia()
     return renderMetrics();
   })
   .use(authRoutes(deps))
+  .use(guildRoutes(deps))
   .use(subscriptionRoutes(deps))
   .use(accountRoutes(deps))
   .listen(config.port);

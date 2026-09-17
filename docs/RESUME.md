@@ -14,8 +14,8 @@ Bun workspaces monorepo. Three apps, two shared packages, one Postgres.
   `/jobs` commands, events, `*/30m` cron poller. No HTTP.
 - `packages/db` (`@kappa/db`) — schema + pool + migrator. Tables: `guilds`,
   `channels`, `subscriptions`, `seen_jobs`, `bot_config`, `fingerprint_snapshots`,
-  `delivery_messages`, plus new `users`, `discord_connections`, `sessions`
-  (migration `0005`).
+  `delivery_messages`, plus new `users`, `discord_connections` (+ OAuth tokens, 0006),
+  `sessions` (migrations `0005`–`0006`).
 - `packages/contracts` (`@kappa/contracts`) — Effect Schemas, DTOs, `PATHS`,
   error codes. Service ↔ web source of truth.
 - Deploy: nginx single origin `https://kappa.shamah.dev` (`/api/` → :3443, rest → :3444, certbot TLS), pm2 with 4 apps
@@ -27,19 +27,22 @@ Bun workspaces monorepo. Three apps, two shared packages, one Postgres.
 - Session: opaque 32B token, sha256-stored in `sessions`, 30d expiry, HttpOnly
   `SameSite=Lax` cookie `kappa_session` (Secure in prod). Web never sees tokens.
 - Row authz: `guildId = dm:<uid>` (DM subs, full CRUD, channel auto-resolved via
-  Discord REST) OR `createdBy = <uid>` (guild subs: edit/pause/delete).
-  Legacy `createdBy IS NULL` rows are invisible to web.
+  Discord REST) OR `createdBy = <uid>` OR live ManageGuild proof (guild subs:
+  edit/pause/delete). Legacy `createdBy IS NULL` rows are invisible to web.
+- OAuth scope `identify guilds`; tokens persisted + refreshed inline. Servers tab lists
+  manageable guilds (`GET /guilds`); stale grants answer 409 `RECONNECT_REQUIRED`.
+- Theme: forced light + kappa-blurple accent; Astryx components stay neutral.
 - Delete account cascade: sessions → connections → DM subs (+ seen) → DM
   channels + guild row → DM delivery rows → createdBy guild subs (+ seen) →
   users row → clear cookie. Best-effort token revoke. Idempotent (second call 401).
 
 ## Verification state
 
-- All workspace typechecks green; `drizzle-kit generate` no-op after 0005;
-  service: 66 in-process smoke checks passed (PGlite-backed); web builds.
-- Still open: `bun install` outside the sandbox; real OAuth round-trip against
-  Discord; first Neon boot applying 0005; VPS cutover (`workflows/dev-deploys-monorepo.md`
-  §3 checklist); poller move to service (deferred).
+- All workspace typechecks green; `drizzle-kit generate` no-op after 0006;
+  service: 66 in-process smoke checks passed (PGlite-backed, pre-guilds); web builds.
+- Still open: `bun install` outside the sandbox; real OAuth round-trip (now with `guilds`
+  scope — existing users must re-login once); first Neon boot applying 0005+0006;
+  VPS cutover (`workflows/dev-deploys-monorepo.md` §3 checklist); poller move (deferred).
 
 ## Graphs
 

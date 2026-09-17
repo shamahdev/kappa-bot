@@ -7,6 +7,9 @@ export const ErrorCode = Schema.Literal(
   'VALIDATION',
   'OAUTH_FAILED',
   'CONFLICT',
+  // Session predates the `guilds` scope (or tokens were revoked): the user must
+  // run the Discord login again before server features work.
+  'RECONNECT_REQUIRED',
 );
 export type ErrorCode = typeof ErrorCode.Type;
 

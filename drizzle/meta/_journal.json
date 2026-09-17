@@ -43,6 +43,13 @@
       "when": 1789552743960,
       "tag": "0005_thin_nomad",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789628115425,
+      "tag": "0006_wise_mole_man",
+      "breakpoints": true
     }
   ]
 }

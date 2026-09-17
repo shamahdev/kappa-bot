@@ -69,7 +69,6 @@ const page = stylex.create({
   index: { fontFamily: fonts.mono, fontSize: 13, color: tokens.muted, minWidth: 28, paddingTop: 2 },
   rowTitle: { fontFamily: fonts.sans, fontSize: 15, fontWeight: 700, color: tokens.ink, lineHeight: '22px' },
   rowBody: { fontFamily: fonts.sans, fontSize: 14, color: tokens.muted, lineHeight: '21px' },
-  fine: { fontFamily: fonts.sans, fontSize: 13, lineHeight: '20px', color: tokens.muted },
   sectionTitle: { fontFamily: fonts.sans, fontSize: 13, fontWeight: 700, color: tokens.ink, lineHeight: '18px' },
 });
 
@@ -106,8 +105,7 @@ function LandingComponent() {
         <h1 {...stylex.props(page.headline)}>Job alerts, tuned from the web.</h1>
       </div>
       <p {...stylex.props(page.lede)}>
-        Kappa delivers job postings to Discord — your DMs and the servers you set up.
-        Sign in to pause, retune, or prune your subscriptions without touching slash commands.
+        Sign in to manage your job alerts — pause, retune, prune. No slash commands.
       </p>
       <div {...stylex.props(page.actions)}>
         <AuthAction />
@@ -134,10 +132,6 @@ function LandingComponent() {
           ))}
         </ul>
       </div>
-      <p {...stylex.props(page.fine)}>
-        Sign-in uses Discord OAuth via the Kappa service. This dashboard stores no passwords
-        and handles no tokens — your session lives in an HttpOnly cookie.
-      </p>
     </div>
   );
 }

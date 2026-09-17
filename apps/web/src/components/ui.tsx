@@ -3,6 +3,7 @@ import { Banner } from '@astryxdesign/core/Banner';
 import { Button as AstryxButton } from '@astryxdesign/core/Button';
 import { Selector } from '@astryxdesign/core/Selector';
 import { StatusDot as AstryxStatusDot } from '@astryxdesign/core/StatusDot';
+import { Tab, TabList } from '@astryxdesign/core/TabList';
 import { TextInput as AstryxTextInput } from '@astryxdesign/core/TextInput';
 import type { ChangeEventHandler, MouseEventHandler, ReactNode } from 'react';
 
@@ -126,5 +127,23 @@ export function Badge({
 export function StatusDot({ on, label }: { on: boolean; label: string }) {
   return (
     <AstryxStatusDot variant={on ? 'success' : 'neutral'} label={label} />
+  );
+}
+
+export function Tabs({
+  value,
+  onChange,
+  tabs,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  tabs: Array<{ value: string; label: string }>;
+}) {
+  return (
+    <TabList value={value} onChange={onChange} hasDivider>
+      {tabs.map((t) => (
+        <Tab key={t.value} value={t.value} label={t.label} />
+      ))}
+    </TabList>
   );
 }

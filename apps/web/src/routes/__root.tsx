@@ -129,14 +129,14 @@ function TopNav() {
       <Link
         {...stylex.props(layout.navLink)}
         to="/dashboard"
-        activeProps={{ style: { color: tokens.ink } }}
+        activeProps={{ style: { color: tokens.brand } }}
       >
         Dashboard
       </Link>
       <Link
         {...stylex.props(layout.navLink)}
         to="/dashboard/settings"
-        activeProps={{ style: { color: tokens.ink } }}
+        activeProps={{ style: { color: tokens.brand } }}
       >
         Settings
       </Link>
@@ -163,7 +163,7 @@ function RootComponent() {
       </head>
       <body>
         <QueryClientProvider client={queryClient}>
-          <Theme theme={neutralTheme}>
+          <Theme theme={neutralTheme} mode="light">
           <div {...stylex.props(layout.shell)}>
             <header {...stylex.props(layout.topbar)}>
               <div {...stylex.props(layout.topbarInner)}>

@@ -22,6 +22,12 @@ export const discordConnections = pgTable(
       .references(() => users.discordId, { onDelete: 'cascade' }),
     provider: text('provider').notNull().default('discord'),
     scopes: text('scopes').notNull().default('identify'),
+    // User OAuth tokens (identify + guilds): needed to list the user's servers
+    // on their behalf. Stored plain (read-only Discord scopes; same trust as
+    // DATABASE_URL on the VPS). Null for pre-guilds logins → must re-login.
+    accessToken: text('access_token'),
+    refreshToken: text('refresh_token'),
+    tokenExpiresAt: timestamp('token_expires_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [uniqueIndex('discord_connections_user_provider_uidx').on(t.userId, t.provider)],

@@ -38,14 +38,15 @@ export function authRoutes(deps: RouteDeps) {
         if (!query.code || bound === null) return fail('missing code/state or bad state');
         const returnTo = sanitizeReturnTo(bound);
         let me: { id: string; username: string; avatar: string | null };
+        let tokens: { accessToken: string; refreshToken: string; expiresAt: Date };
         try {
-          const { accessToken } = await exchangeCode({
+          tokens = await exchangeCode({
             clientId: config.clientId,
             clientSecret: config.clientSecret,
             code: query.code,
             redirectUri,
           });
-          me = await fetchMe(accessToken);
+          me = await fetchMe(tokens.accessToken);
         } catch (error) {
           log.warn({ error }, 'discord oauth upstream failure');
           return fail('oauth upstream failure');
@@ -60,8 +61,23 @@ export function authRoutes(deps: RouteDeps) {
           });
         await db
           .insert(discordConnections)
-          .values({ userId: me.id, provider: 'discord', scopes: 'identify' })
-          .onConflictDoNothing();
+          .values({
+            userId: me.id,
+            provider: 'discord',
+            scopes: 'identify guilds',
+            accessToken: tokens.accessToken,
+            refreshToken: tokens.refreshToken,
+            tokenExpiresAt: tokens.expiresAt,
+          })
+          .onConflictDoUpdate({
+            target: [discordConnections.userId, discordConnections.provider],
+            set: {
+              scopes: 'identify guilds',
+              accessToken: tokens.accessToken,
+              refreshToken: tokens.refreshToken,
+              tokenExpiresAt: tokens.expiresAt,
+            },
+          });
         const token = newSessionToken();
         await db.insert(sessions).values({
           tokenHash: hashToken(token),

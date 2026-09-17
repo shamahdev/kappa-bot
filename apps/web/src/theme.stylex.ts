@@ -1,8 +1,9 @@
 import * as stylex from '@stylexjs/stylex';
 
 /**
- * Neutral theme tokens (Astryx neutral direction: warm paper, ink text,
- * hairline borders, one restrained accent). No gradients, no glow, no glass.
+ * Kappa theme tokens: warm paper, ink text, hairline borders, Discord-blurple
+ * kappa accent. No gradients, no glow, no glass. Forced light (see root
+ * Theme mode + color-scheme) so Astryx and custom surfaces always agree.
  */
 export const tokens = stylex.defineVars({
   bg: '#faf9f7',
@@ -12,9 +13,10 @@ export const tokens = stylex.defineVars({
   muted: '#57534e',
   line: '#e7e5e0',
   lineStrong: '#d6d3d1',
-  accent: '#1c1917',
-  accentHover: '#292524',
+  accent: '#5865f2',
+  accentHover: '#4752c4',
   accentInk: '#ffffff',
+  accentSoft: '#eef0fe',
   brand: '#5865f2',
   brandHover: '#4752c4',
   danger: '#b91c1c',
@@ -23,7 +25,7 @@ export const tokens = stylex.defineVars({
   success: '#15803d',
   successBg: '#f0fdf4',
   warnBg: '#fffbeb',
-  focus: '#2563eb',
+  focus: '#5865f2',
   radiusSm: '6px',
   radiusMd: '10px',
   radiusLg: '14px',

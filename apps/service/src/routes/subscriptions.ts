@@ -1,15 +1,11 @@
 import { Elysia, t } from 'elysia';
 import { and, desc, eq, or } from 'drizzle-orm';
-import {
-  channels,
-  guilds,
-  subscriptions,
-  type GatewayDb,
-} from '@kappa/db';
+import { channels, guilds, subscriptions } from '@kappa/db';
 import { isSubscriptionSource, SUBSCRIPTION_SOURCES, type SubscriptionDtoType } from '@kappa/contracts';
 import { readSessionToken } from '../core/cookies';
 import { err } from '../core/errors';
 import { resolveSession } from '../core/auth';
+import { listManageableGuilds } from '../core/guildAccess';
 import { ensureDmChannel } from '../discord/api';
 import type { RouteDeps } from './deps';
 
@@ -32,18 +28,25 @@ function toDto(row: SubscriptionRow): SubscriptionDtoType {
   };
 }
 
-/** Row authz (spec §5): `guildId == dm:<uid> OR createdBy == <uid>`, else 404. */
-async function loadOwned(db: GatewayDb, id: number, uid: string): Promise<SubscriptionRow | null> {
-  const [row] = await db
+/**
+ * Row authz: `guildId == dm:<uid> OR createdBy == <uid>` wins without any
+ * Discord call; other guild-scope rows require live ManageGuild proof.
+ * Stale/absent grant → null (404); Discord transport failures throw (502).
+ */
+async function loadOwned(
+  deps: RouteDeps,
+  id: number,
+  uid: string,
+): Promise<SubscriptionRow | null> {
+  const [row] = await deps.db
     .select()
     .from(subscriptions)
-    .where(
-      and(
-        eq(subscriptions.id, id),
-        or(eq(subscriptions.guildId, dmScope(uid)), eq(subscriptions.createdBy, uid)),
-      ),
-    );
-  return row ?? null;
+    .where(eq(subscriptions.id, id));
+  if (!row) return null;
+  if (row.guildId === dmScope(uid) || row.createdBy === uid) return row;
+  if (row.guildId.startsWith('dm:')) return null; // someone else's DMs, never
+  const guilds = await listManageableGuilds(deps.db, deps.config, uid);
+  return guilds?.some((g) => g.id === row.guildId) ? row : null;
 }
 
 /** One-line sub summary for the delete-subscription Brief (spec §7). */
@@ -55,21 +58,49 @@ export function subscriptionRoutes(deps: RouteDeps) {
   const { config, db, log } = deps;
 
   return new Elysia({ prefix: '/api/v1' })
-    .get('/subscriptions', async ({ request, status }) => {
-      const user = await resolveSession(db, readSessionToken(request.headers.get('cookie')));
-      if (!user) return status(401, err('UNAUTHORIZED', 'sign in with Discord first'));
-      const rows = await db
-        .select()
-        .from(subscriptions)
-        .where(
-          or(
-            eq(subscriptions.guildId, dmScope(user.discordId)),
-            eq(subscriptions.createdBy, user.discordId),
-          ),
-        )
-        .orderBy(desc(subscriptions.createdAt), desc(subscriptions.id));
-      return { subscriptions: rows.map(toDto) };
-    })
+    .get(
+      '/subscriptions',
+      async ({ request, query, status }) => {
+        const user = await resolveSession(db, readSessionToken(request.headers.get('cookie')));
+        if (!user) return status(401, err('UNAUTHORIZED', 'sign in with Discord first'));
+        if (query.guild !== undefined) {
+          if (query.guild.startsWith('dm:')) {
+            return status(400, err('VALIDATION', 'guild filter must be a server id'));
+          }
+          let guilds;
+          try {
+            guilds = await listManageableGuilds(db, config, user.discordId);
+          } catch (error) {
+            log.warn({ error, userId: user.discordId }, 'guild list discord failure');
+            return status(502, err('OAUTH_FAILED', 'discord request failed, try again later'));
+          }
+          if (!guilds) {
+            return status(409, err('RECONNECT_REQUIRED', 'reconnect Discord to manage servers'));
+          }
+          if (!guilds.some((g) => g.id === query.guild)) {
+            return status(404, err('NOT_FOUND', 'subscription not found'));
+          }
+          const rows = await db
+            .select()
+            .from(subscriptions)
+            .where(eq(subscriptions.guildId, query.guild))
+            .orderBy(desc(subscriptions.createdAt), desc(subscriptions.id));
+          return { subscriptions: rows.map(toDto) };
+        }
+        const rows = await db
+          .select()
+          .from(subscriptions)
+          .where(
+            or(
+              eq(subscriptions.guildId, dmScope(user.discordId)),
+              eq(subscriptions.createdBy, user.discordId),
+            ),
+          )
+          .orderBy(desc(subscriptions.createdAt), desc(subscriptions.id));
+        return { subscriptions: rows.map(toDto) };
+      },
+      { query: t.Object({ guild: t.Optional(t.String()) }) },
+    )
     .post(
       '/subscriptions',
       async ({ request, body, status }) => {
@@ -123,7 +154,13 @@ export function subscriptionRoutes(deps: RouteDeps) {
         if (!Number.isInteger(params.id) || params.id <= 0) {
           return status(400, err('VALIDATION', 'subscription id must be a positive integer'));
         }
-        const row = await loadOwned(db, params.id, user.discordId);
+        let row;
+        try {
+          row = await loadOwned(deps, params.id, user.discordId);
+        } catch (error) {
+          log.warn({ error, userId: user.discordId }, 'subscription authz discord failure');
+          return status(502, err('OAUTH_FAILED', 'discord request failed, try again later'));
+        }
         if (!row) return status(404, err('NOT_FOUND', 'subscription not found'));
         const patch: Partial<Pick<SubscriptionRow, 'keywords' | 'location' | 'isActive' | 'retentionDays'>> = {};
         if (body.keywords !== undefined) {
@@ -167,7 +204,13 @@ export function subscriptionRoutes(deps: RouteDeps) {
         if (!Number.isInteger(params.id) || params.id <= 0) {
           return status(400, err('VALIDATION', 'subscription id must be a positive integer'));
         }
-        const row = await loadOwned(db, params.id, user.discordId);
+        let row;
+        try {
+          row = await loadOwned(deps, params.id, user.discordId);
+        } catch (error) {
+          log.warn({ error, userId: user.discordId }, 'subscription authz discord failure');
+          return status(502, err('OAUTH_FAILED', 'discord request failed, try again later'));
+        }
         if (!row) return status(404, err('NOT_FOUND', 'subscription not found'));
         const summary = summarize(row);
         await db.delete(subscriptions).where(eq(subscriptions.id, row.id)); // cascades seen_jobs

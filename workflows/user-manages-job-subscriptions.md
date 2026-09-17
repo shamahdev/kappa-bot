@@ -52,6 +52,7 @@ users:                 discord_id text PK, username text, avatar text|null,
                        created_at timestamptz default now, updated_at timestamptz default now
 discord_connections:   id serial PK, user_id text FK→users.discord_id cascade,
                        provider text default 'discord', scopes text default 'identify',
+                       access_token/refresh_token/token_expires_at (nullable; 0006),
                        created_at timestamptz default now,
                        unique (user_id, provider)
 sessions:              token_hash text PK (sha256 of opaque 32B token), user_id text FK cascade,
@@ -70,16 +71,27 @@ sessions:              token_hash text PK (sha256 of opaque 32B token), user_id 
 Auth (service owns OAuth + session; web never sees tokens):
 
 - `GET /api/v1/auth/discord/login?return_to=/dashboard` → 302 Discord authorize
-  (`client_id`, `redirect_uri=<SERVICE_URL>/api/v1/auth/discord/callback`, `scope=identify`,
-  `state` = signed return_to).
+  (`client_id`, `redirect_uri=<SERVICE_URL>/api/v1/auth/discord/callback`,
+  `scope='identify guilds'`, `state` = signed return_to).
 - `GET /api/v1/auth/discord/callback?code&state` → code↔token, fetch `/users/@me`, upsert
-  `users` + `discord_connections(provider=discord)`, create session (opaque token, sha256 stored,
-  30d expiry), set `HttpOnly; Secure(prod); SameSite=Lax; Path=/` cookie, 302 to `WEB_URL` + return_to.
+  `users` + `discord_connections(provider=discord, scopes, tokens+expiry)`, create session
+  (opaque token, sha256 stored, 30d expiry), set `HttpOnly; Secure(prod); SameSite=Lax; Path=/`
+  cookie, 302 to `WEB_URL` + return_to.
 - `POST /api/v1/auth/logout` → delete session, clear cookie. `GET /api/v1/auth/me` → `{ user }` | 401.
 
-Subscriptions (all require session; authz per row: `guildId == dm:<uid> OR createdBy == <uid>`, else 404):
+Servers (all require session):
+
+- `GET /api/v1/guilds` → `{ guilds: [{ id, name, icon, permissions }] }`: user's guilds ∩
+  bot's guilds, filtered to ManageGuild/Administrator/owner, name-sorted. Tokens refreshed
+  inline when expired. Stale/absent grant → 409 `RECONNECT_REQUIRED` (re-login); Discord
+  failure → 502. Legacy `identify`-only sessions keep working for DM features.
+
+Subscriptions (all require session; authz per row: `guildId == dm:<uid> OR createdBy == <uid>`
+  wins locally, else live ManageGuild proof required, else 404):
 
 - `GET /api/v1/subscriptions` → `{ subscriptions: [...] }` (DM + createdBy-me, newest first).
+- `GET /api/v1/subscriptions?guild=<id>` → that server's subs (manage proof required;
+  stale grant → 409 `RECONNECT_REQUIRED`; no access → 404; `dm:*` → 400).
   DTO: `{ id, scope: 'dm'|'guild', guildId, channelId, source, keywords, location, isActive,
   retentionDays, createdAt }`. Sources: `all|linkedin|kalibrr|techinasia|glints|indeed|jobstreet`.
 - `POST /api/v1/subscriptions` — **DM scope only v1**. Body `{ source, keywords }`
@@ -101,7 +113,7 @@ Account:
   Best-effort Discord token revoke; failure never fails the delete. Idempotent per session
   (second call → 401, account already gone).
 
-Errors: `{ error: { code, message } }`; codes `UNAUTHORIZED|NOT_FOUND|VALIDATION|OAUTH_FAILED|CONFLICT`.
+Errors: `{ error: { code, message } }`; codes `UNAUTHORIZED|NOT_FOUND|VALIDATION|OAUTH_FAILED|CONFLICT|RECONNECT_REQUIRED`.
 
 New env (service): `DISCORD_CLIENT_SECRET`, `SERVICE_URL` (e.g. `https://kappa.shamah.dev`),
 `WEB_URL` (same origin, e.g. `https://kappa.shamah.dev`), `SESSION_SECRET` (state signing),
@@ -111,13 +123,15 @@ New env (service): `DISCORD_CLIENT_SECRET`, `SERVICE_URL` (e.g. `https://kappa.s
 ## 6. Web (TanStack Start + Effect + Astryx + StyleX)
 
 - Routes: `/` (landing + “Login with Discord” → service login URL), `/dashboard`
-  (subs table/cards: source, keywords, location, scope, active toggle, edit, delete;
-  “New DM subscription” form: source select + keywords), `/dashboard/settings`
+  with `DM | Servers` tabs (DM: create form + own table; Servers: guild picker + per-server
+  table reusing the same row/edit/delete panels, no server-side create), `/dashboard/settings`
   (account summary Brief + delete-account type-to-confirm), `/auth/error`.
 - Data: Effect `HttpClient` layer + `packages/contracts` Schemas decode every response; `credentials:
   'include'` (same-origin via nginx, no token handling in JS). Mutations invalidate the subs query.
-- UI: Astryx components on the neutral theme; StyleX only for layout/custom CSS. Speed of review
-  governs: dashboard shows the Brief-level table, never raw JSON; destructive actions confirm inline.
+- UI: Astryx components on the neutral theme (forced `light`, matching `color-scheme`);
+  StyleX only for layout/custom CSS in the kappa palette (Discord-blurple accent on warm paper).
+  Speed of review governs: dashboard shows the Brief-level table, never raw JSON; destructive
+  actions confirm inline. Copy stays minimal (Briefs exempt).
 - No SSR secrets, no DB env in web. `WEB_PORT=3444`.
 
 ## 7. Briefs
@@ -161,3 +175,10 @@ New env (service): `DISCORD_CLIENT_SECRET`, `SERVICE_URL` (e.g. `https://kappa.s
   and ManageGuild-based management deferred. CONFIRMED.
 - R2 Cron home: poller + worker stay in `apps/discord` v1; move to `service` is workflow #2.
   CONFIRMED.
+
+## 12. Amendment 2026-09-17 (supersedes the R1 ManageGuild deferral)
+
+- OAuth scope is `identify guilds`; user tokens are persisted (`0006`) and refreshed inline.
+- Servers tab: `GET /guilds` + `?guild=` listing with live ManageGuild proof; guild-sub *create*
+  stays Discord-only. Stale grants answer 409 `RECONNECT_REQUIRED`, DM features unaffected.
+- Theme: forced light + kappa-blurple accent; Astryx components stay neutral.

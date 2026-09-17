@@ -12,6 +12,7 @@ import {
   DeleteAccountResponse,
   DeleteSubscriptionResponse,
   ErrorEnvelope,
+  GuildsResponse,
   PATHS,
   SubscriptionsResponse,
   SubscriptionDto,
@@ -19,6 +20,8 @@ import {
   type AccountSummaryType,
   type AuthMeResponseType,
   type CreateSubscriptionBodyType,
+  type GuildDtoType,
+  type GuildsResponseType,
   type SubscriptionDtoType,
   type SubscriptionsResponseType,
   type UpdateSubscriptionBodyType,
@@ -27,6 +30,7 @@ import {
 export type {
   AccountSummaryType,
   CreateSubscriptionBodyType,
+  GuildDtoType,
   SubscriptionDtoType,
   UpdateSubscriptionBodyType,
 };
@@ -45,6 +49,16 @@ export class ApiError extends Data.TaggedError('ApiError')<{
   get isUnauthorized(): boolean {
     return this.status === 401;
   }
+  get isReconnectRequired(): boolean {
+    return this.code === 'RECONNECT_REQUIRED';
+  }
+}
+
+/** CDN icon URL for a guild (null when the guild has no icon). */
+export function guildIconUrl(id: string, icon: string | null): string | null {
+  if (!icon) return null;
+  const ext = icon.startsWith('a_') ? 'gif' : 'png';
+  return `https://cdn.discordapp.com/icons/${id}/${icon}.${ext}?size=64`;
 }
 
 const OkResponse = Schema.Struct({ ok: Schema.Boolean });
@@ -129,10 +143,17 @@ export function logout(): Promise<void> {
   );
 }
 
-export function fetchSubscriptions(): Promise<SubscriptionsResponseType['subscriptions']> {
-  return runApi(
-    request(HttpClientRequest.get(PATHS.subscriptions), SubscriptionsResponse),
-  ).then((res) => res.subscriptions);
+export function fetchSubscriptions(guildId?: string): Promise<SubscriptionsResponseType['subscriptions']> {
+  const url = guildId ? `${PATHS.subscriptions}?guild=${encodeURIComponent(guildId)}` : PATHS.subscriptions;
+  return runApi(request(HttpClientRequest.get(url), SubscriptionsResponse)).then(
+    (res) => res.subscriptions,
+  );
+}
+
+export function fetchGuilds(): Promise<GuildsResponseType['guilds']> {
+  return runApi(request(HttpClientRequest.get(PATHS.guilds), GuildsResponse)).then(
+    (res) => res.guilds,
+  );
 }
 
 export function createSubscription(

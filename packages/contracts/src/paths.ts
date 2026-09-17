@@ -11,6 +11,7 @@ export const PATHS = {
   authLogout: `${API_V1}/auth/logout`,
   authMe: `${API_V1}/auth/me`,
   subscriptions: `${API_V1}/subscriptions`,
+  guilds: `${API_V1}/guilds`,
   subscriptionById: (id: number): string => `${API_V1}/subscriptions/${id}`,
   accountSummary: `${API_V1}/account/summary`,
   account: `${API_V1}/account`,

@@ -56,6 +56,9 @@
 - `Delivery`: poll-to-channel send (single card or numbered digest). Avoid: Dispatch, Send.
 - `Account`: `users` row + `discord_connections` rows + `sessions` rows for one Discord user id.
 - `Connection`: one OAuth link row (`discord_connections`) between Account and Discord.
+  Holds the user OAuth tokens (scopes `identify guilds`) since the Servers tab.
+- `Server`: the dashboard word for a Discord guild (guild picker, Servers tab). Avoid in
+  schema/code, where `guild` stays canonical.
 - Delete account = delete Account + its Connections + its DM-scope guild/channels/subs (+ seen)
   + any guild-scope subs with `createdBy` = user (+ seen). Real guild/channel rows and other
   users' subs stay. Irreversible, no soft-delete v1.

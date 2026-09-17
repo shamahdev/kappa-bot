@@ -5,20 +5,24 @@ import {
   deleteAccount,
   deleteSubscription,
   fetchAccountSummary,
+  fetchGuilds,
   fetchMe,
   fetchSubscriptions,
   logout,
   updateSubscription,
+  type GuildDtoType,
   type SubscriptionDtoType,
   type UpdateSubscriptionBodyType,
 } from './api';
 
 export { ApiError };
-export type { SubscriptionDtoType };
+export type { GuildDtoType, SubscriptionDtoType };
 
 export const queryKeys = {
   me: ['me'] as const,
   subscriptions: ['subscriptions'] as const,
+  subscriptionList: (guildId?: string) => ['subscriptions', guildId ?? 'mine'] as const,
+  guilds: ['guilds'] as const,
   accountSummary: ['account-summary'] as const,
 };
 
@@ -37,12 +41,22 @@ export function useMe() {
   });
 }
 
-export function useSubscriptions(enabled: boolean) {
+export function useSubscriptions(enabled: boolean, guildId?: string) {
   return useQuery({
-    queryKey: queryKeys.subscriptions,
-    queryFn: fetchSubscriptions,
+    queryKey: queryKeys.subscriptionList(guildId),
+    queryFn: () => fetchSubscriptions(guildId),
     enabled,
     retry: false,
+  });
+}
+
+export function useGuilds(enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.guilds,
+    queryFn: fetchGuilds,
+    enabled,
+    retry: false,
+    staleTime: 60_000,
   });
 }
 

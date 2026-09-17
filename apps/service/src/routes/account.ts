@@ -56,6 +56,11 @@ export function accountRoutes(deps: RouteDeps) {
       // EXACT cascade order (spec §5): sessions → discord_connections → DM
       // subs (cascade seen) → DM channels + guilds rows → delivery_messages
       // for the DM channel → guild subs createdBy me (cascade seen) → users.
+      // The OAuth token is captured first for the best-effort revoke at the end.
+      const [conn] = await db
+        .select({ accessToken: discordConnections.accessToken })
+        .from(discordConnections)
+        .where(eq(discordConnections.userId, uid));
       await db.delete(sessions).where(eq(sessions.userId, uid));
       await db.delete(discordConnections).where(eq(discordConnections.userId, uid));
       const dmChannels = await db
@@ -72,7 +77,11 @@ export function accountRoutes(deps: RouteDeps) {
       await db.delete(subscriptions).where(eq(subscriptions.createdBy, uid));
       await db.delete(users).where(eq(users.discordId, uid));
       try {
-        await revokeDiscordToken();
+        await revokeDiscordToken({
+          clientId: config.clientId,
+          clientSecret: config.clientSecret,
+          token: conn?.accessToken ?? null,
+        });
       } catch (error) {
         log.warn({ error, userId: uid }, 'discord token revoke failed (best-effort)');
       }
