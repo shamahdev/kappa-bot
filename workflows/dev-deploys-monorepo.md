@@ -2,7 +2,7 @@
 
 Status: ready (round 1 confirmed 2026-09-16; implementer may build without further questions).
 Owner loop: a dev ships `main` to the single VPS. Cadence: on demand, a few times a week.
-Today: no VPS path — only a local `pm2 start --only kappa-bot-gateway`, no CI, no Caddyfile,
+Today: no VPS path — only a local `pm2 start --only kappa-bot-gateway`, no CI, no nginx.conf,
 Dockerfile builds the old single-app layout. Target: one command → VPS updated, verified, briefed.
 
 ## 1. Vocabulary binding
@@ -18,7 +18,8 @@ Dockerfile builds the old single-app layout. Target: one command → VPS updated
 ## 2. VPS runtime (R2 recommendation)
 
 - Native Bun + pm2 via git pull. VPS provisioned once: Bun >= 1.1, pm2 (with `pm2 startup` +
-  `pm2 save`), Caddy (system service), Node not required.
+  `pm2 save`), nginx (system service) + TLS cert (certbot — required for Secure cookies),
+  Node not required.
 - `Dockerfile` is OUT of the deploy path v1 (left untouched in repo; ADR-0006's portable-image
   topology is superseded for deploys by the pm2-native topology — record an ADR update at cutover).
 - Repo clone on VPS at `~/kappa-bot`, branch `main`, always deployed at an explicit SHA
@@ -30,11 +31,11 @@ Dockerfile builds the old single-app layout. Target: one command → VPS updated
 
 ## 3. First-run cutover (one-shot, executed once through §4 mechanics)
 
-1. Provision VPS (Bun, pm2 + startup, Caddy, user, firewall 80/443).
+1. Provision VPS (Bun, pm2 + startup, nginx + certbot TLS, user, firewall 80/443).
 2. `git clone git@github.com:shamahdev/kappa-bot.git`, checkout monorepo `main` SHA.
 3. Hand-write VPS root `.env` (all of §5-service env + Discord + DB URLs + ports).
 4. `bun install --frozen-lockfile`, `bun run db:migrate`, web build, `pm2 start ecosystem.config.json`,
-   `pm2 save`, install `Caddyfile`, point DNS, smoke test (§6).
+   `pm2 save`, install `nginx.conf` (+ TLS via certbot), point DNS, smoke test (§6).
 5. Record ADR update (pm2-native supersedes Docker for deploys) + cutover Brief in chat/log.
 
 ## 4. Steady-state loop (`scripts/deploy.sh [SHA]`, run from dev machine)
@@ -50,7 +51,7 @@ Over ssh (single session, `set -euo pipefail`):
 4. `bun run db:migrate` (DIRECT url; forward-only — see rollback rule).
 5. `pm2 reload ecosystem.config.json --only kappa-service,kappa-web,kappa-bot-gateway`
    (reload order: service → web → gateway; worker is never reloaded here).
-6. Health: `GET /api/health` 200 (service via Caddy), `GET /` 200 (web via Caddy),
+6. Health: `GET http://127.0.0.1:3001/health` 200 (service direct), `GET /` 200 (web via nginx),
    `pm2 describe` all `online` (gateway), recent gateway `ready` log line present.
 7. Print the Brief (§7). Non-zero exit on any failure; script stops at the failing step.
 
@@ -67,14 +68,15 @@ is the v1 poller. Wiring an external scheduler for worker mode is out of scope v
 - Root `ecosystem.config.json`: 4 apps (`kappa-service` :3001, `kappa-web` :3000,
   `kappa-bot-gateway`, `kappa-bot-worker`), each with `cwd: ./apps/<name>`, Bun-native
   (`script: bun`, `interpreter: none`), `./logs/` files, per-app `BOT_ROLE` where needed.
-- Root `Caddyfile`: `{$DOMAIN} { reverse_proxy /api/* 127.0.0.1:3001; reverse_proxy 127.0.0.1:3000 }`.
-- VPS-only (never in git): root `.env`, `~/.ssh` access, Caddy provisioning.
+- Root `nginx.conf`: site snippet (`/api/` → 127.0.0.1:3001, `/` → 127.0.0.1:3000,
+  with install + certbot instructions in its header).
+- VPS-only (never in git): root `.env`, `~/.ssh` access, nginx site install + TLS cert.
 
 ## 6. Verification gates (each deploy)
 
 1. Local `typecheck` green before ssh.
-2. Post-reload: Caddy `/api/health` 200 with expected feature list, web `/` 200, pm2 all online.
-3. Spot: `/api/v1/auth/me` 401 without cookie (service routing through Caddy proven).
+2. Post-reload: service `GET http://127.0.0.1:3001/health` 200, web `/` 200, pm2 all online.
+3. Spot: `/api/v1/auth/me` 401 without cookie (service routing through nginx proven).
 4. Discord: gateway `ready` log line after reload; no cron double-fire (single gateway instance —
    `instances: 1`, never cluster for gateway).
 
@@ -84,7 +86,7 @@ is the v1 poller. Wiring an external scheduler for worker mode is out of scope v
 deploy <SHA-short> (prev <SHA-short>) — OK|FAILED at <step>
 migrations: <none|0005_... applied>
 pm2: service online, web online, gateway online (uptime …)
-health: /api/health 200, / 200, /auth/me 401
+health: service :3001/health 200, / 200, /api/v1/auth/me 401
 rollback: scripts/rollback.sh <prev-SHA>
 ```
 

@@ -6,7 +6,7 @@ set -euo pipefail
 
 VPS_SSH="${VPS_SSH:?set VPS_SSH=user@host}"
 VPS_DIR="${VPS_DIR:-~/kappa-bot}"
-DOMAIN="${DOMAIN:?set DOMAIN (public origin served by Caddy, e.g. kappa.example.com)}"
+DOMAIN="${DOMAIN:?set DOMAIN (public origin served by nginx, e.g. kappa.example.com)}"
 
 fail() { echo "deploy FAILED at $1: $2" >&2; exit 1; }
 
@@ -33,8 +33,8 @@ bun --filter @kappa/web build                     # 3. web production build
 bun run db:migrate                                # 4. forward-only, DIRECT url
 pm2 reload ecosystem.config.json --only kappa-service,kappa-web,kappa-bot-gateway  # 5.
 
-# 6. health (all through Caddy except the pm2/log introspection)
-curl -sf "https://$DOMAIN/api/health" >/dev/null
+# 6. health (service direct on localhost; web + auth routing through nginx)
+curl -sf http://127.0.0.1:3001/health >/dev/null
 curl -sf "https://$DOMAIN/" >/dev/null
 ME_CODE="$(curl -s -o /dev/null -w '%{http_code}' "https://$DOMAIN/api/v1/auth/me")"
 [ "$ME_CODE" = "401" ] || { echo "expected /api/v1/auth/me 401, got $ME_CODE" >&2; exit 1; }
@@ -50,6 +50,6 @@ UPTIME="$(pm2 describe kappa-service | grep -m1 uptime | awk '{print $NF}')"
 echo "deploy ${NEW:0:7} (prev ${PREV:0:7}) - OK"
 echo "migrations: $MIGRATIONS"
 echo "pm2: service online, web online, gateway online (uptime $UPTIME)"
-echo "health: /api/health 200, / 200, /auth/me 401"
+echo "health: service :3001/health 200, / 200, /api/v1/auth/me 401"
 echo "rollback: scripts/rollback.sh $PREV"
 REMOTE

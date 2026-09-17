@@ -1,5 +1,5 @@
 // API path constants shared by service (route mount) and web (fetch URLs).
-// Single origin in prod (Caddy): web calls these same-origin, no host prefix.
+// Single origin in prod (nginx): web calls these same-origin, no host prefix.
 
 export const API_V1 = '/api/v1' as const;
 

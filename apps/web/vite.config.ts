@@ -13,7 +13,7 @@ export default defineConfig({
   ],
   server: {
     // Dev only: same-origin /api so the session cookie flows like it does
-    // behind Caddy in prod (Caddy owns /api there; see spec §9).
+    // behind nginx in prod (nginx owns /api there; see spec §9).
     proxy: {
       '/api': process.env.SERVICE_URL ?? 'http://localhost:3001',
     },

@@ -2,7 +2,7 @@
 
 ## Round 1 answers (2026-09-16, all recommended accepted)
 
-- Deploy: single Linux VPS, Bun >= 1.1, pm2 owns all apps, Caddy in front for service + web.
+- Deploy: single Linux VPS, Bun >= 1.1, pm2 owns all apps, nginx in front for service + web.
 - Jobs loop today: Discord `/jobs` commands only (guild channels + bot DMs). Web "manage" =
   list + create + edit filter + pause/resume + delete over the same (guild, channel, filter) tuple.
 - Workflow #1: `user-manages-job-subscriptions` (Discord login → dashboard → manage subs →
@@ -23,7 +23,7 @@
 
 ## Tools
 
-- Runtime: Bun >= 1.1. Process manager: pm2 (all apps). Reverse proxy: Caddy (single origin).
+- Runtime: Bun >= 1.1. Process manager: pm2 (all apps). Reverse proxy: nginx (single origin) + certbot TLS.
 - Backend: Elysia (HTTP), Drizzle ORM + drizzle-kit, Neon Postgres (pooled `DATABASE_URL`
   runtime, direct `DATABASE_URL_UNPOOLED` migrations), `pg` Pool, Pino logs.
 - Discord: discord.js v14 gateway + REST, slash commands `/jobs`, `BOT_ROLE=gateway|worker`.

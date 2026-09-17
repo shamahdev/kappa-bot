@@ -50,7 +50,7 @@ export class ApiError extends Data.TaggedError('ApiError')<{
 const OkResponse = Schema.Struct({ ok: Schema.Boolean });
 
 /**
- * HttpClient layer for the browser: same-origin `/api` (Caddy in prod, vite
+ * HttpClient layer for the browser: same-origin `/api` (nginx in prod, vite
  * proxy in dev) with `credentials: 'include'` so the HttpOnly session cookie
  * flows. No tokens are ever handled in JS (spec §6).
  */

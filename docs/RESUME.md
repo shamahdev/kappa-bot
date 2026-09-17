@@ -18,7 +18,7 @@ Bun workspaces monorepo. Three apps, two shared packages, one Postgres.
   (migration `0005`).
 - `packages/contracts` (`@kappa/contracts`) — Effect Schemas, DTOs, `PATHS`,
   error codes. Service ↔ web source of truth.
-- Deploy: Caddy single origin (`/api/*` → :3001, rest → :3000), pm2 with 4 apps
+- Deploy: nginx single origin (`/api/` → :3001, rest → :3000, certbot TLS), pm2 with 4 apps
   (`kappa-service`, `kappa-web`, `kappa-bot-gateway`, `kappa-bot-worker`),
   `scripts/deploy.sh` + `scripts/rollback.sh`.
 
@@ -46,7 +46,7 @@ Bun workspaces monorepo. Three apps, two shared packages, one Postgres.
 Production — deploy / request topology:
 
 ```ts
-Caddy (single origin :443)
+nginx (single origin :443, certbot TLS)
   → /api/* → kappa-service (Elysia :3001, one-shot per request)
     → routes/auth → Discord OAuth + @kappa/db (users, discord_connections, sessions)
     → routes/subscriptions → @kappa/db + Discord REST (ensure DM channel)
