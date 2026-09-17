@@ -3,6 +3,8 @@
 ## Round 1 answers (2026-09-16, all recommended accepted)
 
 - Deploy: single Linux VPS, Bun >= 1.1, pm2 owns all apps, nginx in front for service + web.
+  Single origin `https://kappa.shamah.dev` (service :3443, web :3444; amended 2026-09-17 —
+  earlier rounds assumed Caddy + :3001/:3000, then a split api.* origin, both superseded).
 - Jobs loop today: Discord `/jobs` commands only (guild channels + bot DMs). Web "manage" =
   list + create + edit filter + pause/resume + delete over the same (guild, channel, filter) tuple.
 - Workflow #1: `user-manages-job-subscriptions` (Discord login → dashboard → manage subs →

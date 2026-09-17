@@ -13,9 +13,10 @@ export default defineConfig({
   ],
   server: {
     // Dev only: same-origin /api so the session cookie flows like it does
-    // behind nginx in prod (nginx owns /api there; see spec §9).
+    // Single origin in prod too (nginx routes /api to the service, see §9),
+    // so the browser never needs CORS; this proxy mirrors that in dev.
     proxy: {
-      '/api': process.env.SERVICE_URL ?? 'http://localhost:3001',
+      '/api': process.env.SERVICE_URL ?? 'http://localhost:3443',
     },
   },
 });

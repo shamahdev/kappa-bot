@@ -4,10 +4,10 @@
 
 Bun workspaces monorepo. Three apps, two shared packages, one Postgres.
 
-- `apps/service` (`@kappa/service`, Elysia :3001) — the only HTTP server. `/health`,
+- `apps/service` (`@kappa/service`, Elysia :3443) — the only HTTP server. `/health`,
   `/metrics`, `/api/v1` (auth, subscriptions, account). Runs migrations at boot.
 - `apps/web` (`@kappa/web`, TanStack Start + Effect + Astryx neutral theme + StyleX,
-  :3000) — dashboard. Routes `/`, `/dashboard`, `/dashboard/settings`, `/auth/error`.
+  :3444) — dashboard. Routes `/`, `/dashboard`, `/dashboard/settings`, `/auth/error`.
   UI primitives (`ui.tsx`) are Astryx components; page layout/typography stays StyleX.
   No DB access.
 - `apps/discord` (`@kappa/discord`, discord.js) — gateway + worker via `BOT_ROLE`.
@@ -18,7 +18,7 @@ Bun workspaces monorepo. Three apps, two shared packages, one Postgres.
   (migration `0005`).
 - `packages/contracts` (`@kappa/contracts`) — Effect Schemas, DTOs, `PATHS`,
   error codes. Service ↔ web source of truth.
-- Deploy: nginx single origin (`/api/` → :3001, rest → :3000, certbot TLS), pm2 with 4 apps
+- Deploy: nginx single origin `https://kappa.shamah.dev` (`/api/` → :3443, rest → :3444, certbot TLS), pm2 with 4 apps
   (`kappa-service`, `kappa-web`, `kappa-bot-gateway`, `kappa-bot-worker`),
   `scripts/deploy.sh` + `scripts/rollback.sh`.
 
@@ -46,13 +46,13 @@ Bun workspaces monorepo. Three apps, two shared packages, one Postgres.
 Production — deploy / request topology:
 
 ```ts
-nginx (single origin :443, certbot TLS)
-  → /api/* → kappa-service (Elysia :3001, one-shot per request)
+nginx (kappa.shamah.dev :443, certbot TLS)
+  → /api/* → kappa-service (Elysia :3443, one-shot per request)
     → routes/auth → Discord OAuth + @kappa/db (users, discord_connections, sessions)
     → routes/subscriptions → @kappa/db + Discord REST (ensure DM channel)
     → routes/account → @kappa/db (cascade delete)
     → @kappa/db → Neon Postgres (pooled runtime, direct migrate at boot)
-  → /* → kappa-web (TanStack Start :3000, one-shot per fetch)
+  → /* → kappa-web (TanStack Start :3444, one-shot per fetch)
     → routes/dashboard → lib/api.ts → Effect HttpClient → /api/*
     → contracts Schemas (boundary: unknown → trusted)
 kappa-bot-gateway (discord.js WS, Stream over time: cron */30m + events)

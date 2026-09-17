@@ -33,7 +33,7 @@ export function loadServiceConfig(): ServiceConfig {
     clientSecret: required('DISCORD_CLIENT_SECRET'),
     databaseUrl: required('DATABASE_URL'),
     databaseUrlUnpooled: process.env.DATABASE_URL_UNPOOLED ?? '',
-    port: Number(process.env.PORT ?? 3001),
+    port: Number(process.env.PORT ?? 3443),
     logLevel: process.env.LOG_LEVEL ?? 'info',
     isProd: process.env.NODE_ENV === 'production',
     serviceUrl: stripTrailingSlash(required('SERVICE_URL')),

@@ -34,7 +34,7 @@ packages/db/    drizzle schema (existing tables + users/discord_connections/sess
 packages/contracts/  shared Effect Schemas + DTO types + API path constants (service ↔ web)
 drizzle/        stays at root; drizzle-kit schema glob → packages/db/src/schema/*
 ecosystem.config.json  4 pm2 processes across the 3 code apps (see §9)
-nginx.conf       site snippet, single origin: /api/ → service:3001, rest → web:3000
+nginx.conf       site snippet, single origin: /api/ → service:3443, rest → web:3444
 ```
 
 - Migration order (behavior-preserving): ① extract `packages/db` (move schema + `db.ts`, update
@@ -103,10 +103,10 @@ Account:
 
 Errors: `{ error: { code, message } }`; codes `UNAUTHORIZED|NOT_FOUND|VALIDATION|OAUTH_FAILED|CONFLICT`.
 
-New env (service): `DISCORD_CLIENT_SECRET`, `SERVICE_URL` (e.g. `https://kappa.example.com`),
-`WEB_URL` (same origin, e.g. `https://kappa.example.com`), `SESSION_SECRET` (state signing),
+New env (service): `DISCORD_CLIENT_SECRET`, `SERVICE_URL` (e.g. `https://kappa.shamah.dev`),
+`WEB_URL` (same origin, e.g. `https://kappa.shamah.dev`), `SESSION_SECRET` (state signing),
 `DISCORD_REDIRECT_PATH=/api/v1/auth/discord/callback`. Reuse `CLIENT_ID` (= Discord client id),
-`DISCORD_TOKEN`, `DATABASE_URL(+_UNPOOLED)`, `PORT` (service 3001).
+`DISCORD_TOKEN`, `DATABASE_URL(+_UNPOOLED)`, `PORT` (service 3443).
 
 ## 6. Web (TanStack Start + Effect + Astryx + StyleX)
 
@@ -118,7 +118,7 @@ New env (service): `DISCORD_CLIENT_SECRET`, `SERVICE_URL` (e.g. `https://kappa.e
   'include'` (same-origin via nginx, no token handling in JS). Mutations invalidate the subs query.
 - UI: Astryx components on the neutral theme; StyleX only for layout/custom CSS. Speed of review
   governs: dashboard shows the Brief-level table, never raw JSON; destructive actions confirm inline.
-- No SSR secrets, no DB env in web. `WEB_PORT=3000`.
+- No SSR secrets, no DB env in web. `WEB_PORT=3444`.
 
 ## 7. Briefs
 
@@ -138,11 +138,11 @@ New env (service): `DISCORD_CLIENT_SECRET`, `SERVICE_URL` (e.g. `https://kappa.e
 
 ## 9. Deploy (pm2 + nginx, single VPS)
 
-- pm2 apps: `kappa-service` (`apps/service`, `bun src/index.ts`, port 3001, autorestart),
-  `kappa-web` (`apps/web`, `bun start`/TanStack, port 3000, autorestart),
+- pm2 apps: `kappa-service` (`apps/service`, `bun src/index.ts`, port 3443, autorestart),
+  `kappa-web` (`apps/web`, `bun start`/TanStack, port 3444, autorestart),
   `kappa-bot-gateway` (`apps/discord`, `BOT_ROLE=gateway`, autorestart),
   `kappa-bot-worker` (`apps/discord`, `BOT_ROLE=worker`, autorestart false, external cron).
-- nginx (root `nginx.conf` site snippet): `/api/` → 127.0.0.1:3001, `/` → 127.0.0.1:3000.
+- nginx (root `nginx.conf` site snippet): `/api/` → 127.0.0.1:3443, `/` → 127.0.0.1:3444.
   Single origin ⇒ session cookie needs no `Domain`, no CORS. HTTPS via certbot is
   required (Secure cookies). Logs stay in `./logs/`.
 
@@ -152,7 +152,7 @@ New env (service): `DISCORD_CLIENT_SECRET`, `SERVICE_URL` (e.g. `https://kappa.e
 2. OAuth round-trip: login → cookie → `/auth/me` 200 → dashboard lists DM + createdBy-me subs.
 3. Dashboard CRUD + pause/resume round-trips; Discord `/jobs list` shows the same rows.
 4. Delete account on a fixture user removes exactly the §5 set; guild rows + others' subs intact.
-5. pm2 starts all 4 processes on the VPS; nginx serves web + `/api/*` from one origin.
+5. pm2 starts all 4 processes on the VPS; nginx serves web + `/api/*` from one origin (`https://kappa.shamah.dev`).
 6. Discord delivery + cron behavior unchanged (existing flows, same embeds).
 
 ## 11. Confirmations (round 2 — all recommended accepted)

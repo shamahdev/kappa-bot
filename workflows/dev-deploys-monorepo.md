@@ -35,7 +35,8 @@ Dockerfile builds the old single-app layout. Target: one command → VPS updated
 2. `git clone git@github.com:shamahdev/kappa-bot.git`, checkout monorepo `main` SHA.
 3. Hand-write VPS root `.env` (all of §5-service env + Discord + DB URLs + ports).
 4. `bun install --frozen-lockfile`, `bun run db:migrate`, web build, `pm2 start ecosystem.config.json`,
-   `pm2 save`, install `nginx.conf` (+ TLS via certbot), point DNS, smoke test (§6).
+   `pm2 save`, install `nginx.conf` (+ TLS via certbot), point DNS
+   (`kappa.shamah.dev` → VPS), smoke test (§6).
 5. Record ADR update (pm2-native supersedes Docker for deploys) + cutover Brief in chat/log.
 
 ## 4. Steady-state loop (`scripts/deploy.sh [SHA]`, run from dev machine)
@@ -51,7 +52,7 @@ Over ssh (single session, `set -euo pipefail`):
 4. `bun run db:migrate` (DIRECT url; forward-only — see rollback rule).
 5. `pm2 reload ecosystem.config.json --only kappa-service,kappa-web,kappa-bot-gateway`
    (reload order: service → web → gateway; worker is never reloaded here).
-6. Health: `GET http://127.0.0.1:3001/health` 200 (service direct), `GET /` 200 (web via nginx),
+6. Health: `GET http://127.0.0.1:3443/health` 200 (service direct), `GET /` 200 (web via nginx),
    `pm2 describe` all `online` (gateway), recent gateway `ready` log line present.
 7. Print the Brief (§7). Non-zero exit on any failure; script stops at the failing step.
 
@@ -65,17 +66,17 @@ is the v1 poller. Wiring an external scheduler for worker mode is out of scope v
 ## 5. Files this workflow owns
 
 - `scripts/deploy.sh`, `scripts/rollback.sh` (executable, no dependencies beyond git/ssh/bun).
-- Root `ecosystem.config.json`: 4 apps (`kappa-service` :3001, `kappa-web` :3000,
+- Root `ecosystem.config.json`: 4 apps (`kappa-service` :3443, `kappa-web` :3444,
   `kappa-bot-gateway`, `kappa-bot-worker`), each with `cwd: ./apps/<name>`, Bun-native
   (`script: bun`, `interpreter: none`), `./logs/` files, per-app `BOT_ROLE` where needed.
-- Root `nginx.conf`: site snippet (`/api/` → 127.0.0.1:3001, `/` → 127.0.0.1:3000,
+- Root `nginx.conf`: site snippet (`/api/` → 127.0.0.1:3443, `/` → 127.0.0.1:3444,
   with install + certbot instructions in its header).
 - VPS-only (never in git): root `.env`, `~/.ssh` access, nginx site install + TLS cert.
 
 ## 6. Verification gates (each deploy)
 
 1. Local `typecheck` green before ssh.
-2. Post-reload: service `GET http://127.0.0.1:3001/health` 200, web `/` 200, pm2 all online.
+2. Post-reload: service `GET http://127.0.0.1:3443/health` 200, web `/` 200, pm2 all online.
 3. Spot: `/api/v1/auth/me` 401 without cookie (service routing through nginx proven).
 4. Discord: gateway `ready` log line after reload; no cron double-fire (single gateway instance —
    `instances: 1`, never cluster for gateway).
@@ -86,7 +87,7 @@ is the v1 poller. Wiring an external scheduler for worker mode is out of scope v
 deploy <SHA-short> (prev <SHA-short>) — OK|FAILED at <step>
 migrations: <none|0005_... applied>
 pm2: service online, web online, gateway online (uptime …)
-health: service :3001/health 200, / 200, /api/v1/auth/me 401
+health: service :3443/health 200, / 200, /api/v1/auth/me 401
 rollback: scripts/rollback.sh <prev-SHA>
 ```
 
@@ -98,7 +99,7 @@ rollback: scripts/rollback.sh <prev-SHA>
 
 ## 9. Acceptance
 
-1. Cutover done via §3; VPS serves web + `/api/*` from one origin; gateway delivering jobs.
+1. Cutover done via §3; VPS serves web + `/api/*` from one origin (`https://kappa.shamah.dev`); gateway delivering jobs.
 2. A no-op deploy (same SHA) succeeds and prints a correct Brief.
 3. A failing deploy (e.g. bad SHA, failing typecheck) stops before touching the VPS / before reload.
 4. Rollback to previous SHA restores service within minutes; Brief shows the rollback SHA.

@@ -15,7 +15,7 @@
       "out_file": "../../logs/service-out.log",
       "env": {
         "NODE_ENV": "production",
-        "PORT": "3001",
+        "PORT": "3443",
         "DOTENV_CONFIG_PATH": "../../.env"
       }
     },
@@ -34,7 +34,7 @@
       "out_file": "../../logs/web-out.log",
       "env": {
         "NODE_ENV": "production",
-        "PORT": "3000"
+        "PORT": "3444"
       }
     },
     {
