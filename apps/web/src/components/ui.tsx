@@ -5,7 +5,10 @@ import { Selector } from '@astryxdesign/core/Selector';
 import { StatusDot as AstryxStatusDot } from '@astryxdesign/core/StatusDot';
 import { Tab, TabList } from '@astryxdesign/core/TabList';
 import { TextInput as AstryxTextInput } from '@astryxdesign/core/TextInput';
+import * as stylex from '@stylexjs/stylex';
 import type { ChangeEventHandler, MouseEventHandler, ReactNode } from 'react';
+import { loginUrl } from '../lib/api';
+import { ApiError, apiMessage } from '../lib/queries';
 
 type ButtonVariant = 'primary' | 'brand' | 'subtle' | 'danger' | 'dangerSubtle';
 
@@ -110,6 +113,25 @@ export function ErrorNote({ children }: { children: ReactNode }) {
 
 export function InfoNote({ children }: { children: ReactNode }) {
   return <Banner status="info" title={children} />;
+}
+
+const queryError = stylex.create({
+  row: { display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginTop: 12 },
+});
+
+/** Query failure banner; a stale Discord grant (409) gets a Reconnect button. */
+export function QueryError({ error }: { error: unknown }) {
+  if (!(error instanceof ApiError && error.isReconnectRequired)) {
+    return <ErrorNote>{apiMessage(error)}</ErrorNote>;
+  }
+  return (
+    <div>
+      <ErrorNote>Server data needs a fresh Discord login.</ErrorNote>
+      <div {...stylex.props(queryError.row)}>
+        <Button onClick={() => void (window.location.href = loginUrl)}>Reconnect Discord</Button>
+      </div>
+    </div>
+  );
 }
 
 export function Badge({

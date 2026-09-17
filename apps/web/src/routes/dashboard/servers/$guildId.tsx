@@ -8,8 +8,8 @@ import {
   SubscriptionsTable,
   type OpenPanel,
 } from '../../../components/subscriptions';
-import { ErrorNote, Tabs } from '../../../components/ui';
-import { apiMessage, useGuilds, useRequireAuth, useSubscriptions } from '../../../lib/queries';
+import { QueryError, Tabs } from '../../../components/ui';
+import { useGuilds, useRequireAuth, useSubscriptions } from '../../../lib/queries';
 
 export const Route = createFileRoute('/dashboard/servers/$guildId')({
   ssr: false,
@@ -57,7 +57,7 @@ function ServerDetailComponent() {
             <p {...stylex.props(detailStyles.stateLine)}>Loading…</p>
           ) : subs.isError ? (
             <div {...stylex.props(subStyles.errorGap)}>
-              <ErrorNote>{apiMessage(subs.error)}</ErrorNote>
+              <QueryError error={subs.error} />
             </div>
           ) : (
             <SubscriptionsTable

@@ -83,11 +83,13 @@ Servers (all require session):
 
 - `GET /api/v1/guilds` → `{ guilds: [{ id, name, icon, permissions }] }`: user's guilds ∩
   bot's guilds, filtered to ManageGuild/Administrator/owner, name-sorted. Tokens refreshed
-  inline when expired. Stale/absent grant → 409 `RECONNECT_REQUIRED` (re-login); Discord
-  failure → 502. Legacy `identify`-only sessions keep working for DM features.
+  inline when expired. Stale/absent grant — including a stored grant without the
+  `guilds` scope and any Discord 401/403 on the user token — → 409 `RECONNECT_REQUIRED`
+  (re-login); only bot-leg/transport/5xx Discord failures → 502. Legacy `identify`-only
+  sessions keep working for DM features.
 
 Subscriptions (all require session; authz per row: `guildId == dm:<uid> OR createdBy == <uid>`
-  wins locally, else live ManageGuild proof required, else 404):
+  wins locally, else live ManageGuild proof required; stale grant → 409, else 404):
 
 - `GET /api/v1/subscriptions` → `{ subscriptions: [...] }` (DM + createdBy-me, newest first).
 - `GET /api/v1/subscriptions?guild=<id>` → that server's subs (manage proof required;

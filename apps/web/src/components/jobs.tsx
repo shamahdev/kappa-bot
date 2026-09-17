@@ -1,9 +1,9 @@
 import { SUBSCRIPTION_SOURCES } from '@kappa/contracts';
 import * as stylex from '@stylexjs/stylex';
 import { useEffect, useState } from 'react';
-import { Badge, Button, ErrorNote, Select, TextInput } from './ui';
+import { Badge, Button, QueryError, Select, TextInput } from './ui';
 import { formatDate, subStyles } from './subscriptions';
-import { apiMessage, useJobs, type SubscriptionDtoType } from '../lib/queries';
+import { useJobs, type SubscriptionDtoType } from '../lib/queries';
 import { fonts, tokens } from '../theme.stylex';
 
 const PAGE_SIZE = 20;
@@ -102,7 +102,7 @@ export function JobsTable({
         <p {...stylex.props(subStyles.sub)}>Loading…</p>
       ) : jobs.isError ? (
         <div {...stylex.props(subStyles.errorGap)}>
-          <ErrorNote>{apiMessage(jobs.error)}</ErrorNote>
+          <QueryError error={jobs.error} />
         </div>
       ) : jobs.data.jobs.length === 0 ? (
         <div {...stylex.props(subStyles.tableScroll)}>

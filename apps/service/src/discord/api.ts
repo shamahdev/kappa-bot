@@ -3,6 +3,20 @@
 
 const API = 'https://discord.com/api/v10';
 
+/**
+ * Discord rejected the credentials (401/403): the user grant is dead,
+ * revoked, or lacks the scope — re-login is the only remedy. Callers map
+ * this to 409 RECONNECT_REQUIRED, never to a retryable 502.
+ */
+export class DiscordAuthError extends Error {
+  readonly discordStatus: 401 | 403;
+  constructor(discordStatus: 401 | 403, what: string) {
+    super(`discord ${what} rejected the token (http ${discordStatus})`);
+    this.name = 'DiscordAuthError';
+    this.discordStatus = discordStatus;
+  }
+}
+
 export type DiscordMe = {
   id: string;
   username: string;
@@ -135,11 +149,16 @@ export type DiscordGuildEntry = {
   permissions: string;
 };
 
-/** Lists the OAuth user's guilds (`guilds` scope). Throws on failure. */
+/**
+ * Lists the OAuth user's guilds (`guilds` scope). Throws DiscordAuthError
+ * when Discord rejects the token (grant predates the scope, was revoked,
+ * or expired unrefreshably); other failures throw a plain Error.
+ */
 export async function fetchUserGuilds(accessToken: string): Promise<DiscordGuildEntry[]> {
   const res = await fetch(`${API}/users/@me/guilds`, {
     headers: { authorization: `Bearer ${accessToken}` },
   });
+  if (res.status === 401 || res.status === 403) throw new DiscordAuthError(res.status, '/users/@me/guilds');
   if (!res.ok) throw new Error(`discord /users/@me/guilds failed (http ${res.status})`);
   const json = (await res.json()) as Array<{
     id?: unknown;

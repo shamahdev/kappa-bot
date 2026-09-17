@@ -2,6 +2,7 @@ import { and, eq } from 'drizzle-orm';
 import { discordConnections, type GatewayDb } from '@kappa/db';
 import type { ServiceConfig } from './config';
 import {
+  DiscordAuthError,
   fetchBotGuildIds,
   fetchUserGuilds,
   refreshAccessToken,
@@ -26,9 +27,10 @@ export function canManageGuild(entry: DiscordGuildEntry): boolean {
 
 /**
  * Usable user OAuth token, refreshing + persisting when expired (60s skew).
- * Returns null when the connection predates the `guilds` scope or the grant
- * is dead (revoked/refresh rejected) — the caller must answer 409
- * RECONNECT_REQUIRED. Discord transport/shape failures throw (caller: 502).
+ * Returns null when the connection predates the `guilds` scope, the stored
+ * grant lacks it, or the grant is dead (revoked/refresh rejected) — the
+ * caller must answer 409 RECONNECT_REQUIRED. Discord transport/shape
+ * failures throw (caller: 502).
  */
 export async function getUserAccessToken(
   db: GatewayDb,
@@ -42,6 +44,7 @@ export async function getUserAccessToken(
       and(eq(discordConnections.userId, uid), eq(discordConnections.provider, 'discord')),
     );
   if (!conn?.accessToken || !conn.refreshToken) return null;
+  if (!conn.scopes.split(' ').includes('guilds')) return null;
   if (conn.tokenExpiresAt && conn.tokenExpiresAt.getTime() - 60_000 > Date.now()) {
     return conn.accessToken;
   }
@@ -76,7 +79,8 @@ export type ManageableGuild = {
 /**
  * Guilds the user can manage subscriptions in: user's guilds ∩ bot's guilds,
  * filtered to manage permission. Returns null when a re-login is required
- * (see getUserAccessToken). Discord failures throw (caller: 502).
+ * (see getUserAccessToken, or Discord rejecting the user token with 401/403
+ * — only the bot leg and genuine transport/shape failures throw, caller: 502).
  */
 export async function listManageableGuilds(
   db: GatewayDb,
@@ -85,10 +89,17 @@ export async function listManageableGuilds(
 ): Promise<ManageableGuild[] | null> {
   const accessToken = await getUserAccessToken(db, config, uid);
   if (!accessToken) return null;
-  const [userGuilds, botGuilds] = await Promise.all([
+  const [userSettled, botSettled] = await Promise.allSettled([
     fetchUserGuilds(accessToken),
     fetchBotGuildIds(config.discordToken),
   ]);
+  if (userSettled.status === 'rejected') {
+    if (userSettled.reason instanceof DiscordAuthError) return null;
+    throw userSettled.reason;
+  }
+  if (botSettled.status === 'rejected') throw botSettled.reason;
+  const userGuilds = userSettled.value;
+  const botGuilds = botSettled.value;
   return userGuilds
     .filter((g) => botGuilds.has(g.id) && canManageGuild(g))
     .map((g) => ({ id: g.id, name: g.name, icon: g.icon, permissions: g.permissions }))

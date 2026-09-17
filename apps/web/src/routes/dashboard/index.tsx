@@ -1,14 +1,8 @@
 import { Link, createFileRoute } from '@tanstack/react-router';
 import * as stylex from '@stylexjs/stylex';
-import { Button, ErrorNote } from '../../components/ui';
-import { guildIconUrl, loginUrl, userAvatarUrl } from '../../lib/api';
-import {
-  ApiError,
-  apiMessage,
-  useGuilds,
-  useRequireAuth,
-  useSubscriptions,
-} from '../../lib/queries';
+import { QueryError } from '../../components/ui';
+import { guildIconUrl, userAvatarUrl } from '../../lib/api';
+import { useGuilds, useRequireAuth, useSubscriptions } from '../../lib/queries';
 import { fonts, tokens } from '../../theme.stylex';
 
 export const Route = createFileRoute('/dashboard/')({
@@ -57,7 +51,6 @@ const page = stylex.create({
   cardSub: { fontFamily: fonts.sans, fontSize: 13, color: tokens.muted, lineHeight: '20px', marginTop: 2 },
   stateLine: { fontFamily: fonts.sans, fontSize: 14, color: tokens.muted, paddingTop: 24, paddingBottom: 24 },
   errorGap: { marginTop: 12 },
-  reconnectRow: { display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginTop: 12 },
 });
 
 function countsLine(active: number, total: number): string {
@@ -128,20 +121,9 @@ function DashboardComponent() {
 
       {guilds.isPending ? <p {...stylex.props(page.stateLine)}>Loading servers…</p> : null}
       {guilds.isError ? (
-        guilds.error instanceof ApiError && guilds.error.isReconnectRequired ? (
-          <div>
-            <p {...stylex.props(page.stateLine)}>Server cards need a fresh Discord login.</p>
-            <div {...stylex.props(page.reconnectRow)}>
-              <Button onClick={() => void (window.location.href = loginUrl)}>
-                Reconnect Discord
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div {...stylex.props(page.errorGap)}>
-            <ErrorNote>{apiMessage(guilds.error)}</ErrorNote>
-          </div>
-        )
+        <div {...stylex.props(page.errorGap)}>
+          <QueryError error={guilds.error} />
+        </div>
       ) : null}
     </div>
   );

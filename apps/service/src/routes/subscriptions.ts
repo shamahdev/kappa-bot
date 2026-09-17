@@ -31,13 +31,14 @@ function toDto(row: SubscriptionRow): SubscriptionDtoType {
 /**
  * Row authz: `guildId == dm:<uid> OR createdBy == <uid>` wins without any
  * Discord call; other guild-scope rows require live ManageGuild proof.
- * Stale/absent grant → null (404); Discord transport failures throw (502).
+ * Stale/absent grant → 'reconnect' (409); no row / no access → null (404).
+ * Discord transport failures throw (502).
  */
 async function loadOwned(
   deps: RouteDeps,
   id: number,
   uid: string,
-): Promise<SubscriptionRow | null> {
+): Promise<SubscriptionRow | 'reconnect' | null> {
   const [row] = await deps.db
     .select()
     .from(subscriptions)
@@ -46,7 +47,8 @@ async function loadOwned(
   if (row.guildId === dmScope(uid) || row.createdBy === uid) return row;
   if (row.guildId.startsWith('dm:')) return null; // someone else's DMs, never
   const guilds = await listManageableGuilds(deps.db, deps.config, uid);
-  return guilds?.some((g) => g.id === row.guildId) ? row : null;
+  if (!guilds) return 'reconnect';
+  return guilds.some((g) => g.id === row.guildId) ? row : null;
 }
 
 /** One-line sub summary for the delete-subscription Brief (spec §7). */
@@ -161,6 +163,9 @@ export function subscriptionRoutes(deps: RouteDeps) {
           log.warn({ error, userId: user.discordId }, 'subscription authz discord failure');
           return status(502, err('OAUTH_FAILED', 'discord request failed, try again later'));
         }
+        if (row === 'reconnect') {
+          return status(409, err('RECONNECT_REQUIRED', 'reconnect Discord to manage servers'));
+        }
         if (!row) return status(404, err('NOT_FOUND', 'subscription not found'));
         const patch: Partial<Pick<SubscriptionRow, 'keywords' | 'location' | 'isActive' | 'retentionDays'>> = {};
         if (body.keywords !== undefined) {
@@ -210,6 +215,9 @@ export function subscriptionRoutes(deps: RouteDeps) {
         } catch (error) {
           log.warn({ error, userId: user.discordId }, 'subscription authz discord failure');
           return status(502, err('OAUTH_FAILED', 'discord request failed, try again later'));
+        }
+        if (row === 'reconnect') {
+          return status(409, err('RECONNECT_REQUIRED', 'reconnect Discord to manage servers'));
         }
         if (!row) return status(404, err('NOT_FOUND', 'subscription not found'));
         const summary = summarize(row);
