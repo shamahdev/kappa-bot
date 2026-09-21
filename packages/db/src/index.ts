@@ -13,3 +13,4 @@ export {
 } from './schema/job-subscription';
 export { users, discordConnections, sessions } from './schema/auth';
 export type { JobPosting } from './types';
+export { extractPdfText } from './pdf';

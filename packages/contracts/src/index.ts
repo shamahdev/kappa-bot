@@ -34,5 +34,5 @@ export type {
   AccountSummary as AccountSummaryType,
   DeleteAccountResponse as DeleteAccountResponseType,
 } from './account';
-export { CV_MAX_CHARS, CV_MAX_FILENAME, CV_MIN_CHARS, CvDto, SaveCvBody } from './cv';
+export { CV_MAX_CHARS, CV_MAX_FILENAME, CV_MAX_PDF_BYTES, CV_MIN_CHARS, CvDto, SaveCvBody } from './cv';
 export type { CvDto as CvDtoType, SaveCvBody as SaveCvBodyType } from './cv';

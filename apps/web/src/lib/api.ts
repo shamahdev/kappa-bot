@@ -245,6 +245,14 @@ export function deleteCv(): Promise<CvDtoType> {
   return runApi(request(HttpClientRequest.del(PATHS.cv), CvDto));
 }
 
+export function saveCvFile(file: File): Promise<CvDtoType> {
+  const form = new FormData();
+  form.append('file', file);
+  return runApi(
+    request(HttpClientRequest.bodyFormData(HttpClientRequest.post(PATHS.cvFile), form), CvDto),
+  );
+}
+
 export function fetchAccountSummary(): Promise<AccountSummaryType> {
   return runApi(request(HttpClientRequest.get(PATHS.accountSummary), AccountSummary));
 }

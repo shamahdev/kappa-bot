@@ -15,6 +15,7 @@ import {
   fetchSubscriptions,
   logout,
   saveCv,
+  saveCvFile,
   updateSubscription,
   type CvDtoType,
   type GuildDtoType,
@@ -136,6 +137,16 @@ export function useSaveCv() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (input: SaveCvBodyType) => saveCv(input),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: queryKeys.cv });
+    },
+  });
+}
+
+export function useSaveCvFile() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => saveCvFile(file),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: queryKeys.cv });
     },

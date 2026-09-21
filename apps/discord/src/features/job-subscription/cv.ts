@@ -5,7 +5,7 @@ import type { GatewayDb } from '../../core/feature';
 // Keep in sync with @kappa/contracts cv.ts (discord can't import contracts).
 export const CV_MIN_CHARS = 200;
 export const CV_MAX_CHARS = 20000;
-export const CV_MAX_UPLOAD_BYTES = 512_000;
+export const CV_MAX_UPLOAD_BYTES = 2_000_000; // PDFs carry fonts/images; mirrors CV_MAX_PDF_BYTES
 
 export type CvProfile = typeof cvProfiles.$inferSelect;
 
@@ -61,14 +61,11 @@ export async function deleteCv(db: GatewayDb, discordUserId: string): Promise<bo
   return deleted.length > 0;
 }
 
-/** `.txt`/`.md` only v1 (PDF needs a parser — deferred, see reply text). */
+/** `.pdf` (text-extracted), `.txt`/`.md` (read directly). */
 export function cvFilenameError(name: string): string | null {
   const lower = name.toLowerCase();
-  if (lower.endsWith('.txt') || lower.endsWith('.md')) return null;
-  if (lower.endsWith('.pdf')) {
-    return 'PDF CVs are not supported yet — upload a `.txt`/`.md` file or paste your CV text on the dashboard.';
-  }
-  return 'Upload a `.txt` or `.md` file.';
+  if (lower.endsWith('.pdf') || lower.endsWith('.txt') || lower.endsWith('.md')) return null;
+  return 'Upload a `.pdf`, `.txt`, or `.md` file.';
 }
 
 export function cvTextError(text: string): string | null {

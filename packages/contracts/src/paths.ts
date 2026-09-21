@@ -17,6 +17,7 @@ export const PATHS = {
   accountSummary: `${API_V1}/account/summary`,
   account: `${API_V1}/account`,
   cv: `${API_V1}/cv`,
+  cvFile: `${API_V1}/cv/file`,
 } as const;
 
 /** Session cookie name (opaque token; HttpOnly, set by service only). */

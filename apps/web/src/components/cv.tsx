@@ -1,8 +1,8 @@
-import { CV_MAX_CHARS, CV_MIN_CHARS } from '@kappa/contracts';
+import { CV_MAX_CHARS, CV_MAX_PDF_BYTES, CV_MIN_CHARS } from '@kappa/contracts';
 import * as stylex from '@stylexjs/stylex';
 import { useState } from 'react';
 import { fonts, tokens } from '../theme.stylex';
-import { apiMessage, useCv, useDeleteCv, useSaveCv } from '../lib/queries';
+import { apiMessage, useCv, useDeleteCv, useSaveCv, useSaveCvFile } from '../lib/queries';
 import { formatDate } from './subscriptions';
 import { Button, ErrorNote, QueryError } from './ui';
 
@@ -40,6 +40,7 @@ export function CvPanel() {
   const cv = useCv(true);
   const save = useSaveCv();
   const remove = useDeleteCv();
+  const upload = useSaveCvFile();
   const [draft, setDraft] = useState<string | null>(null); // null = pristine stored text
   const [filename, setFilename] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -51,18 +52,24 @@ export function CvPanel() {
   const shown = draft ?? stored;
   const count = shown.trim().length;
   const valid = count >= CV_MIN_CHARS && count <= CV_MAX_CHARS;
-  const busy = save.isPending || remove.isPending;
+  const busy = save.isPending || remove.isPending || upload.isPending;
 
   const onFile = (file: File | undefined) => {
     setFileError(null);
     if (!file) return;
     const lower = file.name.toLowerCase();
+    // PDFs are parsed server-side (binary can't load into the textarea).
+    if (lower.endsWith('.pdf')) {
+      if (file.size > CV_MAX_PDF_BYTES) {
+        setFileError('That PDF is too big — max 2MB.');
+        return;
+      }
+      upload.reset();
+      upload.mutate(file);
+      return;
+    }
     if (!lower.endsWith('.txt') && !lower.endsWith('.md')) {
-      setFileError(
-        lower.endsWith('.pdf')
-          ? 'PDF CVs are not supported yet — upload .txt/.md or paste your text.'
-          : 'Upload a .txt or .md file.',
-      );
+      setFileError('Upload a .pdf, .txt, or .md file.');
       return;
     }
     if (file.size > CV_MAX_UPLOAD_BYTES) {
@@ -133,21 +140,23 @@ export function CvPanel() {
       <div {...stylex.props(cvStyles.row)}>
         <input
           {...stylex.props(cvStyles.file)}
+          key={cv.data?.updatedAt ?? 'none'}
           type="file"
-          accept=".txt,.md,text/plain,text/markdown"
+          accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown"
           onChange={(e) => onFile(e.target.files?.[0])}
           disabled={busy}
           aria-label="Upload CV file"
         />
+        {upload.isPending ? <span {...stylex.props(cvStyles.status)}>Uploading…</span> : null}
       </div>
       {fileError ? (
         <div {...stylex.props(cvStyles.errorGap)}>
           <ErrorNote>{fileError}</ErrorNote>
         </div>
       ) : null}
-      {save.isError || remove.isError ? (
+      {save.isError || remove.isError || upload.isError ? (
         <div {...stylex.props(cvStyles.errorGap)}>
-          <ErrorNote>{apiMessage(save.error ?? remove.error)}</ErrorNote>
+          <ErrorNote>{apiMessage(save.error ?? remove.error ?? upload.error)}</ErrorNote>
         </div>
       ) : null}
       <div {...stylex.props(cvStyles.buttons)}>

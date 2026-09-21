@@ -13,7 +13,8 @@
   },
   "dependencies": {
     "drizzle-orm": "0.45.2",
-    "pg": "8.11.5"
+    "pg": "8.11.5",
+    "unpdf": "^1.8.1"
   },
   "devDependencies": {
     "@types/pg": "8.11.6",

@@ -97,7 +97,7 @@ const jobsCommand = new SlashCommandBuilder()
       .setName('cv_upload')
       .setDescription('Upload your CV for AI match scores (DM only)')
       .addAttachmentOption((o) =>
-        o.setName('file').setDescription('Your CV as a .txt or .md file').setRequired(true),
+        o.setName('file').setDescription('Your CV (.pdf, .txt, or .md)').setRequired(true),
       ),
   )
   .addSubcommand((s) =>

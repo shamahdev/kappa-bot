@@ -1,4 +1,5 @@
 import { EmbedBuilder, type ChatInputCommandInteraction } from 'discord.js';
+import { extractPdfText } from '@kappa/db';
 import type { FeatureContext } from '../../../core/feature';
 import { errorEmbed, isDMInteraction } from './_shared';
 import {
@@ -30,7 +31,7 @@ export async function executeCvUpload(
 
   if (file.size > CV_MAX_UPLOAD_BYTES) {
     await interaction.editReply({
-      embeds: [errorEmbed(`That file is too big (${Math.round(file.size / 1024)}KB) — max 500KB.`)],
+      embeds: [errorEmbed(`That file is too big (${Math.round(file.size / 1024)}KB) — max 2MB.`)],
     });
     return;
   }
@@ -39,15 +40,22 @@ export async function executeCvUpload(
     await interaction.editReply({ embeds: [errorEmbed(nameError)] });
     return;
   }
+  const isPdf = file.name.toLowerCase().endsWith('.pdf');
   let text: string;
   try {
     const res = await fetch(file.url);
     if (!res.ok) throw new Error(`CDN ${res.status}`);
-    text = new TextDecoder('utf-8', { fatal: true }).decode(await res.arrayBuffer()).trim();
-  } catch {
-    await interaction.editReply({
-      embeds: [errorEmbed("Couldn't read that file — try re-uploading a plain `.txt` file.")],
-    });
+    const bytes = await res.arrayBuffer();
+    text = isPdf
+      ? await extractPdfText(new Uint8Array(bytes))
+      : new TextDecoder('utf-8', { fatal: true }).decode(bytes).trim();
+  } catch (e) {
+    // PDF extraction throws user-facing messages; text decode errors don't.
+    const message =
+      isPdf && e instanceof Error
+        ? e.message
+        : "Couldn't read that file — try re-uploading a plain `.txt` file.";
+    await interaction.editReply({ embeds: [errorEmbed(message)] });
     return;
   }
   const textError = cvTextError(text);
@@ -84,7 +92,7 @@ export async function executeCvStatus(
         new EmbedBuilder()
           .setColor(0x3f6b55)
           .setTitle('No CV yet')
-          .setDescription('Upload one with `/jobs cv_upload` (`.txt`/`.md`) to get AI match scores on your DM job cards.'),
+          .setDescription('Upload one with `/jobs cv_upload` (`.pdf`/`.txt`/`.md`) to get AI match scores on your DM job cards.'),
       ],
     });
     return;

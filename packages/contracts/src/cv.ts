@@ -6,6 +6,7 @@ import { Schema } from 'effect';
 export const CV_MIN_CHARS = 200;
 export const CV_MAX_CHARS = 20000;
 export const CV_MAX_FILENAME = 255;
+export const CV_MAX_PDF_BYTES = 2_000_000;
 
 // Owner-only view: GET echoes the stored text so the dashboard can edit it.
 export const CvDto = Schema.Struct({
