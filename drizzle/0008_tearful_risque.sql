@@ -1,0 +1,1 @@
+ALTER TABLE "subscriptions" ALTER COLUMN "retention_days" SET DEFAULT 14;

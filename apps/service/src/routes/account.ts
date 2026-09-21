@@ -2,6 +2,7 @@ import { Elysia } from 'elysia';
 import { and, count, eq, gt, inArray, ne } from 'drizzle-orm';
 import {
   channels,
+  cvProfiles,
   deliveryMessages,
   discordConnections,
   guilds,
@@ -75,6 +76,7 @@ export function accountRoutes(deps: RouteDeps) {
         await db.delete(deliveryMessages).where(inArray(deliveryMessages.channelId, dmChannelIds));
       }
       await db.delete(subscriptions).where(eq(subscriptions.createdBy, uid));
+      await db.delete(cvProfiles).where(eq(cvProfiles.discordId, uid)); // personal CV (no FK — explicit)
       await db.delete(users).where(eq(users.discordId, uid));
       try {
         await revokeDiscordToken({

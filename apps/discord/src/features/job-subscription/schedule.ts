@@ -3,11 +3,13 @@
 // last tick, else fan out to matching subs with insert-first dedup, then
 // enforce per-subscription seen_jobs TTL (ADR-0003).
 import { createHash } from 'node:crypto';
-import { eq, lt, notInArray, sql } from 'drizzle-orm';
+import { eq, lt, notExists, notInArray, sql } from 'drizzle-orm';
 import { incCounter, setGauge } from '../../core/metrics';
 import type { FeatureContext } from '../../core/feature';
-import { botConfig, deliveryMessages, fingerprintSnapshots, seenJobs, subscriptions } from '@kappa/db';
+import { botConfig, deliveryMessages, fingerprintSnapshots, jobs as jobRows, seenJobs, subscriptions } from '@kappa/db';
 import { recordDelivery } from './events/reply';
+import { ensureJobIds, jobKey, storeMatchScore } from './jobStore';
+import { loadCvTextForScope } from './cv';
 import { linkedinCircuitCount, pollSources, searchJobPostings } from './adapter';
 import { embedsForDelivery, formatDeliveryTitle, renderJobPostingCard, type DeliveryItem } from './embed';
 import type { FingerprintQuery, JobPosting } from './types';
@@ -54,6 +56,7 @@ async function collectIfNew(
   ctx: FeatureContext,
   sub: Subscription,
   job: JobPosting,
+  jobId: number | null,
 ): Promise<DeliveryItem | null> {
   const inserted = await ctx.db
     .insert(seenJobs)
@@ -63,11 +66,12 @@ async function collectIfNew(
       externalId: job.id,
       url: job.url,
       snapshot: { title: job.position, company: job.company, location: job.location },
+      jobId,
     })
     .onConflictDoNothing()
     .returning({ id: seenJobs.id });
   if (inserted.length === 0) return null; // already seen (covers horizontal duplicates)
-  return { job };
+  return { job, seenId: inserted[0]!.id };
 }
 
 function deliveryHeader(sub: Subscription, count: number, itemSource?: string): string {
@@ -177,8 +181,13 @@ export async function flushSub(
     const keyword = sub.keywords;
     if (items.length === 1) {
       const job = items[0]!.job;
-      const card = await renderJobPostingCard(ctx.log, job, keyword);
-      await ctx.deliverMessage(sub.channelId, { embeds: [card.toJSON()] });
+      // Personal-only: DM subs resolve the owner's CV; guild subs get none.
+      // (Multi-item lists skip scoring — the reply-by-number card scores.)
+      const cvText = await loadCvTextForScope(ctx.db, sub.guildId);
+      const { embed, match } = await renderJobPostingCard(ctx, job, keyword, cvText ? { cvText } : undefined);
+      await ctx.deliverMessage(sub.channelId, { embeds: [embed.toJSON()] });
+      const seenId = items[0]?.seenId;
+      if (match && seenId !== undefined) await storeMatchScore(ctx.log, ctx.db, seenId, match);
       incCounter('jobs_delivered_total', { source: job.source });
       ctx.log.info({ feature: 'job-subscription', sub: sub.id, single: true }, 'delivered single');
       return 1;
@@ -214,6 +223,14 @@ async function enforceTtl(ctx: FeatureContext): Promise<void> {
   await ctx.db
     .delete(deliveryMessages)
     .where(lt(deliveryMessages.createdAt, new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)));
+  // Drop shared posting rows no delivery references anymore.
+  await ctx.db
+    .delete(jobRows)
+    .where(
+      notExists(
+        ctx.db.select({ id: seenJobs.id }).from(seenJobs).where(eq(seenJobs.jobId, jobRows.id)),
+      ),
+    );
 }
 
 export type PollResult = {
@@ -272,7 +289,7 @@ export async function pollSubscriptions(
     const listingHash = listingHashFor(jobs);
     if (isFullTick) {
       const snapshot = await readSnapshot(ctx, key);
-      const minRetention = Math.min(...group.subs.map((sub) => sub.retentionDays ?? 30));
+      const minRetention = Math.min(...group.subs.map((sub) => sub.retentionDays ?? 14));
       if (shouldSkipGroup(snapshot, listingHash, subIds, minRetention)) {
         fingerprintsSkipped += 1;
         incCounter('fingerprint_skipped_total', { source: group.source });
@@ -283,11 +300,22 @@ export async function pollSubscriptions(
         continue;
       }
     }
+    // One shared jobs row per posting; failures fall back to null jobIds.
+    let jobIds = new Map<string, number>();
+    try {
+      jobIds = await ensureJobIds(ctx.db, jobs);
+    } catch (e) {
+      ctx.log.warn(
+        { feature: 'job-subscription', source: group.source, fingerprint: key, err: e },
+        'jobs upsert failed (collecting without links)',
+      );
+    }
     const pending = new Map<number, DeliveryItem[]>();
     for (const job of jobs) {
+      const jobId = jobIds.get(jobKey(job.source, job.id)) ?? null;
       for (const sub of group.subs) {
         try {
-          const item = await collectIfNew(ctx, sub, job);
+          const item = await collectIfNew(ctx, sub, job, jobId);
           if (!item) continue;
           const list = pending.get(sub.id);
           if (list) list.push(item);

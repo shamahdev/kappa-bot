@@ -1,10 +1,9 @@
-// Groq AI enrichment for single-job cards (owner-opted, via AI SDK).
-// summarizeJob condenses a posting description into a short seeker-focused
-// summary; withAiSummary swaps it into a JobDetail. Never blocks delivery:
-// no key, empty input, or any failure returns the input unchanged/null.
+// Groq AI enrichment for single-job cards (via AI SDK). summarizeJob condenses
+// a posting description into a short seeker-focused summary (cached per
+// posting in `jobs` by embed.ts); scoreJobMatch scores a posting against a
+// CV. Never blocks delivery: no key, empty input, or any failure returns null.
 import { generateText } from 'ai';
 import { createGroq } from '@ai-sdk/groq';
-import type { JobDetail, JobPosting } from './types';
 
 const MAX_INPUT = 6000; // chars of description sent to the model
 const MAX_SUMMARY = 1500; // chars kept for the embed
@@ -86,24 +85,74 @@ export function stripTitleHeading(summary: string, title: string, company: strin
   return summary;
 }
 
-/** Swap an AI summary into the card detail; falls back to the base detail. */
-export async function withAiSummary(
-  job: Pick<JobPosting, 'position' | 'company' | 'description' | 'salary' | 'location'>,
-  base: JobDetail | null,
-): Promise<JobDetail | null> {
-  // Prefer the fetched detail; fall back to the list-row description (e.g. a
-  // failed LinkedIn detail fetch for a row that already carries text).
-  const input =
-    base?.description
-      ? base
-      : job.description
-        ? { description: job.description, salary: job.salary ?? null, closed: false }
-        : base;
-  if (!input?.description) return base;
-  const summary = await summarizeJob(job.position, job.company, input.description, {
-    salary: input.salary ?? job.salary ?? null,
-    location: job.location ?? null,
-  });
-  if (!summary) return input;
-  return { ...input, description: summary };
+/** 0–100 fit of one posting against the user's CV, plus a one-line reason. */
+export type JobMatch = { score: number; reason: string };
+
+const MAX_CV_INPUT = 4000; // chars of CV sent to the model
+const MAX_JOB_INPUT = 4000; // chars of posting sent to the model
+const MAX_REASON = 140; // chars kept for the embed field
+
+const MATCH_SYSTEM =
+  'You score how well a job posting fits a candidate. Reply with ONLY one JSON object, ' +
+  'no preamble, no markdown: {"score": <0-100 integer>, "reason": "<one line, max 140 chars, ' +
+  'naming the decisive overlap or gap>"}. Score the fit honestly: required skills and ' +
+  'experience dominate; location and seniority are secondary.';
+
+/**
+ * Parse a model reply into a JobMatch. Tolerates surrounding prose by
+ * extracting the first {...} block; clamps the score, trims the reason.
+ */
+export function parseMatchJson(raw: string): JobMatch | null {
+  const start = raw.indexOf('{');
+  const end = raw.lastIndexOf('}');
+  if (start < 0 || end <= start) return null;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw.slice(start, end + 1));
+  } catch {
+    return null;
+  }
+  if (typeof parsed !== 'object' || parsed === null) return null;
+  const { score, reason } = parsed as { score?: unknown; reason?: unknown };
+  if (typeof score !== 'number' || !Number.isFinite(score)) return null;
+  if (typeof reason !== 'string' || !reason.trim()) return null;
+  const clean = reason.trim().replace(/\s+/g, ' ');
+  return {
+    score: Math.min(100, Math.max(0, Math.round(score))),
+    reason: clean.length > MAX_REASON ? `${clean.slice(0, MAX_REASON).trimEnd()}…` : clean,
+  };
+}
+
+/**
+ * Score one posting against the user's CV. Personal-only callers pass a CV;
+ * never throws and never blocks delivery (null on no key/empty/failure).
+ */
+export async function scoreJobMatch(
+  cvText: string,
+  title: string,
+  company: string,
+  description: string,
+  meta?: { location?: string | null },
+): Promise<JobMatch | null> {
+  const apiKey = process.env.GROQ_API_KEY;
+  const job = description.trim();
+  if (!apiKey || !cvText.trim() || !job) return null;
+  try {
+    const groq = createGroq({ apiKey });
+    const location = meta?.location ? `Location: ${meta.location}\n` : '';
+    const { text } = await generateText({
+      model: groq(MODEL),
+      system: MATCH_SYSTEM,
+      prompt:
+        `Job: ${title} @ ${company}\n${location}\n` +
+        `Posting:\n${job.slice(0, MAX_JOB_INPUT)}\n\n` +
+        `Candidate CV:\n${cvText.slice(0, MAX_CV_INPUT)}`,
+      maxOutputTokens: 200,
+      temperature: 0.1,
+      abortSignal: AbortSignal.timeout(30_000),
+    });
+    return parseMatchJson(text);
+  } catch {
+    return null;
+  }
 }

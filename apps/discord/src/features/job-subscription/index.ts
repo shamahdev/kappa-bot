@@ -14,6 +14,7 @@ import { executeConfig } from './commands/config';
 import { executeFetch } from './commands/fetch';
 import { executeShowLatest } from './commands/latest';
 import { executeHealth } from './commands/health';
+import { executeCvRemove, executeCvStatus, executeCvUpload } from './commands/cv';
 import { onGuildDelete } from './events/guildDelete';
 import { onChannelDelete } from './events/channelDelete';
 import { onComponent } from './events/components';
@@ -75,7 +76,7 @@ const jobsCommand = new SlashCommandBuilder()
     s
       .setName('config')
       .setDescription('Bot/job config (retention, poll interval)')
-      .addIntegerOption((o) => o.setName('retention_days').setDescription('Seen-job retention (30 default)'))
+      .addIntegerOption((o) => o.setName('retention_days').setDescription('Seen-job retention (14 default)'))
       .addIntegerOption((o) => o.setName('poll_interval_minutes').setDescription('Global poll interval (30 default)')),
   )
   .addSubcommand((s) =>
@@ -90,6 +91,20 @@ const jobsCommand = new SlashCommandBuilder()
   )
   .addSubcommand((s) =>
     s.setName('health').setDescription('Check which job sources are active'),
+  )
+  .addSubcommand((s) =>
+    s
+      .setName('cv_upload')
+      .setDescription('Upload your CV for AI match scores (DM only)')
+      .addAttachmentOption((o) =>
+        o.setName('file').setDescription('Your CV as a .txt or .md file').setRequired(true),
+      ),
+  )
+  .addSubcommand((s) =>
+    s.setName('cv_status').setDescription('Show your saved CV (DM only)'),
+  )
+  .addSubcommand((s) =>
+    s.setName('cv_remove').setDescription('Remove your saved CV (DM only)'),
   );
 
 async function executeJobs(interaction: ChatInputCommandInteraction, ctx: FeatureContext): Promise<void> {
@@ -108,6 +123,12 @@ async function executeJobs(interaction: ChatInputCommandInteraction, ctx: Featur
       return executeShowLatest(interaction, ctx);
     case 'health':
       return executeHealth(interaction, ctx);
+    case 'cv_upload':
+      return executeCvUpload(interaction, ctx);
+    case 'cv_status':
+      return executeCvStatus(interaction, ctx);
+    case 'cv_remove':
+      return executeCvRemove(interaction, ctx);
     default:
       await interaction.reply({ content: 'Unknown subcommand.' });
   }

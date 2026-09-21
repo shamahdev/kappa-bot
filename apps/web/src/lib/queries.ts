@@ -5,26 +5,32 @@ import {
   ApiError,
   createSubscription,
   deleteAccount,
+  deleteCv,
   deleteSubscription,
   fetchAccountSummary,
+  fetchCv,
   fetchGuilds,
   fetchJobs,
   fetchMe,
   fetchSubscriptions,
   logout,
+  saveCv,
   updateSubscription,
+  type CvDtoType,
   type GuildDtoType,
   type JobDtoType,
   type JobsParams,
+  type SaveCvBodyType,
   type SubscriptionDtoType,
   type UpdateSubscriptionBodyType,
 } from './api';
 
 export { ApiError };
-export type { GuildDtoType, JobDtoType, JobsParams, SubscriptionDtoType };
+export type { CvDtoType, GuildDtoType, JobDtoType, JobsParams, SaveCvBodyType, SubscriptionDtoType };
 
 export const queryKeys = {
   me: ['me'] as const,
+  cv: ['cv'] as const,
   subscriptions: ['subscriptions'] as const,
   subscriptionList: (guildId?: string) => ['subscriptions', guildId ?? 'mine'] as const,
   guilds: ['guilds'] as const,
@@ -113,6 +119,35 @@ export function useDeleteSubscription() {
     mutationFn: (id: number) => deleteSubscription(id),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: queryKeys.subscriptions });
+    },
+  });
+}
+
+export function useCv(enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.cv,
+    queryFn: fetchCv,
+    enabled,
+    retry: false,
+  });
+}
+
+export function useSaveCv() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: SaveCvBodyType) => saveCv(input),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: queryKeys.cv });
+    },
+  });
+}
+
+export function useDeleteCv() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: deleteCv,
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: queryKeys.cv });
     },
   });
 }

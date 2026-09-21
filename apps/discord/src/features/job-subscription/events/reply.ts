@@ -7,6 +7,8 @@
 import { eq } from 'drizzle-orm';
 import type { FeatureContext } from '../../../core/feature';
 import { flattenDeliveryItems, renderJobPostingCard, type DeliveryItem } from '../embed';
+import { loadCvText } from '../cv';
+import { storeMatchScoreForChannelDelivery } from '../jobStore';
 import { deliveryMessages } from '@kappa/db';
 
 const MAX_STORED = 200; // recent deliveries; oldest evicted first
@@ -79,7 +81,9 @@ async function loadDelivery(ctx: FeatureContext, messageId: string): Promise<Sto
 }
 
 type ReplyMessage = {
-  author?: { bot?: boolean } | null;
+  author?: { id?: string; bot?: boolean } | null;
+  guildId?: string | null;
+  channelId?: string | null;
   reference?: { messageId?: string | null } | null;
   content?: unknown;
   reply: (payload: unknown) => Promise<unknown>;
@@ -106,8 +110,26 @@ export async function onMessage(ctx: FeatureContext, interaction: unknown): Prom
   if (n < 1 || n > delivery.items.length) return;
 
   const job = delivery.items[n - 1]!.job;
+  // Personal-only: score in DMs for the replier's own CV; guild replies never score.
+  const cvText =
+    msg.guildId == null && msg.author?.id ? await loadCvText(ctx.db, msg.author.id) : null;
   try {
-    await msg.reply({ embeds: [(await renderJobPostingCard(ctx.log, job, delivery.keyword)).toJSON()] });
+    const { embed, match } = await renderJobPostingCard(
+      ctx,
+      job,
+      delivery.keyword,
+      cvText ? { cvText } : undefined,
+    );
+    if (match && msg.guildId == null && msg.author?.id && msg.channelId) {
+      await storeMatchScoreForChannelDelivery(ctx.log, ctx.db, {
+        channelId: msg.channelId,
+        userId: msg.author.id,
+        source: job.source,
+        externalId: job.id,
+        match,
+      });
+    }
+    await msg.reply({ embeds: [embed.toJSON()] });
   } catch (e) {
     ctx.log.warn({ feature: 'job-subscription', job: job.id, err: e }, 'reply detail failed');
     try {

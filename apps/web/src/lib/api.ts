@@ -9,22 +9,26 @@ import {
   AccountSummary,
   AuthMeResponse,
   CreateSubscriptionBody,
+  CvDto,
   DeleteAccountResponse,
   DeleteSubscriptionResponse,
   ErrorEnvelope,
   GuildsResponse,
   JobsResponse,
   PATHS,
+  SaveCvBody,
   SubscriptionsResponse,
   SubscriptionDto,
   UpdateSubscriptionBody,
   type AccountSummaryType,
   type AuthMeResponseType,
   type CreateSubscriptionBodyType,
+  type CvDtoType,
   type GuildDtoType,
   type GuildsResponseType,
   type JobDtoType,
   type JobsResponseType,
+  type SaveCvBodyType,
   type SubscriptionDtoType,
   type SubscriptionsResponseType,
   type UpdateSubscriptionBodyType,
@@ -33,9 +37,11 @@ import {
 export type {
   AccountSummaryType,
   CreateSubscriptionBodyType,
+  CvDtoType,
   GuildDtoType,
   JobDtoType,
   JobsResponseType,
+  SaveCvBodyType,
   SubscriptionDtoType,
   UpdateSubscriptionBodyType,
 };
@@ -219,6 +225,24 @@ export function deleteSubscription(id: number): Promise<string> {
   return runApi(
     request(HttpClientRequest.del(PATHS.subscriptionById(id)), DeleteSubscriptionResponse),
   ).then((res) => res.summary);
+}
+
+export function fetchCv(): Promise<CvDtoType> {
+  return runApi(request(HttpClientRequest.get(PATHS.cv), CvDto));
+}
+
+export function saveCv(input: SaveCvBodyType): Promise<CvDtoType> {
+  const body = Schema.encodeSync(SaveCvBody)(input);
+  return runApi(
+    Effect.flatMap(
+      withJsonBody(HttpClientRequest.put(PATHS.cv), body),
+      (req) => request(req, CvDto),
+    ),
+  );
+}
+
+export function deleteCv(): Promise<CvDtoType> {
+  return runApi(request(HttpClientRequest.del(PATHS.cv), CvDto));
 }
 
 export function fetchAccountSummary(): Promise<AccountSummaryType> {

@@ -50,6 +50,27 @@
       "when": 1789628115425,
       "tag": "0006_wise_mole_man",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1789966050002,
+      "tag": "0007_stormy_krista_starr",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1789974439135,
+      "tag": "0008_tearful_risque",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1789976629565,
+      "tag": "0009_orange_wolfpack",
+      "breakpoints": true
     }
   ]
 }

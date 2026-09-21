@@ -4,10 +4,12 @@ export {
   guilds,
   channels,
   subscriptions,
+  jobs,
   seenJobs,
   botConfig,
   fingerprintSnapshots,
   deliveryMessages,
+  cvProfiles,
 } from './schema/job-subscription';
 export { users, discordConnections, sessions } from './schema/auth';
 export type { JobPosting } from './types';

@@ -1,6 +1,7 @@
 import { Link, createFileRoute } from '@tanstack/react-router';
 import * as stylex from '@stylexjs/stylex';
 import { useState } from 'react';
+import { CvPanel } from '../../components/cv';
 import { JobsTable } from '../../components/jobs';
 import {
   CreateForm,
@@ -52,6 +53,12 @@ function DmDetailComponent() {
         </div>
       ) : (
         <div>
+          <section {...stylex.props(detailStyles.section)} aria-label="CV for match scores">
+            <h2 {...stylex.props(detailStyles.sectionTitle)}>CV for match scores</h2>
+            <div {...stylex.props(subStyles.panel)}>
+              <CvPanel />
+            </div>
+          </section>
           <section {...stylex.props(detailStyles.section)} aria-label="New DM subscription">
             <h2 {...stylex.props(detailStyles.sectionTitle)}>New</h2>
             <div {...stylex.props(subStyles.panel)}>

@@ -1,6 +1,6 @@
 import { Elysia, t } from 'elysia';
 import { and, count, desc, eq, sql, type SQL } from 'drizzle-orm';
-import { seenJobs, subscriptions } from '@kappa/db';
+import { jobs as jobRows, seenJobs, subscriptions } from '@kappa/db';
 import { SUBSCRIPTION_SOURCES } from '@kappa/contracts';
 import { readSessionToken } from '../core/cookies';
 import { err } from '../core/errors';
@@ -102,16 +102,18 @@ export function jobRoutes(deps: RouteDeps) {
       const rows = await db
         .select({
           job: seenJobs,
+          aiSummary: jobRows.aiSummary,
         })
         .from(seenJobs)
         .innerJoin(subscriptions, eq(seenJobs.subscriptionId, subscriptions.id))
+        .leftJoin(jobRows, eq(seenJobs.jobId, jobRows.id))
         .where(where)
         .orderBy(desc(seenJobs.firstSeenAt), desc(seenJobs.id))
         .limit(pageSize)
         .offset((page - 1) * pageSize);
 
       return {
-        jobs: rows.map(({ job }) => ({
+        jobs: rows.map(({ job, aiSummary }) => ({
           id: job.id,
           subscriptionId: job.subscriptionId,
           source: job.source,
@@ -121,6 +123,9 @@ export function jobRoutes(deps: RouteDeps) {
           company: job.snapshot?.company ?? null,
           location: job.snapshot?.location ?? null,
           firstSeenAt: job.firstSeenAt,
+          matchScore: job.matchScore,
+          matchReason: job.matchReason,
+          aiSummary,
         })),
         page,
         pageSize,

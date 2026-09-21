@@ -1,8 +1,10 @@
 // Production job embed renderer: clean, direct source JobPosting display without AI.
 import { EmbedBuilder } from 'discord.js';
+import type { GatewayDb } from '../../core/feature';
 import type { Logger } from '../../core/logger';
 import { fetchJobPostingDetail } from './adapter';
-import { withAiSummary } from './ai';
+import { scoreJobMatch, summarizeJob, type JobMatch } from './ai';
+import { readCachedSummary, storeCachedSummary } from './jobStore';
 import type { JobDetail, JobPosting } from './types';
 
 const FALLBACK_COLOR = 0x3f6b55;
@@ -45,6 +47,7 @@ export function embedForJobPosting(
   job: JobPosting,
   detail?: JobDetail | null,
   keyword?: string | null,
+  match?: JobMatch | null,
 ): EmbedBuilder {
   const headline = `${job.position} @ ${job.company}`.replace(/[\[\]]/g, '');
   const embed = new EmbedBuilder()
@@ -64,6 +67,10 @@ export function embedForJobPosting(
     embed.addFields({ name: 'Salary', value: salary, inline: true });
   }
 
+  if (match) {
+    embed.addFields({ name: 'Match', value: `${match.score}% — ${match.reason}` });
+  }
+
   const rawDesc = detail?.description ?? null;
   if (rawDesc) {
     embed.setDescription(formatCardDescription(rawDesc));
@@ -78,18 +85,60 @@ export function embedForJobPosting(
  * single-delivery, reply-by-number, and latest-JobPosting paths so the
  * search → detail → summary → render chain lives in exactly one module.
  */
-export async function renderJobPostingCard(
-  log: Logger,
+export type RenderedCard = { embed: EmbedBuilder; match: JobMatch | null };
+
+/**
+ * Card detail with a cached AI summary: the summary is computed once per
+ * posting into `jobs` and reused by every later render (delivery, reply,
+ * latest). Falls back to the unenriched detail when nothing is available.
+ */
+async function detailWithCachedSummary(
+  ctx: { log: Logger; db: GatewayDb },
   job: JobPosting,
-  keyword?: string | null,
-): Promise<EmbedBuilder> {
+): Promise<JobDetail | null> {
   let detail: JobDetail | null = null;
   try {
-    detail = await withAiSummary(job, await fetchJobPostingDetail(job));
+    detail = await fetchJobPostingDetail(job);
   } catch (e) {
-    log.warn({ feature: 'job-subscription', job: job.id, err: e }, 'detail failed (card-only)');
+    ctx.log.warn({ feature: 'job-subscription', job: job.id, err: e }, 'detail failed (card-only, cached)');
   }
-  return embedForJobPosting(job, detail, keyword);
+  // Prefer the fetched detail; fall back to the list-row description (e.g. a
+  // failed LinkedIn detail fetch for a row that already carries text).
+  const input =
+    detail?.description
+      ? detail
+      : job.description
+        ? { description: job.description, salary: job.salary ?? null, closed: false }
+        : null;
+  if (!input?.description) return detail;
+  const cached = await readCachedSummary(ctx.db, job.source, job.id);
+  if (cached) return { ...input, description: cached };
+  const summary = await summarizeJob(job.position, job.company, input.description, {
+    salary: input.salary ?? job.salary ?? null,
+    location: job.location ?? null,
+  });
+  if (!summary) return input;
+  await storeCachedSummary(ctx.log, ctx.db, job, summary);
+  return { ...input, description: summary };
+}
+
+export async function renderJobPostingCard(
+  ctx: { log: Logger; db: GatewayDb },
+  job: JobPosting,
+  keyword?: string | null,
+  opts?: { cvText?: string | null },
+): Promise<RenderedCard> {
+  const detail = await detailWithCachedSummary(ctx, job);
+  // Personal-only: only DM callers pass a CV; scoring never blocks the card.
+  let match: JobMatch | null = null;
+  const cvText = opts?.cvText?.trim();
+  const desc = detail?.description ?? job.description ?? null;
+  if (cvText && desc) {
+    match = await scoreJobMatch(cvText, job.position, job.company, desc, {
+      location: job.location ?? null,
+    });
+  }
+  return { embed: embedForJobPosting(job, detail, keyword, match), match };
 }
 
 /**
@@ -114,6 +163,7 @@ export function formatCardDescription(raw: string): string {
 export type DeliveryItem = {
   job: JobPosting;
   detail?: JobDetail | null;
+  seenId?: number; // seen_jobs id from collection (single-delivery match persist)
 };
 
 const MAX_TITLE = 250; // Discord title cap is 256

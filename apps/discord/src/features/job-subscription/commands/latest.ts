@@ -1,6 +1,7 @@
 import { type APIEmbed, type ChatInputCommandInteraction } from 'discord.js';
 import type { FeatureContext } from '../../../core/feature';
 import { searchJobPostings } from '../adapter';
+import { loadCvTextForScope } from '../cv';
 import { renderJobPostingCard, sortNewestFirst } from '../embed';
 import { errorEmbed, requireManageGuild, scopeGuildId } from './_shared';
 import { activeChannelSubs, pickerRow, type Subscription } from './_pick';
@@ -51,6 +52,8 @@ export async function showLatestJob(
   );
   if (jobs.length === 0) return null;
   const [top] = sortNewestFirst(jobs.map((job) => ({ job })));
-  const card = await renderJobPostingCard(ctx.log, top!.job, sub.keywords);
-  return { embeds: [card.toJSON()] };
+  const cvText = await loadCvTextForScope(ctx.db, sub.guildId);
+  // Preview path: the score shows on the card but isn't stored (no delivery row).
+  const { embed } = await renderJobPostingCard(ctx, top!.job, sub.keywords, cvText ? { cvText } : undefined);
+  return { embeds: [embed.toJSON()] };
 }

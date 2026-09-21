@@ -49,7 +49,7 @@ export const subscriptions = pgTable(
     filters: jsonb('filters').$type<Record<string, string>>().default({}).notNull(),
     source: text('source').notNull().default('linkedin'), // future sources re-add here without core changes
     isActive: boolean('is_active').notNull().default(true),
-    retentionDays: integer('retention_days').notNull().default(30),
+    retentionDays: integer('retention_days').notNull().default(14),
     createdBy: text('created_by'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
@@ -58,6 +58,30 @@ export const subscriptions = pgTable(
     index('subs_active_idx').on(t.isActive).where(sql`is_active = true`),
     index('subs_filters_gin').using('gin', t.filters),
   ],
+);
+
+/**
+ * One row per real posting, deduped by (source, external_id) across all
+ * subscriptions and keywords. Holds the shared listing data plus the cached
+ * AI summary (computed once per posting, reused by every card render).
+ * Per-subscriber data (dedup, match score) stays on seen_jobs. Rows with no
+ * seen_jobs reference are pruned by the TTL pass in schedule.ts.
+ */
+export const jobs = pgTable(
+  'jobs',
+  {
+    id: serial('id').primaryKey(),
+    source: text('source').notNull(),
+    externalId: text('external_id').notNull(),
+    url: text('url').notNull(),
+    title: text('title'),
+    company: text('company'),
+    location: text('location'),
+    aiSummary: text('ai_summary'),
+    firstSeenAt: timestamp('first_seen_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex('jobs_src_ext_uidx').on(t.source, t.externalId)],
 );
 
 export const seenJobs = pgTable(
@@ -72,13 +96,34 @@ export const seenJobs = pgTable(
     url: text('url').notNull(),
     snapshot: jsonb('snapshot').$type<{ title: string; company: string; location: string }>(),
     firstSeenAt: timestamp('first_seen_at', { withTimezone: true }).defaultNow().notNull(),
+    // Shared posting row (nullable: legacy rows are backfilled, but a failed
+    // jobs upsert must never block delivery, so collection tolerates null).
+    jobId: integer('job_id').references(() => jobs.id, { onDelete: 'cascade' }),
+    // Personal-only AI match against the subscriber's CV (DM scope only;
+    // guild rows stay NULL). Written when a DM card is scored.
+    matchScore: smallint('match_score'),
+    matchReason: text('match_reason'),
   },
   (t) => [
     uniqueIndex('seen_jobs_sub_src_ext_uidx').on(t.subscriptionId, t.source, t.externalId),
     index('seen_jobs_url_idx').on(t.url),
     index('seen_jobs_seen_at_idx').on(t.firstSeenAt),
+    index('seen_jobs_job_idx').on(t.jobId),
   ],
 );
+
+/**
+ * One CV per Discord user for AI match scores. Personal-only: DM-scope
+ * deliveries read this, guild-scope deliveries never do. Keyed by Discord
+ * user id with NO users FK — Discord-only users have no users row. Deleted
+ * explicitly on account delete.
+ */
+export const cvProfiles = pgTable('cv_profiles', {
+  discordId: text('discord_id').primaryKey(),
+  text: text('text').notNull(),
+  filename: text('filename'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
 
 export const botConfig = pgTable(
   'bot_config',

@@ -16,6 +16,7 @@ export const PATHS = {
   subscriptionById: (id: number): string => `${API_V1}/subscriptions/${id}`,
   accountSummary: `${API_V1}/account/summary`,
   account: `${API_V1}/account`,
+  cv: `${API_V1}/cv`,
 } as const;
 
 /** Session cookie name (opaque token; HttpOnly, set by service only). */

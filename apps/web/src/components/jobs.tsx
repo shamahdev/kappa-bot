@@ -1,6 +1,6 @@
 import { SUBSCRIPTION_SOURCES } from '@kappa/contracts';
 import * as stylex from '@stylexjs/stylex';
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { Badge, Button, QueryError, Select, TextInput } from './ui';
 import { formatDate, subStyles } from './subscriptions';
 import { useJobs, type SubscriptionDtoType } from '../lib/queries';
@@ -28,6 +28,16 @@ const jobStyles = stylex.create({
     color: tokens.muted,
   },
   pagerButtons: { display: 'flex', gap: 8 },
+  matchScore: { fontFamily: fonts.sans, fontSize: 14, fontWeight: 700, color: tokens.ink },
+  matchReason: { fontFamily: fonts.sans, fontSize: 12, color: tokens.muted, lineHeight: '18px', marginTop: 2 },
+  summaryToggle: { marginTop: 6 },
+  summary: {
+    fontFamily: fonts.sans,
+    fontSize: 13,
+    color: tokens.ink,
+    lineHeight: '20px',
+    whiteSpace: 'pre-wrap',
+  },
 });
 
 function useDebouncedValue(value: string, delayMs: number): string {
@@ -54,6 +64,7 @@ export function JobsTable({
   const [source, setSource] = useState(ALL_SOURCES);
   const [subscription, setSubscription] = useState(ALL_SUBSCRIPTIONS);
   const [page, setPage] = useState(1);
+  const [expandedSummaryId, setExpandedSummaryId] = useState<number | null>(null);
   const debouncedQ = useDebouncedValue(q, 300);
 
   const filtered = debouncedQ !== '' || source !== ALL_SOURCES || subscription !== ALL_SUBSCRIPTIONS;
@@ -139,24 +150,57 @@ export function JobsTable({
                 <th {...stylex.props(subStyles.th)} scope="col">Company</th>
                 <th {...stylex.props(subStyles.th)} scope="col">Location</th>
                 <th {...stylex.props(subStyles.th)} scope="col">Source</th>
+                <th {...stylex.props(subStyles.th)} scope="col">Match</th>
                 <th {...stylex.props(subStyles.th)} scope="col">Delivered</th>
               </tr>
             </thead>
             <tbody>
               {jobs.data.jobs.map((job) => (
-                <tr key={job.id}>
-                  <td {...stylex.props(subStyles.td)}>
-                    <a {...stylex.props(jobStyles.jobLink)} href={job.url} target="_blank" rel="noreferrer">
-                      {job.title ?? 'Untitled posting'}
-                    </a>
-                  </td>
-                  <td {...stylex.props(subStyles.td)}>{job.company ?? <span {...stylex.props(subStyles.muted)}>—</span>}</td>
-                  <td {...stylex.props(subStyles.td)}>{job.location ?? <span {...stylex.props(subStyles.muted)}>—</span>}</td>
-                  <td {...stylex.props(subStyles.td)}>
-                    <Badge>{job.source}</Badge>
-                  </td>
-                  <td {...stylex.props(subStyles.td)}>{formatDate(job.firstSeenAt)}</td>
-                </tr>
+                <Fragment key={job.id}>
+                  <tr>
+                    <td {...stylex.props(subStyles.td)}>
+                      <a {...stylex.props(jobStyles.jobLink)} href={job.url} target="_blank" rel="noreferrer">
+                        {job.title ?? 'Untitled posting'}
+                      </a>
+                      {job.aiSummary ? (
+                        <div {...stylex.props(jobStyles.summaryToggle)}>
+                          <Button
+                            small
+                            variant="subtle"
+                            onClick={() => setExpandedSummaryId(expandedSummaryId === job.id ? null : job.id)}
+                          >
+                            {expandedSummaryId === job.id ? 'Hide summary' : 'Summary'}
+                          </Button>
+                        </div>
+                      ) : null}
+                    </td>
+                    <td {...stylex.props(subStyles.td)}>{job.company ?? <span {...stylex.props(subStyles.muted)}>—</span>}</td>
+                    <td {...stylex.props(subStyles.td)}>{job.location ?? <span {...stylex.props(subStyles.muted)}>—</span>}</td>
+                    <td {...stylex.props(subStyles.td)}>
+                      <Badge>{job.source}</Badge>
+                    </td>
+                    <td {...stylex.props(subStyles.td)}>
+                      {job.matchScore === null ? (
+                        <span {...stylex.props(subStyles.muted)}>—</span>
+                      ) : (
+                        <div>
+                          <span {...stylex.props(jobStyles.matchScore)}>{`${job.matchScore}%`}</span>
+                          {job.matchReason ? (
+                            <div {...stylex.props(jobStyles.matchReason)}>{job.matchReason}</div>
+                          ) : null}
+                        </div>
+                      )}
+                    </td>
+                    <td {...stylex.props(subStyles.td)}>{formatDate(job.firstSeenAt)}</td>
+                  </tr>
+                  {expandedSummaryId === job.id && job.aiSummary ? (
+                    <tr>
+                      <td {...stylex.props(subStyles.td)} colSpan={6}>
+                        <div {...stylex.props(jobStyles.summary)}>{job.aiSummary}</div>
+                      </td>
+                    </tr>
+                  ) : null}
+                </Fragment>
               ))}
             </tbody>
           </table>
