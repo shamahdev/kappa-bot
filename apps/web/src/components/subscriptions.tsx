@@ -1,7 +1,7 @@
 import { SUBSCRIPTION_SOURCES } from '@kappa/contracts';
 import * as stylex from '@stylexjs/stylex';
 import { useState } from 'react';
-import { Badge, Button, ErrorNote, Select, StatusDot, TextInput } from './ui';
+import { Badge, Button, EmptyList, ErrorNote, Select, StatusDot, TextInput } from './ui';
 import {
   apiMessage,
   useCreateSubscription,
@@ -62,25 +62,7 @@ export const subStyles = stylex.create({
   inlineRow: { display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' },
   inlineButtons: { display: 'flex', gap: 8, marginTop: 12 },
   summaryLine: { fontFamily: fonts.mono, fontSize: 13, color: tokens.ink, lineHeight: '20px' },
-  empty: { padding: '28px 20px', textAlign: 'center' },
-  emptyTitle: { fontFamily: fonts.sans, fontSize: 16, fontWeight: 700, color: tokens.ink },
-  emptyBody: { fontFamily: fonts.sans, fontSize: 14, color: tokens.muted, marginTop: 6 },
   errorGap: { marginTop: 12 },
-});
-
-export const detailStyles = stylex.create({
-  back: {
-    fontFamily: fonts.sans,
-    fontSize: 13,
-    color: tokens.muted,
-    textDecoration: 'none',
-    ':hover': { color: tokens.brand, textDecoration: 'underline' },
-  },
-  title: { fontFamily: fonts.sans, fontSize: 28, fontWeight: 800, letterSpacing: '-0.01em', lineHeight: '34px', color: tokens.ink, marginTop: 8 },
-  tabsWrap: { marginTop: 16 },
-  section: { marginTop: 24 },
-  sectionTitle: { fontFamily: fonts.sans, fontSize: 15, fontWeight: 700, color: tokens.ink, lineHeight: '22px' },
-  stateLine: { fontFamily: fonts.sans, fontSize: 14, color: tokens.muted, paddingTop: 24, paddingBottom: 24 },
 });
 
 export type OpenPanel = { id: number; mode: 'edit' | 'delete' } | null;
@@ -333,14 +315,7 @@ export function SubscriptionsTable({
   emptyBody: string;
 }) {
   if (subs.length === 0) {
-    return (
-      <div {...stylex.props(subStyles.tableScroll)}>
-        <div {...stylex.props(subStyles.empty)}>
-          <p {...stylex.props(subStyles.emptyTitle)}>{emptyTitle}</p>
-          <p {...stylex.props(subStyles.emptyBody)}>{emptyBody}</p>
-        </div>
-      </div>
-    );
+    return <EmptyList title={emptyTitle} body={emptyBody} />;
   }
   return (
     <div {...stylex.props(subStyles.tableScroll)}>

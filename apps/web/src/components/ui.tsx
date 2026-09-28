@@ -1,12 +1,17 @@
 import { Badge as AstryxBadge } from '@astryxdesign/core/Badge';
 import { Banner } from '@astryxdesign/core/Banner';
 import { Button as AstryxButton } from '@astryxdesign/core/Button';
+import { Card } from '@astryxdesign/core/Card';
+import { EmptyState } from '@astryxdesign/core/EmptyState';
+import { Heading } from '@astryxdesign/core/Heading';
 import { Selector } from '@astryxdesign/core/Selector';
 import { StatusDot as AstryxStatusDot } from '@astryxdesign/core/StatusDot';
 import { Tab, TabList } from '@astryxdesign/core/TabList';
+import { Text } from '@astryxdesign/core/Text';
 import { TextInput as AstryxTextInput } from '@astryxdesign/core/TextInput';
 import * as stylex from '@stylexjs/stylex';
 import type { ChangeEventHandler, MouseEventHandler, ReactNode } from 'react';
+import { Link as RouterLink } from '@tanstack/react-router';
 import { loginUrl } from '../lib/api';
 import { ApiError, apiMessage } from '../lib/queries';
 
@@ -29,6 +34,7 @@ export function Button({
   type = 'button',
   disabled = false,
   onClick,
+  href,
   children,
 }: {
   variant?: ButtonVariant;
@@ -36,6 +42,7 @@ export function Button({
   type?: 'button' | 'submit' | 'reset';
   disabled?: boolean;
   onClick?: MouseEventHandler<HTMLButtonElement>;
+  href?: string;
   children: string;
 }) {
   return (
@@ -46,6 +53,7 @@ export function Button({
       type={type}
       isDisabled={disabled}
       onClick={onClick}
+      href={href}
     />
   );
 }
@@ -167,5 +175,70 @@ export function Tabs({
         <Tab key={t.value} value={t.value} label={t.label} />
       ))}
     </TabList>
+  );
+}
+
+/** Standard page heading: Astryx H1 + secondary supporting line. See DESIGN_STANDARD §3. */
+export function PageHeader({ title, description }: { title: string; description?: string }) {
+  return (
+    <div>
+      <Heading level={1}>{title}</Heading>
+      {description ? (
+        <div style={{ marginTop: 6 }}>
+          <Text type="supporting" color="secondary">
+            {description}
+          </Text>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** Standard section: Astryx Card with H3 title. Replaces per-page panel styles. */
+export function SectionCard({
+  title,
+  children,
+  variant,
+}: {
+  title: string;
+  children: ReactNode;
+  variant?: 'default' | 'muted';
+}) {
+  return (
+    <Card variant={variant ?? 'default'} padding={4}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <Heading level={3}>{title}</Heading>
+        <div>{children}</div>
+      </div>
+    </Card>
+  );
+}
+
+/** Standard empty state inside a Card. Replaces per-page empty divs. */
+export function EmptyList({
+  title,
+  body,
+  action,
+}: {
+  title: string;
+  body: string;
+  action?: ReactNode;
+}) {
+  return (
+    <Card padding={4}>
+      <EmptyState title={title} description={body} actions={action} />
+    </Card>
+  );
+}
+
+/** Standard back link. Single source for ← Dashboard / ← Back chrome. */
+export function BackLink({ to, label }: { to: string; label: string }) {
+  return (
+    <RouterLink
+      to={to}
+      style={{ fontSize: 13, color: 'var(--color-text-secondary)', textDecoration: 'none' }}
+    >
+      {label}
+    </RouterLink>
   );
 }

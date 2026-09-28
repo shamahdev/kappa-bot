@@ -44,7 +44,7 @@ const layout = stylex.create({
     backgroundColor: tokens.surface,
   },
   topbarInner: {
-    maxWidth: 980,
+    maxWidth: 960,
     marginLeft: 'auto',
     marginRight: 'auto',
     paddingLeft: 20,
@@ -77,7 +77,7 @@ const layout = stylex.create({
   main: {
     flex: 1,
     width: '100%',
-    maxWidth: 980,
+    maxWidth: 960,
     marginLeft: 'auto',
     marginRight: 'auto',
     paddingLeft: 20,
@@ -91,7 +91,7 @@ const layout = stylex.create({
     borderTopColor: tokens.line,
   },
   footerInner: {
-    maxWidth: 980,
+    maxWidth: 960,
     marginLeft: 'auto',
     marginRight: 'auto',
     paddingLeft: 20,

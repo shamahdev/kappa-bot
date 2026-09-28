@@ -1,14 +1,13 @@
-import { Link, createFileRoute } from '@tanstack/react-router';
-import * as stylex from '@stylexjs/stylex';
+import { createFileRoute } from '@tanstack/react-router';
 import { useState } from 'react';
+import { Text } from '@astryxdesign/core/Text';
+import { VStack } from '@astryxdesign/core/Layout';
 import { JobsTable } from '../../../components/jobs';
 import {
-  detailStyles,
-  subStyles,
   SubscriptionsTable,
   type OpenPanel,
 } from '../../../components/subscriptions';
-import { QueryError, Tabs } from '../../../components/ui';
+import { BackLink, PageHeader, QueryError, Tabs } from '../../../components/ui';
 import { useGuilds, useRequireAuth, useSubscriptions } from '../../../lib/queries';
 
 export const Route = createFileRoute('/dashboard/servers/$guildId')({
@@ -25,51 +24,38 @@ function ServerDetailComponent() {
   const [open, setOpen] = useState<OpenPanel>(null);
 
   if (me.isPending || me.data === null) {
-    return <p {...stylex.props(detailStyles.stateLine)}>Loading…</p>;
+    return <Text color="secondary">Loading…</Text>;
   }
 
   const guild = guilds.data?.find((g) => g.id === guildId);
 
   return (
-    <div>
-      <Link to="/dashboard" {...stylex.props(detailStyles.back)}>
-        ← Dashboard
-      </Link>
-      <h1 {...stylex.props(detailStyles.title)}>{guild?.name ?? 'Server'}</h1>
-      <div {...stylex.props(detailStyles.tabsWrap)}>
-        <Tabs
-          value={tab}
-          onChange={setTab}
-          tabs={[
-            { value: 'jobs', label: 'Jobs' },
-            { value: 'manage', label: 'Manage' },
-          ]}
-        />
-      </div>
-
+    <VStack gap={4}>
+      <BackLink to="/dashboard" label="← Dashboard" />
+      <PageHeader title={guild?.name ?? 'Server'} description="Jobs and subscriptions for this server." />
+      <Tabs
+        value={tab}
+        onChange={setTab}
+        tabs={[
+          { value: 'jobs', label: 'Jobs' },
+          { value: 'manage', label: 'Manage' },
+        ]}
+      />
       {tab === 'jobs' ? (
-        <div {...stylex.props(detailStyles.section)}>
-          <JobsTable base={{ guild: guildId }} subscriptions={subs.data ?? []} />
-        </div>
+        <JobsTable base={{ guild: guildId }} subscriptions={subs.data ?? []} />
+      ) : subs.isPending ? (
+        <Text color="secondary">Loading…</Text>
+      ) : subs.isError ? (
+        <QueryError error={subs.error} />
       ) : (
-        <section {...stylex.props(detailStyles.section)} aria-label="Server subscriptions">
-          {subs.isPending ? (
-            <p {...stylex.props(detailStyles.stateLine)}>Loading…</p>
-          ) : subs.isError ? (
-            <div {...stylex.props(subStyles.errorGap)}>
-              <QueryError error={subs.error} />
-            </div>
-          ) : (
-            <SubscriptionsTable
-              subs={subs.data}
-              open={open}
-              setOpen={setOpen}
-              emptyTitle="No subscriptions here yet"
-              emptyBody="Run /jobs subscribe in the server."
-            />
-          )}
-        </section>
+        <SubscriptionsTable
+          subs={subs.data}
+          open={open}
+          setOpen={setOpen}
+          emptyTitle="No subscriptions here yet"
+          emptyBody="Run /jobs subscribe in the server."
+        />
       )}
-    </div>
+    </VStack>
   );
 }

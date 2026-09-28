@@ -1,56 +1,18 @@
-import { Link, createFileRoute } from '@tanstack/react-router';
-import * as stylex from '@stylexjs/stylex';
-import { QueryError } from '../../components/ui';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { useState } from 'react';
+import { Avatar } from '@astryxdesign/core/Avatar';
+import { ClickableCard } from '@astryxdesign/core/ClickableCard';
+import { Grid } from '@astryxdesign/core/Grid';
+import { Heading } from '@astryxdesign/core/Heading';
+import { Text } from '@astryxdesign/core/Text';
+import { HStack, VStack } from '@astryxdesign/core/Layout';
+import { PageHeader, QueryError, TextInput } from '../../components/ui';
 import { guildIconUrl, userAvatarUrl } from '../../lib/api';
 import { useGuilds, useRequireAuth, useSubscriptions } from '../../lib/queries';
-import { fonts, tokens } from '../../theme.stylex';
 
 export const Route = createFileRoute('/dashboard/')({
   ssr: false,
   component: DashboardComponent,
-});
-
-const page = stylex.create({
-  title: { fontFamily: fonts.sans, fontSize: 28, fontWeight: 800, letterSpacing: '-0.01em', lineHeight: '34px', color: tokens.ink },
-  grid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
-    gap: 12,
-    marginTop: 20,
-  },
-  card: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 14,
-    backgroundColor: tokens.surface,
-    borderWidth: 1,
-    borderStyle: 'solid',
-    borderColor: tokens.line,
-    borderRadius: tokens.radiusMd,
-    padding: '16px 18px',
-    textDecoration: 'none',
-    color: tokens.ink,
-    ':hover': { borderColor: tokens.accent },
-  },
-  avatar: { width: 44, height: 44, borderRadius: tokens.radiusMd, flexShrink: 0 },
-  avatarFallback: {
-    width: 44,
-    height: 44,
-    borderRadius: tokens.radiusMd,
-    flexShrink: 0,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: tokens.accent,
-    color: tokens.accentInk,
-    fontFamily: fonts.sans,
-    fontSize: 18,
-    fontWeight: 800,
-  },
-  cardName: { fontFamily: fonts.sans, fontSize: 15, fontWeight: 700, lineHeight: '22px' },
-  cardSub: { fontFamily: fonts.sans, fontSize: 13, color: tokens.muted, lineHeight: '20px', marginTop: 2 },
-  stateLine: { fontFamily: fonts.sans, fontSize: 14, color: tokens.muted, paddingTop: 24, paddingBottom: 24 },
-  errorGap: { marginTop: 12 },
 });
 
 function countsLine(active: number, total: number): string {
@@ -61,70 +23,63 @@ function DashboardComponent() {
   const me = useRequireAuth();
   const guilds = useGuilds(me.data != null);
   const subs = useSubscriptions(me.data != null);
+  const navigate = useNavigate();
+  const [q, setQ] = useState('');
 
   if (me.isPending || me.data == null) {
-    return <p {...stylex.props(page.stateLine)}>Loading…</p>;
+    return <Text color="secondary">Loading…</Text>;
   }
 
   const dmSubs = subs.data?.filter((s) => s.scope === 'dm') ?? [];
   const dmActive = dmSubs.filter((s) => s.isActive).length;
   const dmAvatar = userAvatarUrl(me.data.discordId, me.data.avatar);
+  const term = q.trim().toLowerCase();
+  const visibleGuilds = (guilds.data ?? []).filter((g) =>
+    term === '' ? true : g.name.toLowerCase().includes(term),
+  );
+  const showDm = term === '' || 'direct messages'.includes(term);
 
   return (
-    <div>
-      <h1 {...stylex.props(page.title)}>Subscriptions</h1>
-      <div {...stylex.props(page.grid)}>
-        <Link to="/dashboard/dm" {...stylex.props(page.card)}>
-          {dmAvatar ? (
-            <img {...stylex.props(page.avatar)} src={dmAvatar} alt="" loading="lazy" />
-          ) : (
-            <span {...stylex.props(page.avatarFallback)} aria-hidden>
-              {me.data.username.slice(0, 1).toUpperCase()}
-            </span>
-          )}
-          <span>
-            <span {...stylex.props(page.cardName)}>Direct messages</span>
-            <br />
-            <span {...stylex.props(page.cardSub)}>
-              {subs.isPending ? 'Loading…' : countsLine(dmActive, dmSubs.length)}
-            </span>
-          </span>
-        </Link>
-
-        {guilds.data?.map((g) => {
-          const icon = guildIconUrl(g.id, g.icon);
-          return (
-            <Link
+    <VStack gap={6}>
+      <PageHeader title="Subscriptions" description="DMs and servers you can manage." />
+      <VStack gap={4}>
+        <TextInput label="Search servers" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Server name" />
+        <Grid columns={{ minWidth: 260 }} gap={4}>
+          {showDm ? (
+            <ClickableCard label="Direct messages" onClick={() => void navigate({ to: '/dashboard/dm' })}>
+              <HStack gap={3} vAlign="center">
+                <Avatar name={me.data.username} src={dmAvatar ?? undefined} size="lg" />
+                <VStack gap={0}>
+                  <Heading level={3}>Direct messages</Heading>
+                  <Text type="supporting" color="secondary">
+                    {subs.isPending ? 'Loading…' : countsLine(dmActive, dmSubs.length)}
+                  </Text>
+                </VStack>
+              </HStack>
+            </ClickableCard>
+          ) : null}
+          {visibleGuilds.map((g) => (
+            <ClickableCard
               key={g.id}
-              to="/dashboard/servers/$guildId"
-              params={{ guildId: g.id }}
-              {...stylex.props(page.card)}
+              label={g.name}
+              onClick={() => void navigate({ to: '/dashboard/servers/$guildId', params: { guildId: g.id } })}
             >
-              {icon ? (
-                <img {...stylex.props(page.avatar)} src={icon} alt="" loading="lazy" />
-              ) : (
-                <span {...stylex.props(page.avatarFallback)} aria-hidden>
-                  {g.name.slice(0, 1).toUpperCase()}
-                </span>
-              )}
-              <span>
-                <span {...stylex.props(page.cardName)}>{g.name}</span>
-                <br />
-                <span {...stylex.props(page.cardSub)}>
-                  {countsLine(g.subscriptions.active, g.subscriptions.total)}
-                </span>
-              </span>
-            </Link>
-          );
-        })}
-      </div>
-
-      {guilds.isPending ? <p {...stylex.props(page.stateLine)}>Loading servers…</p> : null}
-      {guilds.isError ? (
-        <div {...stylex.props(page.errorGap)}>
-          <QueryError error={guilds.error} />
-        </div>
-      ) : null}
-    </div>
+              <HStack gap={3} vAlign="center">
+                <Avatar name={g.name} src={guildIconUrl(g.id, g.icon) ?? undefined} size="lg" />
+                <VStack gap={0}>
+                  <Heading level={3}>{g.name}</Heading>
+                  <Text type="supporting" color="secondary">
+                    {countsLine(g.subscriptions.active, g.subscriptions.total)}
+                  </Text>
+                </VStack>
+              </HStack>
+            </ClickableCard>
+          ))}
+        </Grid>
+        {guilds.isPending ? <Text color="secondary">Loading servers…</Text> : null}
+        {guilds.isError ? <QueryError error={guilds.error} /> : null}
+      </VStack>
+    </VStack>
   );
 }
+

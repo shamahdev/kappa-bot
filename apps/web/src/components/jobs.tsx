@@ -1,7 +1,8 @@
 import { SUBSCRIPTION_SOURCES } from '@kappa/contracts';
 import * as stylex from '@stylexjs/stylex';
 import { Fragment, useEffect, useState } from 'react';
-import { Badge, Button, QueryError, Select, TextInput } from './ui';
+import { Badge, Button, EmptyList, QueryError, Select, TextInput } from './ui';
+import { Text } from '@astryxdesign/core/Text';
 import { formatDate, subStyles } from './subscriptions';
 import { useJobs, type SubscriptionDtoType } from '../lib/queries';
 import { fonts, tokens } from '../theme.stylex';
@@ -110,37 +111,31 @@ export function JobsTable({
       </div>
 
       {jobs.isPending ? (
-        <p {...stylex.props(subStyles.sub)}>Loading…</p>
+        <Text color="secondary">Loading…</Text>
       ) : jobs.isError ? (
         <div {...stylex.props(subStyles.errorGap)}>
           <QueryError error={jobs.error} />
         </div>
       ) : jobs.data.jobs.length === 0 ? (
-        <div {...stylex.props(subStyles.tableScroll)}>
-          <div {...stylex.props(subStyles.empty)}>
-            <p {...stylex.props(subStyles.emptyTitle)}>
-              {filtered ? 'No jobs match these filters' : 'No jobs delivered yet'}
-            </p>
-            <p {...stylex.props(subStyles.emptyBody)}>
-              {filtered ? 'Try widening the search.' : 'New deliveries appear here.'}
-            </p>
-            {filtered ? (
-              <div {...stylex.props(subStyles.inlineButtons)} style={{ justifyContent: 'center' }}>
-                <Button
-                  small
-                  variant="subtle"
-                  onClick={() => {
-                    setQ('');
-                    setSource(ALL_SOURCES);
-                    setSubscription(ALL_SUBSCRIPTIONS);
-                  }}
-                >
-                  Clear filters
-                </Button>
-              </div>
-            ) : null}
-          </div>
-        </div>
+        <EmptyList
+          title={filtered ? 'No jobs match these filters' : 'No jobs delivered yet'}
+          body={filtered ? 'Try widening the search.' : 'New deliveries appear here.'}
+          action={
+            filtered ? (
+              <Button
+                small
+                variant="subtle"
+                onClick={() => {
+                  setQ('');
+                  setSource(ALL_SOURCES);
+                  setSubscription(ALL_SUBSCRIPTIONS);
+                }}
+              >
+                Clear filters
+              </Button>
+            ) : undefined
+          }
+        />
       ) : (
         <div {...stylex.props(subStyles.tableScroll)}>
           <table {...stylex.props(subStyles.table)}>

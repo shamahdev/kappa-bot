@@ -1,16 +1,15 @@
-import { Link, createFileRoute } from '@tanstack/react-router';
-import * as stylex from '@stylexjs/stylex';
+import { createFileRoute } from '@tanstack/react-router';
 import { useState } from 'react';
+import { Text } from '@astryxdesign/core/Text';
+import { VStack } from '@astryxdesign/core/Layout';
 import { CvPanel } from '../../components/cv';
 import { JobsTable } from '../../components/jobs';
 import {
   CreateForm,
-  detailStyles,
-  subStyles,
   SubscriptionsTable,
   type OpenPanel,
 } from '../../components/subscriptions';
-import { QueryError, Tabs } from '../../components/ui';
+import { BackLink, PageHeader, QueryError, SectionCard, Tabs } from '../../components/ui';
 import { useRequireAuth, useSubscriptions } from '../../lib/queries';
 
 export const Route = createFileRoute('/dashboard/dm')({
@@ -25,65 +24,49 @@ function DmDetailComponent() {
   const [open, setOpen] = useState<OpenPanel>(null);
 
   if (me.isPending || me.data === null) {
-    return <p {...stylex.props(detailStyles.stateLine)}>Loading…</p>;
+    return <Text color="secondary">Loading…</Text>;
   }
 
   const dmSubs = subs.data?.filter((s) => s.scope === 'dm') ?? [];
 
   return (
-    <div>
-      <Link to="/dashboard" {...stylex.props(detailStyles.back)}>
-        ← Dashboard
-      </Link>
-      <h1 {...stylex.props(detailStyles.title)}>Direct messages</h1>
-      <div {...stylex.props(detailStyles.tabsWrap)}>
-        <Tabs
-          value={tab}
-          onChange={setTab}
-          tabs={[
-            { value: 'jobs', label: 'Jobs' },
-            { value: 'manage', label: 'Manage' },
-          ]}
-        />
-      </div>
-
+    <VStack gap={4}>
+      <BackLink to="/dashboard" label="← Dashboard" />
+      <PageHeader title="Direct messages" description="Jobs delivered to your DMs." />
+      <Tabs
+        value={tab}
+        onChange={setTab}
+        tabs={[
+          { value: 'jobs', label: 'Jobs' },
+          { value: 'manage', label: 'Manage' },
+        ]}
+      />
       {tab === 'jobs' ? (
-        <div {...stylex.props(detailStyles.section)}>
-          <JobsTable base={{ scope: 'dm' }} subscriptions={dmSubs} />
-        </div>
+        <JobsTable base={{ scope: 'dm' }} subscriptions={dmSubs} />
       ) : (
-        <div>
-          <section {...stylex.props(detailStyles.section)} aria-label="CV for match scores">
-            <h2 {...stylex.props(detailStyles.sectionTitle)}>CV for match scores</h2>
-            <div {...stylex.props(subStyles.panel)}>
-              <CvPanel />
-            </div>
-          </section>
-          <section {...stylex.props(detailStyles.section)} aria-label="New DM subscription">
-            <h2 {...stylex.props(detailStyles.sectionTitle)}>New</h2>
-            <div {...stylex.props(subStyles.panel)}>
-              <CreateForm />
-            </div>
-          </section>
-          <section {...stylex.props(detailStyles.section)} aria-label="DM subscriptions">
-            {subs.isPending ? (
-              <p {...stylex.props(detailStyles.stateLine)}>Loading…</p>
-            ) : subs.isError ? (
-              <div {...stylex.props(subStyles.errorGap)}>
-                <QueryError error={subs.error} />
-              </div>
-            ) : (
-              <SubscriptionsTable
-                subs={dmSubs}
-                open={open}
-                setOpen={setOpen}
-                emptyTitle="No subscriptions yet"
-                emptyBody="Create one above."
-              />
-            )}
-          </section>
-        </div>
+        <VStack gap={4}>
+          <SectionCard title="CV for match scores">
+            <CvPanel />
+          </SectionCard>
+          <SectionCard title="New DM subscription">
+            <CreateForm />
+          </SectionCard>
+          {subs.isPending ? (
+            <Text color="secondary">Loading…</Text>
+          ) : subs.isError ? (
+            <QueryError error={subs.error} />
+          ) : (
+            <SubscriptionsTable
+              subs={dmSubs}
+              open={open}
+              setOpen={setOpen}
+              emptyTitle="No subscriptions yet"
+              emptyBody="Create one above."
+            />
+          )}
+        </VStack>
       )}
-    </div>
+    </VStack>
   );
 }
+
