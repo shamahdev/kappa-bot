@@ -195,9 +195,6 @@ function DiscordPreview({ job, delivered, onDeliver }: { job: DemoJob; delivered
         <Button variant={delivered ? 'subtle' : 'brand'} small onClick={onDeliver}>
           {delivered ? 'Delivered' : 'Deliver to Discord'}
         </Button>
-        <Text type="supporting" color="secondary">
-          One message per match. No duplicate posts.
-        </Text>
       </VStack>
     </Card>
   );
@@ -208,8 +205,6 @@ export function LandingDemo({ authAction }: { authAction: ReactNode }) {
   const [query, setQuery] = useState('');
   const [savedIds, setSavedIds] = useState<string[]>(['wise-senior-product-designer']);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [paused, setPaused] = useState(false);
-  const [checkedAt, setCheckedAt] = useState('2 min ago');
   const [delivered, setDelivered] = useState(false);
   const feedRef = useRef<HTMLDivElement>(null);
 
@@ -224,22 +219,13 @@ export function LandingDemo({ authAction }: { authAction: ReactNode }) {
 
   return (
     <VStack gap={10}>
-      <HStack gap={2} vAlign="center">
-        <Text type="supporting" color="secondary">
-          Preview workspace · sample data
-        </Text>
-        <StatusDot on={!paused} label={paused ? 'Alerts paused' : 'Signal active'} />
-        <Text type="supporting" color="secondary">
-          Last checked {checkedAt}
-        </Text>
-      </HStack>
+      <Text type="supporting" color="secondary">
+        Preview workspace · sample data
+      </Text>
 
       {/* Centered Hero (template: centered-hero) */}
       <VStack gap={6} hAlign="center">
         <VStack gap={3} hAlign="center">
-          <Text type="supporting" color="secondary">
-            One CV. A focused feed.
-          </Text>
           <Heading level={1} type="display-2" justify="center" textWrap="balance">
             See only the roles worth your time.
           </Heading>
@@ -251,15 +237,7 @@ export function LandingDemo({ authAction }: { authAction: ReactNode }) {
           <Button onClick={() => feedRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
             {`Review ${PROFILE.newToday} matches`}
           </Button>
-          <Button variant="subtle" small onClick={() => setCheckedAt('just now')}>
-            Scan now
-          </Button>
           {authAction}
-        </HStack>
-        <HStack gap={3}>
-          <Button variant="subtle" small onClick={() => setPaused((v) => !v)}>
-            {paused ? 'Resume alerts' : 'Pause alerts'}
-          </Button>
         </HStack>
         <Text type="supporting" color="secondary" justify="center">
           ✓ Private by default · ✓ Match reasons included · ✓ No duplicate posts
@@ -281,7 +259,7 @@ export function LandingDemo({ authAction }: { authAction: ReactNode }) {
             {PROFILE.cvName} · {PROFILE.cvUpdated}
           </Text>
           <Text type="supporting" color="secondary">
-            {PROFILE.activeAlerts} active alerts · {PROFILE.newToday} new today
+            {PROFILE.activeAlerts} active alerts
           </Text>
         </VStack>
       </Card>
@@ -291,12 +269,7 @@ export function LandingDemo({ authAction }: { authAction: ReactNode }) {
         <Grid columns={{ minWidth: 340 }} gap={4}>
           <Card padding={4}>
             <VStack gap={4}>
-              <HStack gap={2} vAlign="center">
-                <Heading level={2}>Today’s sample matches</Heading>
-                <Text type="supporting" color="secondary">
-                  {visibleJobs.length} shown
-                </Text>
-              </HStack>
+              <Heading level={2}>Today’s sample matches</Heading>
               <Tabs value={filter} onChange={setFilter} tabs={FILTERS} />
               <TextInput label="Search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search title or company" />
               <Banner status="info" title="Scores combine role requirements with your CV. Every result keeps a short, editable reason." />
