@@ -199,7 +199,7 @@ function DeletePanel({ sub, onDone }: { sub: SubscriptionDtoType; onDone: () => 
         `{sub.source}` {sub.keywords ?? '—'} · {sub.location ?? '—'} →{' '}
         {sub.scope === 'dm' ? 'your DMs' : `#${sub.channelId}`}
       </p>
-      <p {...stylex.props(subStyles.sub)}>Past deliveries stay deleted with it. This cannot be undone.</p>
+      <p {...stylex.props(subStyles.sub)}>Past deliveries are deleted with it. This cannot be undone.</p>
       {remove.isError ? (
         <div {...stylex.props(subStyles.errorGap)}>
           <ErrorNote>{apiMessage(remove.error)}</ErrorNote>
