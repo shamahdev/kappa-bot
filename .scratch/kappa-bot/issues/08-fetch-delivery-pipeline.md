@@ -53,7 +53,7 @@ Decide the job fetch → filter → dedup → deliver pipeline: polling trigger 
 
 Evidence: research-01 paging/limits, research-02 failure modes (429/999/403), ADR-0002 schedule contract, ADR-0003 dedup key, owner confirmation 2026-09-02 “Accept all A”. ADR `docs/adr/0004-fetch-delivery-pipeline.md:1` records the tradeoff. Unblocks prototype `10`.
 
-## Resolution Comment
+## Resolution comment
 
 Claimed → resolved via grilling 2026-09-02. All five Qs answered A. ADR 0004 and this pipeline sketch are the resolution record.
 

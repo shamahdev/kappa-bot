@@ -29,7 +29,7 @@ Prototype the subscription flow at low fidelity: a slash-command registration sn
 
 **Simplifications (do NOT copy):** neon-http instead of pg Pool; mocked interaction (no login/permission/ephemeral); no geo_id resolution, scheduler, or fingerprint group-by. `discord.js@14.27.0` installed as a decided-stack dep to make the stub runnable.
 
-## Resolution Comment
+## Resolution comment
 
 Claimed → resolved 2026-09-04. Artifact linked above; evidence is the run transcript in this answer. Owner react-questions are in `prototype-subscription/README.md` and the closing summary — answers feed build tickets, not further wayfinding.
 

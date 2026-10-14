@@ -72,7 +72,7 @@ Define the modular feature architecture that makes the bot scalable to N feature
 
 Evidence: ADR `docs/adr/0002-modular-feature-architecture.md:1`, owner confirmation 2026-09-02 “Accept all A”. Unblocks schema (`07`), pipeline (`08`), hosting (`12`) and informs prototype (`10`).
 
-## Resolution Comment
+## Resolution comment
 
 Claimed → resolved via grilling 2026-09-02. All five Qs answered A. ADR 0002 and this answer are the resolution record.
 

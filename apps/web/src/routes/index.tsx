@@ -10,7 +10,7 @@ export const Route = createFileRoute('/')({
   head: () => ({
     meta: [
       { title: 'Kappa — a focused job signal' },
-      { name: 'description', content: 'Kappa turns your CV into a focused feed of roles worth your time.' },
+      { name: 'description', content: 'Kappa ranks new job postings against your CV and sends the strongest matches to Discord.' },
     ],
   }),
 });

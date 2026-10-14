@@ -197,7 +197,7 @@ function replyHint(start: number, count: number): string {
   return `Reply with ${range} to get the summary of the job`;
 }
 
-/** Source list title: "🚨 20 new 'frontend' jobs found in LinkedIn". */
+/** Source list title: "20 new 'frontend' jobs found in LinkedIn". */
 export function formatSourceTitle(
   count: number,
   keyword?: string | null,
@@ -205,7 +205,7 @@ export function formatSourceTitle(
 ): string {
   const kw = keyword?.trim() || 'all';
   const jobWord = count === 1 ? 'job' : 'jobs';
-  return `🚨 ${count} new '${kw}' ${jobWord} found in ${formatSourceName(source)}`;
+  return `${count} new '${kw}' ${jobWord} found in ${formatSourceName(source)}`;
 }
 
 export type SourceGroup = { source: string; items: DeliveryItem[] };

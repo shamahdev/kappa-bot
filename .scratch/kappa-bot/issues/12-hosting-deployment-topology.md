@@ -50,7 +50,7 @@ Decide hosting & deployment topology: process layout (bot gateway + scheduler/wo
 
 Evidence: ADR-0001 Bun/Elysia/discord.js, ADR-0002 single-deployable architecture, ADR-0004 in-process cron upgrade path, research-04 pooled/direct + branching, owner confirmation 2026-09-02 “Accept all A”. ADR `docs/adr/0006-hosting-deployment-topology.md:1` records the tradeoff.
 
-## Resolution Comment
+## Resolution comment
 
 Claimed → resolved via grilling 2026-09-02. All five Qs answered A. ADR 0006 and this Docker/env sketch are the resolution record.
 

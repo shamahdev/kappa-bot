@@ -227,7 +227,7 @@ export function LandingDemo({ authAction }: { authAction: ReactNode }) {
       <VStack gap={6} hAlign="center">
         <VStack gap={3} hAlign="center">
           <Heading level={1} type="display-2" justify="center" textWrap="balance">
-            See only the roles worth your time.
+            See only roles that match your CV.
           </Heading>
           <Text type="body" color="secondary" justify="center" textWrap="balance">
             Kappa reads your CV, ranks fresh JobPostings against it, and sends the strongest matches to Discord.
@@ -240,7 +240,7 @@ export function LandingDemo({ authAction }: { authAction: ReactNode }) {
           {authAction}
         </HStack>
         <Text type="supporting" color="secondary" justify="center">
-          ✓ Private by default · ✓ Match reasons included · ✓ No duplicate posts
+          Private by default, with a reason on every match and no duplicate posts.
         </Text>
       </VStack>
 
@@ -304,7 +304,7 @@ export function LandingDemo({ authAction }: { authAction: ReactNode }) {
 
       {/* How it works */}
       <VStack gap={4}>
-        <Heading level={2}>Set the signal once. Review only what clears it.</Heading>
+        <Heading level={2}>Set your filter once, then review only the matches.</Heading>
         <Grid columns={3} gap={4}>
           <Card padding={4}>
             <VStack gap={2}>

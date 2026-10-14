@@ -26,7 +26,7 @@ Decide the bot runtime and framework: Node.js + TypeScript + discord.js v14 vs a
 
 Evidence: research-04 for Neon drivers, live grilling Q&A 2026-09-02 confirming `Bun+Elysia+discord.js` (Option A). Domain terms locked to `CONTEXT.md:1` (`Feature`, `Subscription`, `JobPosting`, `SeenJob`, `Source Adapter`); ADR `docs/adr/0001-bun-elysia-discordjs-runtime.md:1` records the tradeoff.
 
-## Resolution Comment
+## Resolution comment
 
 Claimed `claimed` → `resolved` via grilling rounds 2026-09-02. Owner confirmed Bun+Elysia+discord.js. `CONTEXT.md` and ADR `0001` created; this answer is the ticket's resolution record.
 

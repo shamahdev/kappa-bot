@@ -17,7 +17,7 @@ Practical constraints for polling `linkedin.com/jobs-guest/jobs/api/seeMoreJobPo
 | Gate is Cloudflare (`server: cloudflare`, `__cf_bm` 30-min cookie, `cf-ray`, `x-li-fabric`) | Same probe headers |
 | Failure modes: 429, 999 (legacy LI throttle), 403 challenge/authwall, 302 redirect, 200+empty HTML, 404 detail | Community + live empty-page probe (`start=999` → 26 bytes) — §5 |
 
-**Bottom line:** as written, any automated polling of `/jobs-guest/` violates both `robots.txt` and the User Agreement unless LinkedIn grants permission via `whitelist-crawl@linkedin.com`. The compliant posture is to treat polling as a *risk-accepted prototype* with a migration path to permitted alternatives, and to minimize load/cadence so a throttle or C&D does not also become an IP ban or legal exposure.
+As written, any automated polling of `/jobs-guest/` violates both `robots.txt` and the User Agreement unless LinkedIn grants permission via `whitelist-crawl@linkedin.com`. The compliant posture is to treat polling as a *risk-accepted prototype* with a migration path to permitted alternatives, and to minimize load/cadence so a throttle or C&D does not also become an IP ban or legal exposure.
 
 ---
 
@@ -87,7 +87,7 @@ Implication: even if kappa-bot obtained permission, re-serving job listings via 
 
 Additional relevant sections: §3.4 (LinkedIn may limit use, restrict/suspend/terminate accounts), §3.5 (IP rights reserved), §4 (no warranty, as-is), §5 (termination). The agreement applies to "Members and Visitors" — guest (unauthenticated) access is still covered.
 
-**Enforcement reality:** LinkedIn has historically enforced via IP blocks, Cloudflare challenges, cease-and-desist letters, and litigation (cf. *hiQ Labs v. LinkedIn*, 2017–2022). The legal landscape after the 2022 9th Circuit remand still leaves scraping as a ToS violation even if not necessarily a CFAA violation — i.e., LinkedIn can block and pursue contract claims regardless.
+LinkedIn has historically enforced via IP blocks, Cloudflare challenges, cease-and-desist letters, and litigation (cf. *hiQ Labs v. LinkedIn*, 2017–2022). The law after the 2022 9th Circuit remand still leaves scraping as a ToS violation even if not necessarily a CFAA violation — i.e., LinkedIn can block and pursue contract claims regardless.
 
 ### 2.4 Compliant posture (legal)
 

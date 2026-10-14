@@ -21,7 +21,7 @@ export async function requireManageGuild(interaction: ChatInputCommandInteractio
       : undefined;
   if (!perms?.has?.(PermissionFlagsBits.ManageGuild)) {
     await interaction.reply({
-      embeds: [new EmbedBuilder().setColor(0xe5484d).setDescription('❌ You need the **Manage Server** permission to manage job subscriptions.')],
+      embeds: [new EmbedBuilder().setColor(0xe5484d).setDescription('You need the **Manage Server** permission to manage job subscriptions.')],
     });
     return false;
   }
@@ -29,7 +29,7 @@ export async function requireManageGuild(interaction: ChatInputCommandInteractio
 }
 
 export function errorEmbed(message: string): EmbedBuilder {
-  return new EmbedBuilder().setColor(0xe5484d).setDescription(`❌ ${message}`);
+  return new EmbedBuilder().setColor(0xe5484d).setDescription(message);
 }
 
 /**

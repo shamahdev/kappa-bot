@@ -65,19 +65,19 @@ export async function executeConfig(
 
   const pollMinutes = await currentPollMinutes(ctx);
   const lines = await subscriptionLines(ctx, scope);
-  const sections = [`🔁 Poll: every **${pollMinutes}m** (change applies on restart)`];
-  if (retention !== null) sections.push(`🗑️ Retention: **${retention}d** applied to your subscriptions here`);
+  const sections = [`Poll: every **${pollMinutes}m** (change applies on restart)`];
+  if (retention !== null) sections.push(`Retention: **${retention}d** applied to your subscriptions here`);
   sections.push(
     lines.length > 0
-      ? `📡 Subscribed channels (where JobPostings arrive):\n${lines.join('\n')}`
-      : '📡 No subscriptions yet — run `/jobs subscribe` to get JobPostings here.',
+      ? `Subscribed channels (where JobPostings arrive):\n${lines.join('\n')}`
+      : 'No subscriptions yet — run `/jobs subscribe` to get JobPostings here.',
   );
 
   await interaction.editReply({
     embeds: [
       new EmbedBuilder()
         .setColor(0x3f6b55)
-        .setTitle(poll !== null || retention !== null ? '⚙️ Config updated' : '⚙️ Job config')
+        .setTitle(poll !== null || retention !== null ? 'Config updated' : 'Job config')
         .setDescription(sections.join('\n\n')),
     ],
   });

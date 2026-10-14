@@ -100,7 +100,7 @@ if (inserted.length) await channel.send(embedFor(job)); // only if inserted → 
 
 Evidence: research-01 filter vocab + `urn:li:jobPosting` stable key, research-04 Drizzle/Neon patterns, ADR-0002 schema re-export, owner confirmation 2026-09-02 “Accept all A”. ADR `docs/adr/0003-subscription-data-model.md:1` records the tradeoff. Unblocks `08`, `09`, `10`.
 
-## Resolution Comment
+## Resolution comment
 
 Claimed → resolved via grilling 2026-09-02. All five Qs answered A. ADR 0003 and this DDL are the resolution record.
 

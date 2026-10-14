@@ -51,7 +51,7 @@ Owner provided: Neon project `young-sunset-25304132` (branch `production`) + set
 - Neon branch layout (ADR-0006/research-04): `main`=prod, `staging`, `feat/*`; migrate only on `DATABASE_URL_UNPOOLED` (pooled rejects advisory locks).
 - Migration file committed to repo so `11`/prototype `10` and build tickets run `bun run db:migrate` on any Neon branch.
 
-## Resolution Comment
+## Resolution comment
 
 Claimed → resolved 2026-09-04. Owner unblocked by supplying project id + token; agent linked, migrated, smoke-tested, and completed all 7 Neon setup steps. This answer is the resolution record.
 

@@ -63,8 +63,7 @@ export function pickerRow(
       new StringSelectMenuOptionBuilder()
         .setLabel(allLabel)
         .setValue('all')
-        .setDescription(`${subs.length} subscription(s)`)
-        .setEmoji('⚡'),
+        .setDescription(`${subs.length} subscription(s)`),
     );
   }
   for (const s of subs.slice(0, allLabel ? 24 : 25)) {
@@ -89,7 +88,7 @@ export async function requireManageGuildComponent(interaction: Interaction): Pro
   if (!perms?.has?.(PermissionFlagsBits.ManageGuild)) {
     if (interaction.isRepliable()) {
       await interaction.reply({
-        content: '❌ You need the **Manage Server** permission to manage job subscriptions.',
+        content: 'You need the **Manage Server** permission to manage job subscriptions.',
       });
     }
     return false;

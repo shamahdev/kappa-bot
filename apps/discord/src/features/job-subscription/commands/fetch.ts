@@ -35,7 +35,7 @@ export function fetchResultEmbed(result: PollResult): EmbedBuilder {
   const jobText = result.newJobsDelivered === 1 ? '1 new job' : `${result.newJobsDelivered} new jobs`;
   return new EmbedBuilder()
     .setColor(0x3f6b55)
-    .setTitle('⚡ Manual Fetch Complete')
+    .setTitle('Manual fetch complete')
     .setDescription(
       [
         `Polled **${subText}**`,

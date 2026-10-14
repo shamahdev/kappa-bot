@@ -43,5 +43,5 @@ export async function removeSubscription(
 export function removedEmbed(summary: string): EmbedBuilder {
   return new EmbedBuilder()
     .setColor(0x3f6b55)
-    .setDescription(`🗑️ Removed subscription (${summary}). Past deliveries stay deleted with it.`);
+    .setDescription(`Removed subscription (${summary}). Past deliveries stay deleted with it.`);
 }

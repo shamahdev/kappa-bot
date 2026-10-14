@@ -68,7 +68,7 @@ export async function executeCvUpload(
     embeds: [
       new EmbedBuilder()
         .setColor(0x3f6b55)
-        .setTitle('✅ CV saved')
+        .setTitle('CV saved')
         .setDescription(
           [
             `File: \`${file.name}\` (${text.length} chars)`,

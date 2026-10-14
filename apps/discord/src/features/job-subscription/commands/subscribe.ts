@@ -68,7 +68,7 @@ export async function executeSubscribe(
     embeds: [
       new EmbedBuilder()
         .setColor(0x3f6b55)
-        .setTitle('✅ Subscription created')
+        .setTitle('Subscription created')
         .setDescription(
           [
             `\`${saved.source}\` → <#${saved.channelId}>`,

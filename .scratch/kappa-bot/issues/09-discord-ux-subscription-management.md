@@ -65,7 +65,7 @@ The `source` option above was sketched with both `.setAutocomplete(true)` and `.
 
 Evidence: research-01 embed field vocab + stable URL, research-02 rate-limit posture (no enrichment), ADR-0003/0004 storage+dedup, owner confirmation 2026-09-02 “Accept all A”. ADR `docs/adr/0005-discord-ux-subscription-management.md:1` records the tradeoff. Unblocks prototype `10`.
 
-## Resolution Comment
+## Resolution comment
 
 Claimed → resolved via grilling 2026-09-02. All five Qs answered A. ADR 0005 and this command/embed sketch are the resolution record.
 
