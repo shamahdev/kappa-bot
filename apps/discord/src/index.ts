@@ -1,11 +1,12 @@
-import 'dotenv/config';
+import "dotenv/config";
 
-const role = process.env.BOT_ROLE ?? 'gateway';
-if (role === 'worker') {
-  const { startWorker } = await import('./worker');
+const role = process.env.BOT_ROLE ?? "gateway";
+if (role === "worker") {
+  const { startWorker } = await import("./worker");
   await startWorker();
-  process.exitCode = 0; // no process.exit(): lets pino flush before drain
+  // No process.exit(): lets pino flush before drain.
+  process.exitCode = 0;
 } else {
-  const { startGateway } = await import('./app');
+  const { startGateway } = await import("./app");
   await startGateway();
 }

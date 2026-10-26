@@ -1,229 +1,254 @@
-import { Elysia, t } from 'elysia';
-import { and, desc, eq, or } from 'drizzle-orm';
-import { channels, guilds, subscriptions } from '@kappa/db';
-import { isSubscriptionSource, SUBSCRIPTION_SOURCES, type SubscriptionDtoType } from '@kappa/contracts';
-import { readSessionToken } from '../core/cookies';
-import { err } from '../core/errors';
-import { resolveSession } from '../core/auth';
-import { listManageableGuilds } from '../core/guildAccess';
-import { ensureDmChannel } from '../discord/api';
-import type { RouteDeps } from './deps';
+import type { SubscriptionDtoType } from "@kappa/contracts";
+import { Elysia, t } from "elysia";
 
-type SubscriptionRow = typeof subscriptions.$inferSelect;
+import { resolveSession } from "../core/auth";
+import { readSessionToken } from "../core/cookies";
+import { err } from "../core/errors";
+import { listManageableGuilds } from "../core/guild-access";
+import { ensureDmChannel } from "../discord/api";
+import { createJobSubscriptions } from "../modules/job-listings/application/subscriptions";
+import {
+  dmUserIdForScope,
+  JobSubscriptionError,
+  subscriptionKeywords,
+  subscriptionSource,
+} from "../modules/job-listings/domain/subscription";
+import type {
+  JobActor,
+  JobSubscription,
+} from "../modules/job-listings/domain/subscription";
+import type { RouteDeps } from "./deps";
 
-const dmScope = (uid: string): string => `dm:${uid}`;
+const toDto = (row: JobSubscription): SubscriptionDtoType => ({
+  channelId: row.channelId,
+  createdAt: row.createdAt.toISOString(),
+  guildId: row.guildId,
+  id: row.id,
+  isActive: row.isActive,
+  keywords: row.keywords,
+  location: row.location,
+  retentionDays: row.retentionDays,
+  scope: dmUserIdForScope(row.guildId) === null ? "guild" : "dm",
+  source: row.source,
+});
 
-function toDto(row: SubscriptionRow): SubscriptionDtoType {
-  return {
-    id: row.id,
-    scope: row.guildId.startsWith('dm:') ? 'dm' : 'guild',
-    guildId: row.guildId,
-    channelId: row.channelId,
-    source: row.source,
-    keywords: row.keywords,
-    location: row.location,
-    isActive: row.isActive,
-    retentionDays: row.retentionDays,
-    createdAt: row.createdAt.toISOString(),
+class HttpJobAccessError extends Error {
+  readonly kind: "reconnect" | "transport";
+  readonly cause?: unknown;
+
+  constructor(kind: "reconnect" | "transport", cause?: unknown) {
+    super(kind);
+    this.name = "HttpJobAccessError";
+    this.kind = kind;
+    this.cause = cause;
+  }
+}
+
+/** Trusted, request-local actor. No browser-provided grants or creator bypass. */
+export const createHttpJobAccess = (deps: RouteDeps, userId: string) => {
+  let pending: ReturnType<typeof listManageableGuilds> | undefined;
+  const manageableGuilds = async () => {
+    pending ??= listManageableGuilds(deps.db, deps.config, userId);
+    let guilds;
+    try {
+      guilds = await pending;
+    } catch (error) {
+      throw new HttpJobAccessError("transport", error);
+    }
+    if (!guilds) {
+      throw new HttpJobAccessError("reconnect");
+    }
+    return guilds;
   };
-}
+  const actor: JobActor = {
+    canManageGuild: async (guildId) => {
+      const guilds = await manageableGuilds();
+      return guilds.some((guild) => guild.id === guildId);
+    },
+    userId,
+  };
+  return { actor, manageableGuilds };
+};
 
-/**
- * Row authz: `guildId == dm:<uid> OR createdBy == <uid>` wins without any
- * Discord call; other guild-scope rows require live ManageGuild proof.
- * Stale/absent grant → 'reconnect' (409); no row / no access → null (404).
- * Discord transport failures throw (502).
- */
-async function loadOwned(
+/** Controller-only mapping: mask forbidden rows and preserve OAuth envelopes. */
+export const jobRouteFailure = (
+  error: unknown,
   deps: RouteDeps,
-  id: number,
-  uid: string,
-): Promise<SubscriptionRow | 'reconnect' | null> {
-  const [row] = await deps.db
-    .select()
-    .from(subscriptions)
-    .where(eq(subscriptions.id, id));
-  if (!row) return null;
-  if (row.guildId === dmScope(uid) || row.createdBy === uid) return row;
-  if (row.guildId.startsWith('dm:')) return null; // someone else's DMs, never
-  const guilds = await listManageableGuilds(deps.db, deps.config, uid);
-  if (!guilds) return 'reconnect';
-  return guilds.some((g) => g.id === row.guildId) ? row : null;
-}
+  userId: string
+): {
+  status: 400 | 404 | 409 | 502;
+  body: ReturnType<typeof err>;
+} | null => {
+  if (error instanceof JobSubscriptionError) {
+    return error.code === "VALIDATION"
+      ? { body: err("VALIDATION", error.message), status: 400 }
+      : { body: err("NOT_FOUND", "subscription not found"), status: 404 };
+  }
+  if (error instanceof HttpJobAccessError) {
+    if (error.kind === "reconnect") {
+      return {
+        body: err("RECONNECT_REQUIRED", "reconnect Discord to manage servers"),
+        status: 409,
+      };
+    }
+    deps.log.warn({ error: error.cause, userId }, "job access discord failure");
+    return {
+      body: err("OAUTH_FAILED", "discord request failed, try again later"),
+      status: 502,
+    };
+  }
+  return null;
+};
 
-/** One-line sub summary for the delete-subscription Brief (spec §7). */
-function summarize(row: SubscriptionRow): string {
-  return `\`${row.source}\` ${row.keywords ?? '—'} · ${row.location ?? '—'} → <#${row.channelId}>`;
-}
+/** One-line sub summary for the delete-subscription Brief. */
+const summarize = (row: JobSubscription): string =>
+  `\`${row.source}\` ${row.keywords ?? "—"} · ${row.location ?? "—"} → <#${row.channelId}>`;
 
-export function subscriptionRoutes(deps: RouteDeps) {
+export const subscriptionRoutes = (deps: RouteDeps) => {
   const { config, db, log } = deps;
+  const subscriptions = createJobSubscriptions(db);
 
-  return new Elysia({ prefix: '/api/v1' })
+  return new Elysia({ prefix: "/api/v1" })
     .get(
-      '/subscriptions',
+      "/subscriptions",
       async ({ request, query, status }) => {
-        const user = await resolveSession(db, readSessionToken(request.headers.get('cookie')));
-        if (!user) return status(401, err('UNAUTHORIZED', 'sign in with Discord first'));
-        if (query.guild !== undefined) {
-          if (query.guild.startsWith('dm:')) {
-            return status(400, err('VALIDATION', 'guild filter must be a server id'));
-          }
-          let guilds;
-          try {
-            guilds = await listManageableGuilds(db, config, user.discordId);
-          } catch (error) {
-            log.warn({ error, userId: user.discordId }, 'guild list discord failure');
-            return status(502, err('OAUTH_FAILED', 'discord request failed, try again later'));
-          }
-          if (!guilds) {
-            return status(409, err('RECONNECT_REQUIRED', 'reconnect Discord to manage servers'));
-          }
-          if (!guilds.some((g) => g.id === query.guild)) {
-            return status(404, err('NOT_FOUND', 'subscription not found'));
-          }
-          const rows = await db
-            .select()
-            .from(subscriptions)
-            .where(eq(subscriptions.guildId, query.guild))
-            .orderBy(desc(subscriptions.createdAt), desc(subscriptions.id));
-          return { subscriptions: rows.map(toDto) };
+        const user = await resolveSession(
+          db,
+          readSessionToken(request.headers.get("cookie"))
+        );
+        if (!user) {
+          return status(401, err("UNAUTHORIZED", "sign in with Discord first"));
         }
-        const rows = await db
-          .select()
-          .from(subscriptions)
-          .where(
-            or(
-              eq(subscriptions.guildId, dmScope(user.discordId)),
-              eq(subscriptions.createdBy, user.discordId),
-            ),
-          )
-          .orderBy(desc(subscriptions.createdAt), desc(subscriptions.id));
-        return { subscriptions: rows.map(toDto) };
+        const { actor } = createHttpJobAccess(deps, user.discordId);
+        try {
+          const rows = await subscriptions.list(
+            actor,
+            query.guild === undefined
+              ? undefined
+              : { guildId: query.guild, kind: "guild" }
+          );
+          return { subscriptions: rows.map(toDto) };
+        } catch (error) {
+          const failure = jobRouteFailure(error, deps, user.discordId);
+          if (failure) {
+            return status(failure.status, failure.body);
+          }
+          throw error;
+        }
       },
-      { query: t.Object({ guild: t.Optional(t.String()) }) },
+      { query: t.Object({ guild: t.Optional(t.String()) }) }
     )
     .post(
-      '/subscriptions',
+      "/subscriptions",
       async ({ request, body, status }) => {
-        const user = await resolveSession(db, readSessionToken(request.headers.get('cookie')));
-        if (!user) return status(401, err('UNAUTHORIZED', 'sign in with Discord first'));
-        if (!isSubscriptionSource(body.source)) {
-          return status(
-            400,
-            err('VALIDATION', `unknown source "${body.source}" (supported: ${SUBSCRIPTION_SOURCES.join(', ')})`),
-          );
+        const user = await resolveSession(
+          db,
+          readSessionToken(request.headers.get("cookie"))
+        );
+        if (!user) {
+          return status(401, err("UNAUTHORIZED", "sign in with Discord first"));
         }
-        const keywords = body.keywords.trim();
-        if (!keywords) return status(400, err('VALIDATION', 'keywords must not be blank'));
-        // DM scope only v1: ensure the bot↔user DM channel via Discord REST,
-        // then upsert the synthetic dm:<uid> guild + channel rows.
+        // Fail invalid input before creating a Discord destination.
+        try {
+          subscriptionSource(body.source);
+          subscriptionKeywords(body.keywords);
+        } catch (error) {
+          const failure = jobRouteFailure(error, deps, user.discordId);
+          if (failure) {
+            return status(failure.status, failure.body);
+          }
+          throw error;
+        }
         let channelId: string;
         try {
-          ({ id: channelId } = await ensureDmChannel(config.discordToken, user.discordId));
+          ({ id: channelId } = await ensureDmChannel(
+            config.discordToken,
+            user.discordId
+          ));
         } catch (error) {
-          log.warn({ error, userId: user.discordId }, 'dm channel ensure failed');
-          return status(502, err('OAUTH_FAILED', 'discord request failed, try again later'));
+          log.warn(
+            { error, userId: user.discordId },
+            "dm channel ensure failed"
+          );
+          return status(
+            502,
+            err("OAUTH_FAILED", "discord request failed, try again later")
+          );
         }
-        const scope = dmScope(user.discordId);
-        await db
-          .insert(guilds)
-          .values({ id: scope, name: `DM with ${user.username}` })
-          .onConflictDoNothing();
-        await db.insert(channels).values({ id: channelId, guildId: scope }).onConflictDoNothing();
-        const [created] = await db
-          .insert(subscriptions)
-          .values({
-            guildId: scope,
+        try {
+          const { actor } = createHttpJobAccess(deps, user.discordId);
+          const created = await subscriptions.create(actor, {
             channelId,
-            keywords,
-            location: 'Indonesia',
-            distance: null,
-            filters: {},
+            keywords: body.keywords,
+            scope: { kind: "personal" },
+            scopeName: `DM with ${user.username}`,
             source: body.source,
-            createdBy: user.discordId,
-          })
-          .returning();
-        return status(201, toDto(created));
+          });
+          return status(201, toDto(created));
+        } catch (error) {
+          const failure = jobRouteFailure(error, deps, user.discordId);
+          if (failure) {
+            return status(failure.status, failure.body);
+          }
+          throw error;
+        }
       },
-      { body: t.Object({ source: t.String(), keywords: t.String() }) },
+      { body: t.Object({ keywords: t.String(), source: t.String() }) }
     )
     .patch(
-      '/subscriptions/:id',
+      "/subscriptions/:id",
       async ({ request, params, body, status }) => {
-        const user = await resolveSession(db, readSessionToken(request.headers.get('cookie')));
-        if (!user) return status(401, err('UNAUTHORIZED', 'sign in with Discord first'));
-        if (!Number.isInteger(params.id) || params.id <= 0) {
-          return status(400, err('VALIDATION', 'subscription id must be a positive integer'));
+        const user = await resolveSession(
+          db,
+          readSessionToken(request.headers.get("cookie"))
+        );
+        if (!user) {
+          return status(401, err("UNAUTHORIZED", "sign in with Discord first"));
         }
-        let row;
         try {
-          row = await loadOwned(deps, params.id, user.discordId);
+          const { actor } = createHttpJobAccess(deps, user.discordId);
+          return toDto(await subscriptions.update(actor, params.id, body));
         } catch (error) {
-          log.warn({ error, userId: user.discordId }, 'subscription authz discord failure');
-          return status(502, err('OAUTH_FAILED', 'discord request failed, try again later'));
-        }
-        if (row === 'reconnect') {
-          return status(409, err('RECONNECT_REQUIRED', 'reconnect Discord to manage servers'));
-        }
-        if (!row) return status(404, err('NOT_FOUND', 'subscription not found'));
-        const patch: Partial<Pick<SubscriptionRow, 'keywords' | 'location' | 'isActive' | 'retentionDays'>> = {};
-        if (body.keywords !== undefined) {
-          if (!body.keywords.trim()) return status(400, err('VALIDATION', 'keywords must not be blank'));
-          patch.keywords = body.keywords.trim();
-        }
-        if (body.location !== undefined) {
-          if (!body.location.trim()) return status(400, err('VALIDATION', 'location must not be blank'));
-          patch.location = body.location.trim();
-        }
-        if (body.isActive !== undefined) patch.isActive = body.isActive;
-        if (body.retentionDays !== undefined) {
-          if (!Number.isInteger(body.retentionDays) || body.retentionDays < 1 || body.retentionDays > 365) {
-            return status(400, err('VALIDATION', 'retentionDays must be an integer 1–365'));
+          const failure = jobRouteFailure(error, deps, user.discordId);
+          if (failure) {
+            return status(failure.status, failure.body);
           }
-          patch.retentionDays = body.retentionDays;
+          throw error;
         }
-        if (Object.keys(patch).length === 0) return toDto(row);
-        const [updated] = await db
-          .update(subscriptions)
-          .set(patch)
-          .where(eq(subscriptions.id, row.id))
-          .returning();
-        return toDto(updated);
       },
       {
-        params: t.Object({ id: t.Numeric() }),
         body: t.Object({
+          isActive: t.Optional(t.Boolean()),
           keywords: t.Optional(t.String()),
           location: t.Optional(t.String()),
-          isActive: t.Optional(t.Boolean()),
           retentionDays: t.Optional(t.Number()),
         }),
-      },
+        params: t.Object({ id: t.Numeric() }),
+      }
     )
     .delete(
-      '/subscriptions/:id',
+      "/subscriptions/:id",
       async ({ request, params, status }) => {
-        const user = await resolveSession(db, readSessionToken(request.headers.get('cookie')));
-        if (!user) return status(401, err('UNAUTHORIZED', 'sign in with Discord first'));
-        if (!Number.isInteger(params.id) || params.id <= 0) {
-          return status(400, err('VALIDATION', 'subscription id must be a positive integer'));
+        const user = await resolveSession(
+          db,
+          readSessionToken(request.headers.get("cookie"))
+        );
+        if (!user) {
+          return status(401, err("UNAUTHORIZED", "sign in with Discord first"));
         }
-        let row;
         try {
-          row = await loadOwned(deps, params.id, user.discordId);
+          const { actor } = createHttpJobAccess(deps, user.discordId);
+          return {
+            summary: summarize(await subscriptions.remove(actor, params.id)),
+          };
         } catch (error) {
-          log.warn({ error, userId: user.discordId }, 'subscription authz discord failure');
-          return status(502, err('OAUTH_FAILED', 'discord request failed, try again later'));
+          const failure = jobRouteFailure(error, deps, user.discordId);
+          if (failure) {
+            return status(failure.status, failure.body);
+          }
+          throw error;
         }
-        if (row === 'reconnect') {
-          return status(409, err('RECONNECT_REQUIRED', 'reconnect Discord to manage servers'));
-        }
-        if (!row) return status(404, err('NOT_FOUND', 'subscription not found'));
-        const summary = summarize(row);
-        await db.delete(subscriptions).where(eq(subscriptions.id, row.id)); // cascades seen_jobs
-        return { summary };
       },
-      { params: t.Object({ id: t.Numeric() }) },
+      { params: t.Object({ id: t.Numeric() }) }
     );
-}
+};

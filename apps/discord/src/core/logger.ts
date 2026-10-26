@@ -1,8 +1,8 @@
-import pino from 'pino';
-import type { AppConfig } from './config';
+import pino from "pino";
 
-export function createLogger(config: AppConfig) {
-  return pino({ level: config.logLevel, base: { role: config.botRole } });
-}
+import type { AppConfig } from "./config";
+
+export const createLogger = (config: AppConfig) =>
+  pino({ base: { role: config.botRole }, level: config.logLevel });
 
 export type Logger = ReturnType<typeof createLogger>;

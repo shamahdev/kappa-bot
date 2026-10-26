@@ -1,0 +1,5 @@
+pre-commit:
+  commands:
+    ultracite:
+      glob: "*.{js,jsx,mjs,cjs,ts,tsx,mts,cts,json,jsonc,css,html,md,yaml,yml}"
+      run: bun run check '{staged_files}'

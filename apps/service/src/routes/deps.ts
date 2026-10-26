@@ -1,10 +1,11 @@
-import type { GatewayDb } from '@kappa/db';
-import type { ServiceConfig } from '../core/config';
-import type { Logger } from '../core/logger';
+import type { Database } from "@kappa/db";
+
+import type { ServiceConfig } from "../core/config";
+import type { Logger } from "../core/logger";
 
 /** Shared per-request dependencies for all /api/v1 route modules. */
-export type RouteDeps = {
+export interface RouteDeps {
   config: ServiceConfig;
-  db: GatewayDb;
+  db: Database;
   log: Logger;
-};
+}

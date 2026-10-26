@@ -1,17 +1,17 @@
-import { Schema } from 'effect';
+import { Schema } from "effect";
 
-// GET /account/summary — feeds the delete-account Brief (spec §5 + §7).
+// Account summary includes personal data and historical server creation counts.
 export const AccountSummary = Schema.Struct({
+  connections: Schema.Array(Schema.String),
   discordId: Schema.String,
-  username: Schema.String,
   dmSubscriptions: Schema.Number,
   guildSubscriptionsCreated: Schema.Number,
-  connections: Schema.Array(Schema.String),
   sessionsActive: Schema.Number,
+  username: Schema.String,
 });
-export type AccountSummary = typeof AccountSummary.Type;
+export type AccountSummaryType = typeof AccountSummary.Type;
 
 export const DeleteAccountResponse = Schema.Struct({
   ok: Schema.Literal(true),
 });
-export type DeleteAccountResponse = typeof DeleteAccountResponse.Type;
+export type DeleteAccountResponseType = typeof DeleteAccountResponse.Type;

@@ -1,38 +1,51 @@
-// @kappa/contracts — Effect Schemas + inferred DTO types + API path
-// constants + error codes shared by apps/service and apps/web.
-export { API_V1, PATHS, SESSION_COOKIE } from './paths';
-export { ErrorCode, ErrorEnvelope } from './errors';
-export type { ErrorCode as ErrorCodeType, ErrorEnvelope as ErrorEnvelopeType } from './errors';
+export type { AccountSummaryType, DeleteAccountResponseType } from "./account";
+export { AccountSummary, DeleteAccountResponse } from "./account";
+export type { AuthMeResponseType, UserDtoType } from "./auth";
+export { AuthMeResponse, UserDto } from "./auth";
+export type { CvDtoType, SaveCvBodyType } from "./cv";
 export {
-  SUBSCRIPTION_SOURCES,
-  isSubscriptionSource,
-  SubscriptionSource,
-  SubscriptionScope,
-  SubscriptionDto,
-  SubscriptionsResponse,
+  CV_MAX_CHARS,
+  CV_MAX_FILENAME,
+  CV_MAX_PDF_BYTES,
+  CV_MIN_CHARS,
+  CvDto,
+  SaveCvBody,
+} from "./cv";
+export type { ErrorCodeType, ErrorEnvelopeType } from "./errors";
+export { ErrorCode, ErrorEnvelope } from "./errors";
+export type { GuildDtoType, GuildsResponseType } from "./guilds";
+export { GuildDto, GuildsResponse } from "./guilds";
+export type {
+  JobPosting,
+  JobSourceId,
+  JobSourceSelection,
+} from "./job-listings";
+export {
+  JOB_SOURCE_OPTIONS,
+  JOB_SOURCE_SELECTIONS,
+  JOB_SOURCES,
+  jobSourceName,
+} from "./job-listings";
+export type { JobDtoType, JobsResponseType } from "./jobs";
+export { JobDto, JobsResponse } from "./jobs";
+export { API_V1, PATHS, SESSION_COOKIE } from "./paths";
+export type {
+  CreateSubscriptionBodyType,
+  DeleteSubscriptionResponseType,
+  SubscriptionDtoType,
+  SubscriptionScopeType,
+  SubscriptionSourceType,
+  SubscriptionsResponseType,
+  UpdateSubscriptionBodyType,
+} from "./subscriptions";
+export {
   CreateSubscriptionBody,
-  UpdateSubscriptionBody,
   DeleteSubscriptionResponse,
-} from './subscriptions';
-export type {
-  SubscriptionSource as SubscriptionSourceType,
-  SubscriptionScope as SubscriptionScopeType,
-  SubscriptionDto as SubscriptionDtoType,
-  SubscriptionsResponse as SubscriptionsResponseType,
-  CreateSubscriptionBody as CreateSubscriptionBodyType,
-  UpdateSubscriptionBody as UpdateSubscriptionBodyType,
-  DeleteSubscriptionResponse as DeleteSubscriptionResponseType,
-} from './subscriptions';
-export { UserDto, AuthMeResponse } from './auth';
-export type { UserDto as UserDtoType, AuthMeResponse as AuthMeResponseType } from './auth';
-export { GuildDto, GuildsResponse } from './guilds';
-export type { GuildDto as GuildDtoType, GuildsResponse as GuildsResponseType } from './guilds';
-export { JobDto, JobsResponse } from './jobs';
-export type { JobDto as JobDtoType, JobsResponse as JobsResponseType } from './jobs';
-export { AccountSummary, DeleteAccountResponse } from './account';
-export type {
-  AccountSummary as AccountSummaryType,
-  DeleteAccountResponse as DeleteAccountResponseType,
-} from './account';
-export { CV_MAX_CHARS, CV_MAX_FILENAME, CV_MAX_PDF_BYTES, CV_MIN_CHARS, CvDto, SaveCvBody } from './cv';
-export type { CvDto as CvDtoType, SaveCvBody as SaveCvBodyType } from './cv';
+  isSubscriptionSource,
+  SUBSCRIPTION_SOURCES,
+  SubscriptionDto,
+  SubscriptionScope,
+  SubscriptionSource,
+  SubscriptionsResponse,
+  UpdateSubscriptionBody,
+} from "./subscriptions";

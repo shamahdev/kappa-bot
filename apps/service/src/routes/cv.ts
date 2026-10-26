@@ -1,119 +1,123 @@
-import { Elysia, t } from 'elysia';
-import { eq } from 'drizzle-orm';
-import { cvProfiles, extractPdfText, type GatewayDb } from '@kappa/db';
+import type { CvDtoType } from "@kappa/contracts";
+import { Elysia, t } from "elysia";
+
+import { resolveSession } from "../core/auth";
+import { readSessionToken } from "../core/cookies";
+import { err } from "../core/errors";
 import {
-  CV_MAX_CHARS,
-  CV_MAX_FILENAME,
-  CV_MAX_PDF_BYTES,
-  CV_MIN_CHARS,
-  type CvDtoType,
-} from '@kappa/contracts';
-import { readSessionToken } from '../core/cookies';
-import { err } from '../core/errors';
-import { resolveSession } from '../core/auth';
-import type { RouteDeps } from './deps';
+  CV_MAX_UPLOAD_BYTES,
+  createCvProfiles,
+} from "../modules/job-listings/application/cv";
+import type { CvProfile } from "../modules/job-listings/application/cv";
+import { JobSubscriptionError } from "../modules/job-listings/domain/subscription";
+import type { RouteDeps } from "./deps";
 
-type CvRow = typeof cvProfiles.$inferSelect;
+const EMPTY: CvDtoType = {
+  charCount: 0,
+  filename: null,
+  hasCv: false,
+  text: null,
+  updatedAt: null,
+};
 
-const EMPTY: CvDtoType = { hasCv: false, filename: null, charCount: 0, updatedAt: null, text: null };
-
-function toDto(row: CvRow): CvDtoType {
-  return {
-    hasCv: true,
-    filename: row.filename,
-    charCount: row.text.length,
-    updatedAt: row.updatedAt.toISOString(),
-    text: row.text,
-  };
-}
-
-function lengthError(text: string): string | null {
-  if (text.length < CV_MIN_CHARS || text.length > CV_MAX_CHARS) {
-    return `CV text must be ${CV_MIN_CHARS}–${CV_MAX_CHARS} characters`;
-  }
-  return null;
-}
-
-async function upsertCv(
-  db: GatewayDb,
-  discordId: string,
-  text: string,
-  filename: string | null,
-): Promise<CvDtoType> {
-  const [row] = await db
-    .insert(cvProfiles)
-    .values({ discordId, text, filename, updatedAt: new Date() })
-    .onConflictDoUpdate({
-      target: cvProfiles.discordId,
-      set: { text, filename, updatedAt: new Date() },
-    })
-    .returning();
-  return toDto(row);
-}
+const toDto = (row: CvProfile): CvDtoType => ({
+  charCount: row.text.length,
+  filename: row.filename,
+  hasCv: true,
+  text: row.text,
+  updatedAt: row.updatedAt.toISOString(),
+});
 
 // Personal-only CV: session user owns exactly one row, no guild param exists.
-export function cvRoutes(deps: RouteDeps) {
+export const cvRoutes = (deps: RouteDeps) => {
   const { db } = deps;
+  const profiles = createCvProfiles(db);
 
-  return new Elysia({ prefix: '/api/v1' })
-    .get('/cv', async ({ request, status }) => {
-      const user = await resolveSession(db, readSessionToken(request.headers.get('cookie')));
-      if (!user) return status(401, err('UNAUTHORIZED', 'sign in with Discord first'));
-      const [row] = await db.select().from(cvProfiles).where(eq(cvProfiles.discordId, user.discordId));
-      return row ? toDto(row) : EMPTY;
+  return new Elysia({ prefix: "/api/v1" })
+    .get("/cv", async ({ request, status }) => {
+      const user = await resolveSession(
+        db,
+        readSessionToken(request.headers.get("cookie"))
+      );
+      if (!user) {
+        return status(401, err("UNAUTHORIZED", "sign in with Discord first"));
+      }
+      const profile = await profiles.get(user.discordId);
+      return profile ? toDto(profile) : EMPTY;
     })
     .put(
-      '/cv',
+      "/cv",
       async ({ request, body, status }) => {
-        const user = await resolveSession(db, readSessionToken(request.headers.get('cookie')));
-        if (!user) return status(401, err('UNAUTHORIZED', 'sign in with Discord first'));
-        const text = body.text.trim();
-        const tooLong = lengthError(text);
-        if (tooLong) return status(400, err('VALIDATION', tooLong));
-        const filename = body.filename?.trim() || null;
-        if (filename && filename.length > CV_MAX_FILENAME) {
-          return status(400, err('VALIDATION', `filename must be ≤ ${CV_MAX_FILENAME} characters`));
+        const user = await resolveSession(
+          db,
+          readSessionToken(request.headers.get("cookie"))
+        );
+        if (!user) {
+          return status(401, err("UNAUTHORIZED", "sign in with Discord first"));
         }
-        return upsertCv(db, user.discordId, text, filename);
+        try {
+          return toDto(
+            await profiles.save(user.discordId, body.text, body.filename)
+          );
+        } catch (error) {
+          if (
+            error instanceof JobSubscriptionError &&
+            error.code === "VALIDATION"
+          ) {
+            return status(400, err("VALIDATION", error.message));
+          }
+          throw error;
+        }
       },
-      { body: t.Object({ text: t.String(), filename: t.Optional(t.String()) }) },
+      { body: t.Object({ filename: t.Optional(t.String()), text: t.String() }) }
     )
     .post(
-      '/cv/file',
+      "/cv/file",
       async ({ request, body, status }) => {
-        const user = await resolveSession(db, readSessionToken(request.headers.get('cookie')));
-        if (!user) return status(401, err('UNAUTHORIZED', 'sign in with Discord first'));
-        const file = body.file;
-        if (file.size > CV_MAX_PDF_BYTES) {
-          return status(400, err('VALIDATION', 'PDF must be 2MB or smaller'));
+        const user = await resolveSession(
+          db,
+          readSessionToken(request.headers.get("cookie"))
+        );
+        if (!user) {
+          return status(401, err("UNAUTHORIZED", "sign in with Discord first"));
+        }
+        const { file } = body;
+        if (file.size > CV_MAX_UPLOAD_BYTES) {
+          return status(400, err("VALIDATION", "PDF must be 2MB or smaller"));
         }
         // Extension first (some browsers send generic types), MIME as backup.
-        if (!file.name.toLowerCase().endsWith('.pdf') && file.type !== 'application/pdf') {
-          return status(400, err('VALIDATION', 'Upload a .pdf file'));
+        if (
+          !file.name.toLowerCase().endsWith(".pdf") &&
+          file.type !== "application/pdf"
+        ) {
+          return status(400, err("VALIDATION", "Upload a .pdf file"));
         }
-        let text: string;
         try {
-          text = await extractPdfText(new Uint8Array(await file.arrayBuffer()));
-        } catch (e) {
-          return status(
-            400,
-            err('VALIDATION', e instanceof Error ? e.message : 'Could not read this PDF.'),
+          const bytes = new Uint8Array(await file.arrayBuffer());
+          return toDto(
+            await profiles.savePdf(user.discordId, bytes, file.name)
           );
+        } catch (error) {
+          if (
+            error instanceof JobSubscriptionError &&
+            error.code === "VALIDATION"
+          ) {
+            return status(400, err("VALIDATION", error.message));
+          }
+          throw error;
         }
-        const tooLong = lengthError(text);
-        if (tooLong) return status(400, err('VALIDATION', tooLong));
-        const filename = file.name.trim() || null;
-        if (filename && filename.length > CV_MAX_FILENAME) {
-          return status(400, err('VALIDATION', `filename must be ≤ ${CV_MAX_FILENAME} characters`));
-        }
-        return upsertCv(db, user.discordId, text, filename);
       },
-      { body: t.Object({ file: t.File() }) },
+      { body: t.Object({ file: t.File() }) }
     )
-    .delete('/cv', async ({ request, status }) => {
-      const user = await resolveSession(db, readSessionToken(request.headers.get('cookie')));
-      if (!user) return status(401, err('UNAUTHORIZED', 'sign in with Discord first'));
-      await db.delete(cvProfiles).where(eq(cvProfiles.discordId, user.discordId));
+    .delete("/cv", async ({ request, status }) => {
+      const user = await resolveSession(
+        db,
+        readSessionToken(request.headers.get("cookie"))
+      );
+      if (!user) {
+        return status(401, err("UNAUTHORIZED", "sign in with Discord first"));
+      }
+      await profiles.remove(user.discordId);
       return EMPTY;
     });
-}
+};

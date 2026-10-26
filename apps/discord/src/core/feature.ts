@@ -1,58 +1,48 @@
+import type { JobListings } from "@kappa/service/job-listings";
 import type {
   APIEmbed,
   ChatInputCommandInteraction,
   SlashCommandBuilder,
   SlashCommandSubcommandsOnlyBuilder,
-} from 'discord.js';
-import type { GatewayDb } from '@kappa/db';
-import type { AppConfig } from './config';
-import type { Logger } from './logger';
+} from "discord.js";
 
-export type { GatewayDb };
+import type { AppConfig } from "./config";
+import type { Logger } from "./logger";
 
-export type MessagePayload = {
+export interface MessagePayload {
   content?: string;
   embeds?: APIEmbed[];
-};
+}
+export type DeliverMessage = (
+  channelId: string,
+  payload: MessagePayload
+) => Promise<{ messageId?: string }>;
 
-/** Shared context handed to every command, event, and schedule handler. */
-export type FeatureContext = {
+export interface FeatureContext {
   config: AppConfig;
-  db: GatewayDb;
+  jobListings: JobListings;
   log: Logger;
-  /** Delivers to a channel; resolves the sent message id when the transport returns one. */
-  deliverMessage: (channelId: string, payload: MessagePayload) => Promise<{ messageId?: string }>;
-};
+}
 
-export type CommandDef = {
-  /** Top-level slash command (e.g. /jobs). Routed by commandName. */
+export interface CommandDef {
   data: SlashCommandBuilder | SlashCommandSubcommandsOnlyBuilder;
-  execute: (interaction: ChatInputCommandInteraction, ctx: FeatureContext) => Promise<void>;
-};
+  execute: (
+    interaction: ChatInputCommandInteraction,
+    ctx: FeatureContext
+  ) => Promise<void>;
+}
 
-export type EventDef = {
-  /** discord.js client event name, e.g. 'guildDelete'. */
+export interface EventDef {
   event: string;
   once?: boolean;
   handler: (ctx: FeatureContext, ...args: unknown[]) => Promise<void> | void;
-};
+}
 
-export type ScheduleDef = {
-  cron: string;
-  /** Optional boot-time override (e.g. resolve the interval from DB config). */
-  resolveCron?: (ctx: FeatureContext) => Promise<string>;
-  run: (ctx: FeatureContext) => Promise<void>;
-};
-
-export type Feature = {
+export interface Feature {
   name: string;
   description: string;
   commands?: CommandDef[];
   events?: EventDef[];
-  /** Single schedule or list (e.g. poll + nightly cleanup). */
-  schedule?: ScheduleDef | ScheduleDef[];
-};
-
-export function defineFeature(feature: Feature): Feature {
-  return feature;
 }
+
+export const defineFeature = (feature: Feature): Feature => feature;

@@ -1,10 +1,10 @@
-@import '@astryxdesign/core/reset.css';
-@import '@astryxdesign/core/astryx.css';
-@import '@astryxdesign/theme-neutral/theme.css';
+@import "@astryxdesign/core/reset.css";
+@import "@astryxdesign/core/astryx.css";
+@import "@astryxdesign/theme-neutral/theme.css";
 
 /* Kappa brand override: neutral theme stays, accent points at Kappa green.
- * Unlayered so it wins over astryx-theme layer. See docs/DESIGN_STANDARD.md §1. */
-html[data-astryx-theme='neutral'] {
+ * Unlayered so it wins over the astryx-theme layer. */
+html[data-astryx-theme="neutral"] {
   --color-accent: #3f6b55;
   --color-text-accent: #3f6b55;
   --color-icon-accent: #3f6b55;
@@ -26,12 +26,13 @@ html {
 
 body {
   margin: 0;
-  background: #F1F4F7;
-  color: #0A1317;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
-    'Helvetica Neue', Arial, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
   font-size: 15px;
   line-height: 1.55;
+  color: #0a1317;
+  background: #f1f4f7;
 }
 
 h1,
@@ -50,7 +51,7 @@ a {
   *,
   *::before,
   *::after {
-    animation-duration: 0.01ms;
     transition-duration: 0.01ms;
+    animation-duration: 0.01ms;
   }
 }

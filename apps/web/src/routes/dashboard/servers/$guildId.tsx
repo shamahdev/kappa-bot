@@ -1,26 +1,29 @@
-import { createFileRoute } from '@tanstack/react-router';
-import { useState } from 'react';
-import { Text } from '@astryxdesign/core/Text';
-import { VStack } from '@astryxdesign/core/Layout';
-import { JobsTable } from '../../../components/jobs';
-import {
-  SubscriptionsTable,
-  type OpenPanel,
-} from '../../../components/subscriptions';
-import { BackLink, PageHeader, QueryError, Tabs } from '../../../components/ui';
-import { useGuilds, useRequireAuth, useSubscriptions } from '../../../lib/queries';
+import { VStack } from "@astryxdesign/core/Layout";
+import { Text } from "@astryxdesign/core/Text";
+import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
 
-export const Route = createFileRoute('/dashboard/servers/$guildId')({
+import { JobsTable } from "../../../components/jobs";
+import { SubscriptionsTable } from "../../../components/subscriptions";
+import type { OpenPanel } from "../../../components/subscriptions";
+import { BackLink, PageHeader, QueryError, Tabs } from "../../../components/ui";
+import {
+  useGuilds,
+  useRequireAuth,
+  useSubscriptions,
+} from "../../../lib/queries";
+
+export const Route = createFileRoute("/dashboard/servers/$guildId")({
   ssr: false,
-  component: ServerDetailComponent,
+  component: () => <ServerDetailComponent />,
 });
 
-function ServerDetailComponent() {
+const ServerDetailComponent = () => {
   const { guildId } = Route.useParams();
   const me = useRequireAuth();
-  const guilds = useGuilds(me.data != null);
-  const subs = useSubscriptions(me.data != null, guildId);
-  const [tab, setTab] = useState('jobs');
+  const guilds = useGuilds(Boolean(me.data));
+  const subs = useSubscriptions(Boolean(me.data), guildId);
+  const [tab, setTab] = useState("jobs");
   const [open, setOpen] = useState<OpenPanel>(null);
 
   if (me.isPending || me.data === null) {
@@ -31,31 +34,37 @@ function ServerDetailComponent() {
 
   return (
     <VStack gap={4}>
-      <BackLink to="/dashboard" label="← Dashboard" />
-      <PageHeader title={guild?.name ?? 'Server'} description="Jobs and subscriptions for this server." />
+      <BackLink label="← Dashboard" to="/dashboard" />
+      <PageHeader
+        description="Jobs and subscriptions for this server."
+        title={guild?.name ?? "Server"}
+      />
       <Tabs
-        value={tab}
         onChange={setTab}
         tabs={[
-          { value: 'jobs', label: 'Jobs' },
-          { value: 'manage', label: 'Manage' },
+          { value: "jobs", label: "Jobs" },
+          { value: "manage", label: "Manage" },
         ]}
+        value={tab}
       />
-      {tab === 'jobs' ? (
+      {tab === "jobs" ? (
         <JobsTable base={{ guild: guildId }} subscriptions={subs.data ?? []} />
-      ) : subs.isPending ? (
+      ) : null}
+      {tab !== "jobs" && subs.isPending ? (
         <Text color="secondary">Loading…</Text>
-      ) : subs.isError ? (
+      ) : null}
+      {tab !== "jobs" && subs.isError ? (
         <QueryError error={subs.error} />
-      ) : (
+      ) : null}
+      {tab !== "jobs" && subs.isSuccess ? (
         <SubscriptionsTable
-          subs={subs.data}
+          emptyBody="Run /jobs subscribe in the server."
+          emptyTitle="No subscriptions here yet"
           open={open}
           setOpen={setOpen}
-          emptyTitle="No subscriptions here yet"
-          emptyBody="Run /jobs subscribe in the server."
+          subs={subs.data}
         />
-      )}
+      ) : null}
     </VStack>
   );
-}
+};

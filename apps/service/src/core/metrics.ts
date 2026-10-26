@@ -1,26 +1,37 @@
-// HTTP listener moved from apps/discord (spec §8: service owns /health + /metrics).
-// Minimal in-memory metrics (ADR-0006 baseline). Prometheus text format by hand.
+// Process-local metrics; the service HTTP endpoint does not aggregate other processes.
 
 const counters = new Map<string, number>();
 const gauges = new Map<string, number>();
 
-export function incCounter(name: string, labels: Record<string, string> = {}, by = 1): void {
+export const incCounter = (
+  name: string,
+  labels: Record<string, string> = {},
+  by = 1
+): void => {
   const key = `${name}{${Object.entries(labels)
     .map(([k, v]) => `${k}="${v}"`)
-    .join(',')}}`;
+    .join(",")}}`;
   counters.set(key, (counters.get(key) ?? 0) + by);
-}
+};
 
-export function setGauge(name: string, value: number, labels: Record<string, string> = {}): void {
+export const setGauge = (
+  name: string,
+  value: number,
+  labels: Record<string, string> = {}
+): void => {
   const key = `${name}{${Object.entries(labels)
     .map(([k, v]) => `${k}="${v}"`)
-    .join(',')}}`;
+    .join(",")}}`;
   gauges.set(key, value);
-}
+};
 
-export function renderMetrics(): string {
+export const renderMetrics = (): string => {
   const lines: string[] = [];
-  for (const [key, value] of counters) lines.push(`${key} ${value}`);
-  for (const [key, value] of gauges) lines.push(`${key} ${value}`);
-  return `${lines.join('\n')}\n`;
-}
+  for (const [key, value] of counters) {
+    lines.push(`${key} ${value}`);
+  }
+  for (const [key, value] of gauges) {
+    lines.push(`${key} ${value}`);
+  }
+  return `${lines.join("\n")}\n`;
+};

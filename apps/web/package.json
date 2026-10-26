@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --port 3444",
     "build": "vite build",
+    "dev": "vite --port 3444",
     "start": "bun .output/server/index.mjs",
     "typecheck": "tsc --noEmit"
   },

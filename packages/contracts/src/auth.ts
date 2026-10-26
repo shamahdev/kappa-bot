@@ -1,13 +1,13 @@
-import { Schema } from 'effect';
+import { Schema } from "effect";
 
 export const UserDto = Schema.Struct({
+  avatar: Schema.NullOr(Schema.String),
   discordId: Schema.String,
   username: Schema.String,
-  avatar: Schema.NullOr(Schema.String),
 });
-export type UserDto = typeof UserDto.Type;
+export type UserDtoType = typeof UserDto.Type;
 
 export const AuthMeResponse = Schema.Struct({
   user: UserDto,
 });
-export type AuthMeResponse = typeof AuthMeResponse.Type;
+export type AuthMeResponseType = typeof AuthMeResponse.Type;

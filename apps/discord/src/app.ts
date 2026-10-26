@@ -1,93 +1,116 @@
-import { CronJob } from 'cron';
-import { Events, type Client } from 'discord.js';
-import { attachHandlers, createClient, gatewayDeliverer, registerCommands } from './core/client';
-import { loadConfig, type AppConfig } from './core/config';
-import { closeDb, createDb, runMigrations } from '@kappa/db';
-import type { FeatureContext } from './core/feature';
-import { loadFeatures } from './core/loader';
-import { createLogger, type Logger } from './core/logger';
-import { FeatureRegistry } from './core/registry';
-import { runGuarded } from './core/supervisor';
+import { closeDb, createDb, runMigrations } from "@kappa/db";
+import {
+  createJobListings,
+  createJobPollingSchedule,
+} from "@kappa/service/job-listings";
+import { Events } from "discord.js";
+import type { Client } from "discord.js";
 
-export type Gateway = {
+import {
+  attachHandlers,
+  createClient,
+  gatewayDeliverer,
+  registerCommands,
+} from "./core/client";
+import { loadConfig } from "./core/config";
+import type { AppConfig } from "./core/config";
+import type { FeatureContext } from "./core/feature";
+import { loadFeatures } from "./core/loader";
+import { createLogger } from "./core/logger";
+import type { Logger } from "./core/logger";
+import { FeatureRegistry } from "./core/registry";
+import { createDiscordNotifications } from "./features/job-listings/notifications";
+
+export interface Gateway {
   config: AppConfig;
   log: Logger;
   client: Client;
   registry: FeatureRegistry;
-  jobs: CronJob[];
+  polling: Awaited<ReturnType<typeof createJobPollingSchedule>>;
   close: () => Promise<void>;
-};
+}
 
 /** Boots everything except the network listeners (login + listen). */
-export async function createApp(): Promise<Gateway> {
+export const createApp = async (): Promise<Gateway> => {
   const config = loadConfig();
   const log = createLogger(config);
 
   if (config.databaseUrlUnpooled) {
     await runMigrations(config.databaseUrlUnpooled);
-    log.info('migrations applied');
+    log.info("migrations applied");
   } else {
-    log.warn('DATABASE_URL_UNPOOLED blank — skipping boot migrations');
+    log.warn("DATABASE_URL_UNPOOLED blank — skipping boot migrations");
   }
 
   const { db } = createDb(config.databaseUrl);
   const registry = new FeatureRegistry();
-  for (const feature of await loadFeatures()) registry.add(feature);
-  log.info({ features: registry.names() }, 'features loaded');
+  for (const feature of await loadFeatures()) {
+    registry.add(feature);
+  }
+  log.info({ features: registry.names() }, "features loaded");
 
   const client = createClient();
-  const ctx: FeatureContext = { config, db, log, deliverMessage: gatewayDeliverer(client) };
+  const jobListings = createJobListings({
+    db,
+    log,
+    notifications: createDiscordNotifications(gatewayDeliverer(client)),
+  });
+  const ctx: FeatureContext = { config, jobListings, log };
   attachHandlers(client, registry, ctx);
 
-  const jobs: CronJob[] = [];
-  for (const feature of registry.all()) {
-    const schedules = Array.isArray(feature.schedule) ? feature.schedule : feature.schedule ? [feature.schedule] : [];
-    for (const schedule of schedules) {
-      // Schedules may resolve their cron at boot (job-subscription reads
-      // /jobs config); others use the declared cron as-is.
-      const cron = schedule.resolveCron ? await schedule.resolveCron(ctx) : schedule.cron;
-      const job = new CronJob(cron, () =>
-        runGuarded(feature.name, 'schedule', log, () => schedule.run(ctx)),
-      );
-      jobs.push(job);
-    }
-  }
+  const polling = await createJobPollingSchedule(jobListings, log);
 
   let closing = false;
   const close = async () => {
-    if (closing) return;
+    if (closing) {
+      return;
+    }
     closing = true;
-    for (const job of jobs) job.stop();
+    await polling.stop();
     client.destroy();
     await closeDb();
   };
-  process.once('SIGINT', () => void close().then(() => process.exit(0)));
-  process.once('SIGTERM', () => void close().then(() => process.exit(0)));
-  process.on('unhandledRejection', (err) => log.fatal({ err }, 'unhandled rejection (staying alive)'));
+  process.once("SIGINT", () => {
+    void close().then(() => process.exit(0));
+  });
+  process.once("SIGTERM", () => {
+    void close().then(() => process.exit(0));
+  });
+  process.on("unhandledRejection", (err) =>
+    log.fatal({ err }, "unhandled rejection (staying alive)")
+  );
 
-  return { config, log, client, registry, jobs, close };
-}
+  return { client, close, config, log, polling, registry };
+};
 
-/** Full gateway start: migrate → REST → login → cron (no HTTP listener; service owns /health). */
-export async function startGateway(): Promise<Gateway> {
+/** Gateway hosts the service module's poller; HTTP listeners remain in the service app. */
+export const startGateway = async (): Promise<Gateway> => {
   const app = await createApp();
-  const { config, log, client, jobs } = app;
+  const { config, log, client, polling } = app;
 
   if (config.clientId) {
-    await registerCommands(app.registry, config.clientId, config.discordToken, config.guildId, log);
+    await registerCommands(
+      app.registry,
+      config.clientId,
+      config.discordToken,
+      config.guildId,
+      log
+    );
   } else {
-    log.warn('CLIENT_ID blank — skipping REST command registration');
+    log.warn("CLIENT_ID blank — skipping REST command registration");
   }
 
+  // Register readiness before login; resolve only on ClientReady, not on login completion.
+  // oxlint-disable-next-line promise/avoid-new
   await new Promise<void>((resolve) => {
     client.once(Events.ClientReady, (c) => {
-      log.info({ user: c.user.tag }, 'bot ready');
+      log.info({ user: c.user.tag }, "bot ready");
       resolve();
     });
     void client.login(config.discordToken);
   });
 
-  for (const job of jobs) job.start();
-  log.info({ schedules: jobs.length }, 'schedules started');
+  polling.start();
+  log.info({ intervalMs: polling.intervalMs }, "job polling started");
   return app;
-}
+};

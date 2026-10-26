@@ -1,39 +1,33 @@
-// BOT_ROLE=worker: run every feature schedule ONCE via Discord REST (no gateway
-// WS) and exit. Suited to an external scheduler; shares the same schedule
-// contract as the gateway cron path (ADR-0004 upgrade route).
-// NOTE: reuses the pg Pool DB layer for full type-safety with feature code;
-// the neon-http switch for cold-start workers is a documented future step.
-import { REST, Routes } from 'discord.js';
-import { loadConfig } from './core/config';
-import { closeDb, createDb } from '@kappa/db';
-import type { FeatureContext, MessagePayload } from './core/feature';
-import { loadFeatures } from './core/loader';
-import { createLogger } from './core/logger';
-import { FeatureRegistry } from './core/registry';
-import { runGuarded } from './core/supervisor';
+import { closeDb, createDb } from "@kappa/db";
+import { createJobListings } from "@kappa/service/job-listings";
+import { REST, Routes } from "discord.js";
 
-export async function startWorker(): Promise<void> {
+import { loadConfig } from "./core/config";
+import type { DeliverMessage } from "./core/feature";
+import { createLogger } from "./core/logger";
+import { createDiscordNotifications } from "./features/job-listings/notifications";
+
+/** One service-owned polling cycle, bound to the Discord REST delivery adapter. */
+export const startWorker = async (): Promise<void> => {
   const config = loadConfig();
   const log = createLogger(config);
   const { db } = createDb(config.databaseUrl);
-  const rest = new REST({ version: '10' }).setToken(config.discordToken);
-
-  const deliverMessage = async (channelId: string, payload: MessagePayload) => {
-    const res = (await rest.post(Routes.channelMessages(channelId), { body: payload })) as {
-      id?: unknown;
-    };
-    return { messageId: typeof res?.id === 'string' ? res.id : undefined };
+  const rest = new REST({ version: "10" }).setToken(config.discordToken);
+  const deliverMessage: DeliverMessage = async (channelId, payload) => {
+    const sent = (await rest.post(Routes.channelMessages(channelId), {
+      body: payload,
+    })) as { id: string };
+    return { messageId: sent.id };
   };
-  const ctx: FeatureContext = { config, db, log, deliverMessage };
-
-  const registry = new FeatureRegistry();
-  for (const feature of await loadFeatures()) registry.add(feature);
-  for (const feature of registry.all()) {
-    const schedules = Array.isArray(feature.schedule) ? feature.schedule : feature.schedule ? [feature.schedule] : [];
-    for (const schedule of schedules) {
-      await runGuarded(feature.name, 'schedule', log, () => schedule.run(ctx));
-    }
+  try {
+    const jobs = createJobListings({
+      db,
+      log,
+      notifications: createDiscordNotifications(deliverMessage),
+    });
+    await jobs.pollAll();
+    log.info("worker cycle done");
+  } finally {
+    await closeDb();
   }
-  await closeDb();
-  log.info('worker cycle done');
-}
+};

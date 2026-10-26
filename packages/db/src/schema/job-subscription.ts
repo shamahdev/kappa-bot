@@ -1,63 +1,75 @@
+import type { JobPosting } from "@kappa/contracts";
+import { sql } from "drizzle-orm";
 import {
+  boolean,
+  check,
+  index,
+  integer,
+  jsonb,
   pgTable,
   serial,
-  text,
-  integer,
-  timestamp,
-  boolean,
   smallint,
-  index,
+  text,
+  timestamp,
   uniqueIndex,
-  jsonb,
-  check,
-} from 'drizzle-orm/pg-core';
-import { sql } from 'drizzle-orm';
-import type { JobPosting } from '../types';
+} from "drizzle-orm/pg-core";
 
-export const guilds = pgTable('guilds', {
-  id: text('id').primaryKey(), // Discord snowflake
-  name: text('name'),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+export const guilds = pgTable("guilds", {
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  // Server ID or legacy personal scope key.
+  id: text("id").primaryKey(),
+  name: text("name"),
 });
 
 export const channels = pgTable(
-  'channels',
+  "channels",
   {
-    id: text('id').primaryKey(),
-    guildId: text('guild_id')
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    guildId: text("guild_id")
       .notNull()
-      .references(() => guilds.id, { onDelete: 'cascade' }),
-    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+      .references(() => guilds.id, { onDelete: "cascade" }),
+    id: text("id").primaryKey(),
   },
-  (t) => [index('channels_guild_idx').on(t.guildId)],
+  (t) => [index("channels_guild_idx").on(t.guildId)]
 );
 
 export const subscriptions = pgTable(
-  'subscriptions',
+  "subscriptions",
   {
-    id: serial('id').primaryKey(),
-    guildId: text('guild_id')
+    channelId: text("channel_id")
       .notNull()
-      .references(() => guilds.id, { onDelete: 'cascade' }),
-    channelId: text('channel_id')
+      .references(() => channels.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    createdBy: text("created_by"),
+    distance: integer("distance"),
+    filters: jsonb("filters")
+      .$type<Record<string, string>>()
+      .default({})
+      .notNull(),
+    geoId: text("geo_id"),
+    guildId: text("guild_id")
       .notNull()
-      .references(() => channels.id, { onDelete: 'cascade' }),
-    keywords: text('keywords'),
-    location: text('location'),
-    geoId: text('geo_id'),
-    distance: integer('distance'),
-    filters: jsonb('filters').$type<Record<string, string>>().default({}).notNull(),
-    source: text('source').notNull().default('linkedin'), // future sources re-add here without core changes
-    isActive: boolean('is_active').notNull().default(true),
-    retentionDays: integer('retention_days').notNull().default(14),
-    createdBy: text('created_by'),
-    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+      .references(() => guilds.id, { onDelete: "cascade" }),
+    id: serial("id").primaryKey(),
+    isActive: boolean("is_active").notNull().default(true),
+    keywords: text("keywords"),
+    location: text("location"),
+    retentionDays: integer("retention_days").notNull().default(14),
+    source: text("source").notNull().default("linkedin"),
   },
   (t) => [
-    index('subs_guild_channel_idx').on(t.guildId, t.channelId),
-    index('subs_active_idx').on(t.isActive).where(sql`is_active = true`),
-    index('subs_filters_gin').using('gin', t.filters),
-  ],
+    index("subs_guild_channel_idx").on(t.guildId, t.channelId),
+    index("subs_active_idx")
+      .on(t.isActive)
+      .where(sql`is_active = true`),
+    index("subs_filters_gin").using("gin", t.filters),
+  ]
 );
 
 /**
@@ -65,51 +77,66 @@ export const subscriptions = pgTable(
  * subscriptions and keywords. Holds the shared listing data plus the cached
  * AI summary (computed once per posting, reused by every card render).
  * Per-subscriber data (dedup, match score) stays on seen_jobs. Rows with no
- * seen_jobs reference are pruned by the TTL pass in schedule.ts.
+ * seen_jobs reference are pruned by the service's retention pass.
  */
 export const jobs = pgTable(
-  'jobs',
+  "jobs",
   {
-    id: serial('id').primaryKey(),
-    source: text('source').notNull(),
-    externalId: text('external_id').notNull(),
-    url: text('url').notNull(),
-    title: text('title'),
-    company: text('company'),
-    location: text('location'),
-    aiSummary: text('ai_summary'),
-    firstSeenAt: timestamp('first_seen_at', { withTimezone: true }).defaultNow().notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+    aiSummary: text("ai_summary"),
+    company: text("company"),
+    externalId: text("external_id").notNull(),
+    firstSeenAt: timestamp("first_seen_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    id: serial("id").primaryKey(),
+    location: text("location"),
+    source: text("source").notNull(),
+    title: text("title"),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    url: text("url").notNull(),
   },
-  (t) => [uniqueIndex('jobs_src_ext_uidx').on(t.source, t.externalId)],
+  (t) => [uniqueIndex("jobs_src_ext_uidx").on(t.source, t.externalId)]
 );
 
 export const seenJobs = pgTable(
-  'seen_jobs',
+  "seen_jobs",
   {
-    id: serial('id').primaryKey(),
-    subscriptionId: integer('subscription_id')
-      .notNull()
-      .references(() => subscriptions.id, { onDelete: 'cascade' }),
-    source: text('source').notNull().default('linkedin'),
-    externalId: text('external_id').notNull(), // LinkedIn jobPosting numeric id, or adapter id
-    url: text('url').notNull(),
-    snapshot: jsonb('snapshot').$type<{ title: string; company: string; location: string }>(),
-    firstSeenAt: timestamp('first_seen_at', { withTimezone: true }).defaultNow().notNull(),
+    // LinkedIn jobPosting numeric id, or adapter id
+    externalId: text("external_id").notNull(),
+    firstSeenAt: timestamp("first_seen_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    id: serial("id").primaryKey(),
     // Shared posting row (nullable: legacy rows are backfilled, but a failed
     // jobs upsert must never block delivery, so collection tolerates null).
-    jobId: integer('job_id').references(() => jobs.id, { onDelete: 'cascade' }),
+    jobId: integer("job_id").references(() => jobs.id, { onDelete: "cascade" }),
+    matchReason: text("match_reason"),
     // Personal-only AI match against the subscriber's CV (DM scope only;
     // guild rows stay NULL). Written when a DM card is scored.
-    matchScore: smallint('match_score'),
-    matchReason: text('match_reason'),
+    matchScore: smallint("match_score"),
+    snapshot: jsonb("snapshot").$type<{
+      title: string;
+      company: string;
+      location: string;
+    }>(),
+    source: text("source").notNull().default("linkedin"),
+    subscriptionId: integer("subscription_id")
+      .notNull()
+      .references(() => subscriptions.id, { onDelete: "cascade" }),
+    url: text("url").notNull(),
   },
   (t) => [
-    uniqueIndex('seen_jobs_sub_src_ext_uidx').on(t.subscriptionId, t.source, t.externalId),
-    index('seen_jobs_url_idx').on(t.url),
-    index('seen_jobs_seen_at_idx').on(t.firstSeenAt),
-    index('seen_jobs_job_idx').on(t.jobId),
-  ],
+    uniqueIndex("seen_jobs_sub_src_ext_uidx").on(
+      t.subscriptionId,
+      t.source,
+      t.externalId
+    ),
+    index("seen_jobs_url_idx").on(t.url),
+    index("seen_jobs_seen_at_idx").on(t.firstSeenAt),
+    index("seen_jobs_job_idx").on(t.jobId),
+  ]
 );
 
 /**
@@ -118,53 +145,64 @@ export const seenJobs = pgTable(
  * user id with NO users FK — Discord-only users have no users row. Deleted
  * explicitly on account delete.
  */
-export const cvProfiles = pgTable('cv_profiles', {
-  discordId: text('discord_id').primaryKey(),
-  text: text('text').notNull(),
-  filename: text('filename'),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+export const cvProfiles = pgTable("cv_profiles", {
+  discordId: text("discord_id").primaryKey(),
+  filename: text("filename"),
+  text: text("text").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
 });
 
 export const botConfig = pgTable(
-  'bot_config',
+  "bot_config",
   {
-    id: smallint('id').primaryKey(), // singleton: only row allowed (CHECK id=1)
-    pollIntervalMinutes: integer('poll_interval_minutes').notNull().default(30),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+    // Singleton: only row allowed (CHECK id=1).
+    id: smallint("id").primaryKey(),
+    pollIntervalMinutes: integer("poll_interval_minutes").notNull().default(30),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
   },
-  (t) => [check('bot_config_id_check', sql`${t.id} = 1`)],
+  (t) => [check("bot_config_id_check", sql`${t.id} = 1`)]
 );
 
 /**
- * Last fetched listing per filter fingerprint (schedule.ts cross-tick skip).
+ * Last fetched listing per filter fingerprint for cross-tick skipping.
  * When a cron tick fetches a listing identical to the stored hash with
  * unchanged group membership, the per-subscription collect/delivery is
  * skipped. Membership is stored so a new or reactivated subscription still
  * receives the current listing on its first tick instead of being skipped.
  */
-export const fingerprintSnapshots = pgTable('fingerprint_snapshots', {
-  fingerprint: text('fingerprint').primaryKey(), // 16-char filter key from schedule.ts
-  source: text('source').notNull(),
-  listingHash: text('listing_hash').notNull(), // sha1 over sorted source:id pairs
-  jobCount: integer('job_count').notNull().default(0),
-  subscriptionIds: jsonb('subscription_ids').$type<number[]>().notNull().default([]),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+export const fingerprintSnapshots = pgTable("fingerprint_snapshots", {
+  // Poller's filter key.
+  fingerprint: text("fingerprint").primaryKey(),
+  jobCount: integer("job_count").notNull().default(0),
+  // sha1 over sorted source:id pairs
+  listingHash: text("listing_hash").notNull(),
+  source: text("source").notNull(),
+  subscriptionIds: jsonb("subscription_ids")
+    .$type<number[]>()
+    .notNull()
+    .default([]),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
 });
 
-/**
- * Persisted delivery contents for reply-by-number. The in-memory map in
- * events/reply.ts is only an L1 cache: it is capped, wiped on restart, and
- * never shared with worker polls — without this table, replying to an old
- * delivery silently does nothing.
- */
+/** Exact per-message display order for reply-by-number, shared across processes. */
 export const deliveryMessages = pgTable(
-  'delivery_messages',
+  "delivery_messages",
   {
-    messageId: text('message_id').primaryKey(), // bot delivery message id
-    channelId: text('channel_id').notNull(),
-    jobs: jsonb('jobs').$type<JobPosting[]>().notNull(), // display order (flattened, capped)
-    keyword: text('keyword'),
-    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    channelId: text("channel_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    // Exact display order for this message.
+    jobs: jsonb("jobs").$type<JobPosting[]>().notNull(),
+    keyword: text("keyword"),
+    // Bot delivery message id.
+    messageId: text("message_id").primaryKey(),
   },
-  (t) => [index('delivery_messages_created_at_idx').on(t.createdAt)],
+  (t) => [index("delivery_messages_created_at_idx").on(t.createdAt)]
 );

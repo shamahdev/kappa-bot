@@ -1,36 +1,50 @@
-import { index, pgTable, serial, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
+import {
+  index,
+  pgTable,
+  serial,
+  text,
+  timestamp,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
 
-/**
- * Web account keyed by Discord user id (spec §4). Existing guild/channel/
- * subscription tables are untouched; `subscriptions.createdBy` becomes the
- * ownership key for guild-scope rows in web authz.
- */
-export const users = pgTable('users', {
-  discordId: text('discord_id').primaryKey(),
-  username: text('username').notNull(),
-  avatar: text('avatar'),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+/** Web account keyed by Discord identity; subscription creator attribution is not an access grant. */
+export const users = pgTable("users", {
+  avatar: text("avatar"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  discordId: text("discord_id").primaryKey(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  username: text("username").notNull(),
 });
 
 export const discordConnections = pgTable(
-  'discord_connections',
+  "discord_connections",
   {
-    id: serial('id').primaryKey(),
-    userId: text('user_id')
-      .notNull()
-      .references(() => users.discordId, { onDelete: 'cascade' }),
-    provider: text('provider').notNull().default('discord'),
-    scopes: text('scopes').notNull().default('identify'),
     // User OAuth tokens (identify + guilds): needed to list the user's servers
     // on their behalf. Stored plain (read-only Discord scopes; same trust as
     // DATABASE_URL on the VPS). Null for pre-guilds logins → must re-login.
-    accessToken: text('access_token'),
-    refreshToken: text('refresh_token'),
-    tokenExpiresAt: timestamp('token_expires_at', { withTimezone: true }),
-    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    accessToken: text("access_token"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    id: serial("id").primaryKey(),
+    provider: text("provider").notNull().default("discord"),
+    refreshToken: text("refresh_token"),
+    scopes: text("scopes").notNull().default("identify"),
+    tokenExpiresAt: timestamp("token_expires_at", { withTimezone: true }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.discordId, { onDelete: "cascade" }),
   },
-  (t) => [uniqueIndex('discord_connections_user_provider_uidx').on(t.userId, t.provider)],
+  (t) => [
+    uniqueIndex("discord_connections_user_provider_uidx").on(
+      t.userId,
+      t.provider
+    ),
+  ]
 );
 
 /**
@@ -38,14 +52,16 @@ export const discordConnections = pgTable(
  * stored here. 30d expiry, rolling is intentionally not implemented v1.
  */
 export const sessions = pgTable(
-  'sessions',
+  "sessions",
   {
-    tokenHash: text('token_hash').primaryKey(),
-    userId: text('user_id')
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    tokenHash: text("token_hash").primaryKey(),
+    userId: text("user_id")
       .notNull()
-      .references(() => users.discordId, { onDelete: 'cascade' }),
-    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+      .references(() => users.discordId, { onDelete: "cascade" }),
   },
-  (t) => [index('sessions_user_idx').on(t.userId)],
+  (t) => [index("sessions_user_idx").on(t.userId)]
 );
