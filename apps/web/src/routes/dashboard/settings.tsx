@@ -1,7 +1,7 @@
-import { VStack } from "@astryxdesign/core/Layout";
+import { HStack, VStack } from "@astryxdesign/core/Layout";
+import { Link } from "@astryxdesign/core/Link";
 import { Text } from "@astryxdesign/core/Text";
-import * as stylex from "@stylexjs/stylex";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import {
@@ -9,6 +9,7 @@ import {
   Button,
   ErrorNote,
   PageHeader,
+  QueryError,
   SectionCard,
   TextInput,
 } from "../../components/ui";
@@ -18,7 +19,8 @@ import {
   useDeleteAccount,
   useMe,
 } from "../../lib/queries";
-import { fonts, tokens } from "../../theme.stylex";
+
+import styles from "./settings.module.css";
 
 export const Route = createFileRoute("/dashboard/settings")({
   ssr: false,
@@ -26,41 +28,6 @@ export const Route = createFileRoute("/dashboard/settings")({
 });
 
 const CONFIRM_PHRASE = "delete my account";
-
-const page = stylex.create({
-  dl: {
-    display: "grid",
-    gridTemplateColumns: "180px 1fr",
-    rowGap: 10,
-    columnGap: 16,
-    margin: 0,
-  },
-  dt: {
-    fontFamily: fonts.sans,
-    fontSize: 14,
-    color: tokens.muted,
-    lineHeight: "21px",
-  },
-  dd: {
-    fontFamily: fonts.sans,
-    fontSize: 14,
-    fontWeight: 600,
-    color: tokens.ink,
-    lineHeight: "21px",
-    margin: 0,
-  },
-  mono: { fontFamily: fonts.mono, fontSize: 13, fontWeight: 400 },
-  fieldGap: { marginTop: 4 },
-  buttons: {
-    display: "flex",
-    gap: 8,
-    marginTop: 14,
-    alignItems: "center",
-    flexWrap: "wrap",
-  },
-  errorGap: { marginTop: 12 },
-  constrain: { maxWidth: 640, width: "100%" },
-});
 
 const SettingsComponent = () => {
   const navigate = useNavigate();
@@ -75,6 +42,10 @@ const SettingsComponent = () => {
     }
   }, [me.data, navigate]);
 
+  if (me.isError) {
+    return <QueryError error={me.error} />;
+  }
+
   if (me.isPending || me.data === null) {
     return <Text color="secondary">Loading settings…</Text>;
   }
@@ -82,128 +53,147 @@ const SettingsComponent = () => {
   const phraseOk = phrase.trim() === CONFIRM_PHRASE;
 
   return (
-    <VStack gap={4}>
+    <VStack className={styles.settings} gap={4} maxWidth={640} width="100%">
       <BackLink label="← Back to dashboard" to="/dashboard" />
       <PageHeader
-        description="Your account, and the way out."
+        description="Review your account details and deletion options."
         title="Settings"
       />
-      <div {...stylex.props(page.constrain)}>
-        <VStack gap={4}>
-          <SectionCard title="Account">
-            {summary.isPending ? (
-              <Text color="secondary">Loading account summary…</Text>
-            ) : null}
-            {summary.isError ? (
-              <ErrorNote>{apiMessage(summary.error)}</ErrorNote>
-            ) : null}
-            {summary.isSuccess ? (
-              <dl {...stylex.props(page.dl)}>
-                <dt {...stylex.props(page.dt)}>Discord</dt>
-                <dd {...stylex.props(page.dd)}>
-                  @{summary.data.username}{" "}
-                  <span
-                    {...stylex.props(page.mono)}
-                    title={summary.data.discordId}
-                  >
-                    ({summary.data.discordId})
-                  </span>
-                </dd>
-                <dt {...stylex.props(page.dt)}>Connections</dt>
-                <dd {...stylex.props(page.dd)}>
+      <SectionCard title="Account">
+        {summary.isPending ? (
+          <Text color="secondary">Loading account summary…</Text>
+        ) : null}
+        {summary.isError ? (
+          <ErrorNote>{apiMessage(summary.error)}</ErrorNote>
+        ) : null}
+        {summary.isSuccess ? (
+          <VStack as="dl" className={styles.accountMetadata} gap={3}>
+            <HStack gap={3} vAlign="start" wrap="wrap">
+              <dt className={styles.metadataTerm}>
+                <Text color="secondary" type="label">
+                  Discord
+                </Text>
+              </dt>
+              <dd className={styles.metadataValue}>
+                <Text>@{summary.data.username}</Text>{" "}
+                <Text color="secondary" type="code">
+                  ({summary.data.discordId})
+                </Text>
+              </dd>
+            </HStack>
+            <HStack gap={3} vAlign="start" wrap="wrap">
+              <dt className={styles.metadataTerm}>
+                <Text color="secondary" type="label">
+                  Connections
+                </Text>
+              </dt>
+              <dd className={styles.metadataValue}>
+                <Text>
                   {summary.data.connections.length > 0
                     ? summary.data.connections.join(", ")
                     : "none"}
-                </dd>
-                <dt {...stylex.props(page.dt)}>DM subscriptions</dt>
-                <dd {...stylex.props(page.dd)}>
-                  {summary.data.dmSubscriptions}
-                </dd>
-                <dt {...stylex.props(page.dt)}>Server subscriptions created</dt>
-                <dd {...stylex.props(page.dd)}>
-                  {summary.data.guildSubscriptionsCreated}
-                </dd>
-                <dt {...stylex.props(page.dt)}>Active sessions</dt>
-                <dd {...stylex.props(page.dd)}>
-                  {summary.data.sessionsActive}
-                </dd>
-              </dl>
-            ) : null}
-          </SectionCard>
+                </Text>
+              </dd>
+            </HStack>
+            <HStack gap={3} vAlign="start" wrap="wrap">
+              <dt className={styles.metadataTerm}>
+                <Text color="secondary" type="label">
+                  DM subscriptions
+                </Text>
+              </dt>
+              <dd className={styles.metadataValue}>
+                <Text>{summary.data.dmSubscriptions}</Text>
+              </dd>
+            </HStack>
+            <HStack gap={3} vAlign="start" wrap="wrap">
+              <dt className={styles.metadataTerm}>
+                <Text color="secondary" type="label">
+                  Server subscriptions created
+                </Text>
+              </dt>
+              <dd className={styles.metadataValue}>
+                <Text>{summary.data.guildSubscriptionsCreated}</Text>
+              </dd>
+            </HStack>
+            <HStack gap={3} vAlign="start" wrap="wrap">
+              <dt className={styles.metadataTerm}>
+                <Text color="secondary" type="label">
+                  Active sessions
+                </Text>
+              </dt>
+              <dd className={styles.metadataValue}>
+                <Text>{summary.data.sessionsActive}</Text>
+              </dd>
+            </HStack>
+          </VStack>
+        ) : null}
+      </SectionCard>
 
-          <SectionCard title="Delete account" variant="muted">
-            {summary.data ? (
-              <Text>
-                Deletes your account (discord @{summary.data.username}),{" "}
-                {summary.data.connections.length} connection
-                {summary.data.connections.length === 1 ? "" : "s"} (
-                {summary.data.connections.join(", ") || "none"}),{" "}
-                {summary.data.dmSubscriptions} DM subscription
-                {summary.data.dmSubscriptions === 1 ? "" : "s"}, their job
-                history, and your CV. Server subscriptions remain with the
-                server; your creator attribution is removed. Other users&apos;
-                data is untouched. Irreversible.
-              </Text>
-            ) : (
-              <Text>
-                Deletes your account, connections, DM subscriptions, their job
-                history, and your CV. Server subscriptions remain with the
-                server; your creator attribution is removed. Other users&apos;
-                data is untouched. Irreversible.
-              </Text>
-            )}
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (!phraseOk || destroy.isPending) {
-                  return;
-                }
-                destroy.reset();
-                destroy.mutate(undefined, {
-                  onSuccess: () => {
-                    void navigate({ to: "/" });
-                  },
-                });
-              }}
-            >
-              <div {...stylex.props(page.fieldGap)}>
-                <TextInput
-                  autoComplete="off"
-                  disabled={destroy.isPending}
-                  label={`Type "${CONFIRM_PHRASE}" to confirm`}
-                  onChange={(e) => setPhrase(e.target.value)}
-                  placeholder={CONFIRM_PHRASE}
-                  value={phrase}
-                />
-              </div>
+      <SectionCard title="Delete account" variant="muted">
+        <VStack gap={3}>
+          {summary.data ? (
+            <Text as="p">
+              Deletes your account (discord @{summary.data.username}),{" "}
+              {summary.data.connections.length} connection
+              {summary.data.connections.length === 1 ? "" : "s"} (
+              {summary.data.connections.join(", ") || "none"}),{" "}
+              {summary.data.dmSubscriptions} DM subscription
+              {summary.data.dmSubscriptions === 1 ? "" : "s"}, their job
+              history, and your CV. Server subscriptions remain with the server;
+              your creator attribution is removed. Other users&apos; data is
+              untouched. Irreversible.
+            </Text>
+          ) : (
+            <Text as="p">
+              Deletes your account, connections, DM subscriptions, their job
+              history, and your CV. Server subscriptions remain with the server;
+              your creator attribution is removed. Other users&apos; data is
+              untouched. Irreversible.
+            </Text>
+          )}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!phraseOk || destroy.isPending) {
+                return;
+              }
+              destroy.reset();
+              destroy.mutate(undefined, {
+                onSuccess: () => {
+                  void navigate({ to: "/" });
+                },
+              });
+            }}
+          >
+            <VStack gap={3}>
+              <TextInput
+                autoComplete="off"
+                disabled={destroy.isPending}
+                label={`Type "${CONFIRM_PHRASE}" to confirm`}
+                onChange={(e) => setPhrase(e.target.value)}
+                placeholder={CONFIRM_PHRASE}
+                value={phrase}
+              />
               {destroy.isError ? (
-                <div {...stylex.props(page.errorGap)}>
-                  <ErrorNote>{apiMessage(destroy.error)}</ErrorNote>
-                </div>
+                <ErrorNote>{apiMessage(destroy.error)}</ErrorNote>
               ) : null}
-              <div {...stylex.props(page.buttons)}>
+              <HStack gap={2} vAlign="center" wrap="wrap">
                 <Button
                   disabled={!phraseOk || destroy.isPending}
+                  loading={destroy.isPending}
                   type="submit"
                   variant="danger"
                 >
                   {destroy.isPending ? "Deleting…" : "Delete my account"}
                 </Button>
-                <Link
-                  style={{
-                    fontSize: 14,
-                    color: "var(--color-text-secondary)",
-                    textDecoration: "none",
-                  }}
-                  to="/dashboard"
-                >
+                <Link color="secondary" href="/dashboard">
                   Keep my account
                 </Link>
-              </div>
-            </form>
-          </SectionCard>
+              </HStack>
+            </VStack>
+          </form>
         </VStack>
-      </div>
+      </SectionCard>
     </VStack>
   );
 };

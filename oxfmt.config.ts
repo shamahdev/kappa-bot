@@ -8,5 +8,6 @@ export default defineConfig({
     "**/.tanstack",
     "**/.nitro",
     "drizzle/meta/**",
+    "**/themes/built/**",
   ],
 });

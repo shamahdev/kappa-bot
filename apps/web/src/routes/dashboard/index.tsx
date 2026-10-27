@@ -7,7 +7,14 @@ import { Text } from "@astryxdesign/core/Text";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
-import { PageHeader, QueryError, TextInput } from "../../components/ui";
+import {
+  Button,
+  EmptyList,
+  LoadingNote,
+  PageHeader,
+  QueryError,
+  TextInput,
+} from "../../components/ui";
 import { guildIconUrl, userAvatarUrl } from "../../lib/api";
 import { useGuilds, useRequireAuth, useSubscriptions } from "../../lib/queries";
 
@@ -26,8 +33,11 @@ const DashboardComponent = () => {
   const navigate = useNavigate();
   const [q, setQ] = useState("");
 
-  if (me.isPending || me.data === null || me.data === undefined) {
-    return <Text color="secondary">Loading…</Text>;
+  if (me.isError) {
+    return <QueryError error={me.error} />;
+  }
+  if (!me.data) {
+    return <LoadingNote />;
   }
 
   const dmSubs = subs.data?.filter((s) => s.scope === "dm") ?? [];
@@ -38,6 +48,13 @@ const DashboardComponent = () => {
     term === "" ? true : g.name.toLowerCase().includes(term)
   );
   const showDm = term === "" || "direct messages".includes(term);
+  let dmCount = countsLine(dmActive, dmSubs.length);
+  if (subs.isPending) {
+    dmCount = "Loading subscriptions…";
+  }
+  if (subs.isError) {
+    dmCount = "Subscriptions unavailable";
+  }
 
   return (
     <VStack gap={6}>
@@ -52,7 +69,7 @@ const DashboardComponent = () => {
           placeholder="Server name"
           value={q}
         />
-        <Grid columns={{ minWidth: 260 }} gap={4}>
+        <Grid columns={{ minWidth: 260, repeat: "fit" }} gap={4}>
           {showDm ? (
             <ClickableCard
               label="Direct messages"
@@ -69,9 +86,7 @@ const DashboardComponent = () => {
                 <VStack gap={0}>
                   <Heading level={3}>Direct messages</Heading>
                   <Text color="secondary" type="supporting">
-                    {subs.isPending
-                      ? "Loading…"
-                      : countsLine(dmActive, dmSubs.length)}
+                    {dmCount}
                   </Text>
                 </VStack>
               </HStack>
@@ -104,10 +119,26 @@ const DashboardComponent = () => {
             </ClickableCard>
           ))}
         </Grid>
-        {guilds.isPending ? (
-          <Text color="secondary">Loading servers…</Text>
-        ) : null}
+        {guilds.isPending ? <LoadingNote>Loading servers…</LoadingNote> : null}
+        {subs.isError ? <QueryError error={subs.error} /> : null}
         {guilds.isError ? <QueryError error={guilds.error} /> : null}
+        {guilds.isSuccess && !showDm && visibleGuilds.length === 0 ? (
+          <EmptyList
+            action={
+              <Button onClick={() => setQ("")} small variant="subtle">
+                Clear search
+              </Button>
+            }
+            body="Try another server name or return to all subscriptions."
+            title="No servers match this search"
+          />
+        ) : null}
+        {guilds.isSuccess && !term && guilds.data.length === 0 ? (
+          <Text color="secondary" type="supporting">
+            No manageable servers yet. Your personal subscriptions are available
+            in Direct messages.
+          </Text>
+        ) : null}
       </VStack>
     </VStack>
   );

@@ -1,68 +1,31 @@
+import { Dialog, DialogHeader } from "@astryxdesign/core/Dialog";
+import { HStack, VStack } from "@astryxdesign/core/Layout";
+import { Link } from "@astryxdesign/core/Link";
+import { pixel, proportional, Table } from "@astryxdesign/core/Table";
+import type { TableColumn } from "@astryxdesign/core/Table";
 import { Text } from "@astryxdesign/core/Text";
 import { SUBSCRIPTION_SOURCES } from "@kappa/contracts";
-import * as stylex from "@stylexjs/stylex";
-import { Fragment } from "react";
 
-import type { SubscriptionDtoType } from "../lib/queries";
+import type { JobDtoType, SubscriptionDtoType } from "../lib/api";
 import { ALL_SOURCES, useJobsTable } from "../lib/use-jobs-table";
 import type { JobsBase } from "../lib/use-jobs-table";
-import { fonts, tokens } from "../theme.stylex";
-import { formatDate, subStyles } from "./subscriptions";
-import { Badge, Button, EmptyList, QueryError, Select, TextInput } from "./ui";
+import { formatDate } from "./subscriptions";
+import {
+  Badge,
+  Button,
+  EmptyList,
+  LoadingNote,
+  QueryError,
+  Select,
+  TextInput,
+} from "./ui";
+
+import styles from "./data-views.module.css";
 
 const ALL_SUBSCRIPTIONS = "All subscriptions";
-const CONCRETE_SOURCES = SUBSCRIPTION_SOURCES.filter((s) => s !== "all");
-
-const jobStyles = stylex.create({
-  filterRow: {
-    display: "flex",
-    gap: 12,
-    flexWrap: "wrap",
-    alignItems: "flex-end",
-    marginTop: 12,
-  },
-  filterGrow: { flex: "1 1 220px" },
-  filterFixed: { flex: "0 1 190px" },
-  jobLink: {
-    color: tokens.brand,
-    textDecoration: "none",
-    ":hover": { textDecoration: "underline" },
-  },
-  pager: {
-    display: "flex",
-    gap: 12,
-    alignItems: "center",
-    justifyContent: "space-between",
-    flexWrap: "wrap",
-    padding: "12px 14px",
-    fontFamily: fonts.sans,
-    fontSize: 13,
-    color: tokens.muted,
-  },
-  pagerButtons: { display: "flex", gap: 8 },
-  matchScore: {
-    fontFamily: fonts.sans,
-    fontSize: 14,
-    fontWeight: 700,
-    color: tokens.ink,
-  },
-  matchReason: {
-    fontFamily: fonts.sans,
-    fontSize: 12,
-    color: tokens.muted,
-    lineHeight: "18px",
-    marginTop: 2,
-  },
-  summaryToggle: { marginTop: 6 },
-  summary: {
-    fontFamily: fonts.sans,
-    fontSize: 13,
-    color: tokens.ink,
-    lineHeight: "20px",
-    whiteSpace: "pre-wrap",
-  },
-});
-
+const CONCRETE_SOURCES = SUBSCRIPTION_SOURCES.filter(
+  (source) => source !== "all"
+);
 const subLabel = (sub: SubscriptionDtoType): string =>
   `#${sub.id} · ${sub.source} · ${sub.keywords ?? "—"}`;
 
@@ -91,48 +54,101 @@ export const JobsTable = ({
     filtered,
     clearFilters,
   } = useJobsTable(base);
-
+  const closeSummary = () => {
+    if (expandedSummaryId !== null) {
+      toggleSummary(expandedSummaryId);
+    }
+  };
+  const expandedJob = jobs.data?.jobs.find(
+    (job) => job.id === expandedSummaryId
+  );
+  const emptyMessage = filtered
+    ? { title: "No jobs match these filters", body: "Try widening the search." }
+    : { title: "No jobs delivered yet", body: "New deliveries appear here." };
+  const columns: TableColumn<JobDtoType>[] = [
+    {
+      key: "title",
+      header: "Job",
+      width: proportional(1),
+      renderCell: (job) => (
+        <VStack gap={2}>
+          <Link href={job.url} isExternalLink weight="semibold">
+            {job.title ?? "Untitled posting"}
+          </Link>
+          <Text color="secondary" type="supporting">
+            {job.company ?? "—"} · {job.location ?? "—"}
+          </Text>
+          <HStack gap={2} wrap="wrap">
+            <Badge>{job.source}</Badge>
+            <Text color="secondary" type="supporting">
+              Delivered {formatDate(job.firstSeenAt)}
+            </Text>
+          </HStack>
+          {job.aiSummary ? (
+            <HStack>
+              <Button
+                onClick={() => toggleSummary(job.id)}
+                small
+                variant="subtle"
+              >
+                Summary
+              </Button>
+            </HStack>
+          ) : null}
+        </VStack>
+      ),
+    },
+    {
+      key: "matchScore",
+      header: "Match",
+      width: pixel(88),
+      renderCell: (job) => (
+        <VStack gap={2}>
+          <Text weight="semibold">
+            {job.matchScore === null ? "—" : `${job.matchScore}%`}
+          </Text>
+          {job.matchReason ? (
+            <Text color="secondary" type="supporting">
+              {job.matchReason}
+            </Text>
+          ) : null}
+        </VStack>
+      ),
+    },
+  ];
   return (
-    <div>
-      <div {...stylex.props(jobStyles.filterRow)}>
-        <div {...stylex.props(jobStyles.filterGrow)}>
-          <TextInput
-            label="Search"
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Title or company"
-            value={q}
-          />
-        </div>
-        <div {...stylex.props(jobStyles.filterFixed)}>
-          <Select
-            label="Source"
-            onChange={setSource}
-            options={[ALL_SOURCES, ...CONCRETE_SOURCES]}
-            value={source}
-          />
-        </div>
-        <div {...stylex.props(jobStyles.filterFixed)}>
-          <Select
-            label="Subscription"
-            onChange={selectSubscription}
-            options={[
-              { value: "", label: ALL_SUBSCRIPTIONS },
-              ...subscriptions.map((sub) => ({
-                value: String(sub.id),
-                label: subLabel(sub),
-              })),
-            ]}
-            value={subscriptionId === null ? "" : String(subscriptionId)}
-          />
-        </div>
+    <VStack gap={4}>
+      <div className={styles.filters}>
+        <TextInput
+          label="Search"
+          onChange={(event) => setQ(event.target.value)}
+          placeholder="Title or company"
+          value={q}
+        />
+        <Select
+          label="Source"
+          onChange={setSource}
+          options={[ALL_SOURCES, ...CONCRETE_SOURCES]}
+          value={source}
+        />
+        <Select
+          label="Subscription"
+          onChange={selectSubscription}
+          options={[
+            { value: "", label: ALL_SUBSCRIPTIONS },
+            ...subscriptions.map((sub) => ({
+              value: String(sub.id),
+              label: subLabel(sub),
+            })),
+          ]}
+          value={subscriptionId === null ? "" : String(subscriptionId)}
+        />
       </div>
-
-      {jobs.isPending ? <Text color="secondary">Loading…</Text> : null}
-      {jobs.isError ? (
-        <div {...stylex.props(subStyles.errorGap)}>
-          <QueryError error={jobs.error} />
-        </div>
+      {jobs.isPending ? <LoadingNote /> : null}
+      {jobs.isFetching && !jobs.isPending ? (
+        <LoadingNote>Updating jobs…</LoadingNote>
       ) : null}
+      {jobs.isError ? <QueryError error={jobs.error} /> : null}
       {jobs.isSuccess && jobs.data.jobs.length === 0 ? (
         <EmptyList
           action={
@@ -142,121 +158,28 @@ export const JobsTable = ({
               </Button>
             ) : undefined
           }
-          body={
-            filtered
-              ? "Try widening the search."
-              : "New deliveries appear here."
-          }
-          title={
-            filtered ? "No jobs match these filters" : "No jobs delivered yet"
-          }
+          body={emptyMessage.body}
+          title={emptyMessage.title}
         />
       ) : null}
       {jobs.isSuccess && jobs.data.jobs.length > 0 ? (
-        <div {...stylex.props(subStyles.tableScroll)}>
-          <table {...stylex.props(subStyles.table)}>
-            <thead>
-              <tr>
-                <th {...stylex.props(subStyles.th)} scope="col">
-                  Title
-                </th>
-                <th {...stylex.props(subStyles.th)} scope="col">
-                  Company
-                </th>
-                <th {...stylex.props(subStyles.th)} scope="col">
-                  Location
-                </th>
-                <th {...stylex.props(subStyles.th)} scope="col">
-                  Source
-                </th>
-                <th {...stylex.props(subStyles.th)} scope="col">
-                  Match
-                </th>
-                <th {...stylex.props(subStyles.th)} scope="col">
-                  Delivered
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {jobs.data.jobs.map((job) => (
-                <Fragment key={job.id}>
-                  <tr>
-                    <td {...stylex.props(subStyles.td)}>
-                      <a
-                        {...stylex.props(jobStyles.jobLink)}
-                        href={job.url}
-                        rel="noreferrer"
-                        target="_blank"
-                      >
-                        {job.title ?? "Untitled posting"}
-                      </a>
-                      {job.aiSummary ? (
-                        <div {...stylex.props(jobStyles.summaryToggle)}>
-                          <Button
-                            onClick={() => toggleSummary(job.id)}
-                            small
-                            variant="subtle"
-                          >
-                            {expandedSummaryId === job.id
-                              ? "Hide summary"
-                              : "Summary"}
-                          </Button>
-                        </div>
-                      ) : null}
-                    </td>
-                    <td {...stylex.props(subStyles.td)}>
-                      {job.company ?? (
-                        <span {...stylex.props(subStyles.muted)}>—</span>
-                      )}
-                    </td>
-                    <td {...stylex.props(subStyles.td)}>
-                      {job.location ?? (
-                        <span {...stylex.props(subStyles.muted)}>—</span>
-                      )}
-                    </td>
-                    <td {...stylex.props(subStyles.td)}>
-                      <Badge>{job.source}</Badge>
-                    </td>
-                    <td {...stylex.props(subStyles.td)}>
-                      {job.matchScore === null ? (
-                        <span {...stylex.props(subStyles.muted)}>—</span>
-                      ) : (
-                        <div>
-                          <span
-                            {...stylex.props(jobStyles.matchScore)}
-                          >{`${job.matchScore}%`}</span>
-                          {job.matchReason ? (
-                            <div {...stylex.props(jobStyles.matchReason)}>
-                              {job.matchReason}
-                            </div>
-                          ) : null}
-                        </div>
-                      )}
-                    </td>
-                    <td {...stylex.props(subStyles.td)}>
-                      {formatDate(job.firstSeenAt)}
-                    </td>
-                  </tr>
-                  {expandedSummaryId === job.id && job.aiSummary ? (
-                    <tr>
-                      <td {...stylex.props(subStyles.td)} colSpan={6}>
-                        <div {...stylex.props(jobStyles.summary)}>
-                          {job.aiSummary}
-                        </div>
-                      </td>
-                    </tr>
-                  ) : null}
-                </Fragment>
-              ))}
-            </tbody>
-          </table>
-          <div {...stylex.props(jobStyles.pager)}>
-            <span>
+        <div className={styles.tableFrame}>
+          <Table
+            aria-label="Delivered jobs"
+            columns={columns}
+            data={[...jobs.data.jobs]}
+            density="balanced"
+            dividers="rows"
+            idKey="id"
+            verticalAlign="top"
+          />
+          <div className={styles.pager}>
+            <Text color="secondary" type="supporting">
               Page {page} of {totalPages} · {total} job{total === 1 ? "" : "s"}
-            </span>
-            <div {...stylex.props(jobStyles.pagerButtons)}>
+            </Text>
+            <HStack gap={2} wrap="wrap">
               <Button
-                disabled={page <= 1}
+                disabled={page <= 1 || jobs.isFetching}
                 onClick={previousPage}
                 small
                 variant="subtle"
@@ -264,17 +187,35 @@ export const JobsTable = ({
                 Previous
               </Button>
               <Button
-                disabled={page >= totalPages}
+                disabled={page >= totalPages || jobs.isFetching}
                 onClick={nextPage}
                 small
                 variant="subtle"
               >
                 Next
               </Button>
-            </div>
+            </HStack>
           </div>
         </div>
       ) : null}
-    </div>
+      <Dialog
+        isOpen={Boolean(expandedJob?.aiSummary)}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            closeSummary();
+          }
+        }}
+        padding={4}
+        purpose="info"
+      >
+        <VStack gap={4}>
+          <DialogHeader
+            onOpenChange={closeSummary}
+            title={expandedJob?.title ?? "Job summary"}
+          />
+          <Text className={styles.summary}>{expandedJob?.aiSummary}</Text>
+        </VStack>
+      </Dialog>
+    </VStack>
   );
 };

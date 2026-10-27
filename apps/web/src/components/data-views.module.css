@@ -1,0 +1,39 @@
+.filters {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: var(--spacing-3);
+}
+
+.filters > * {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.tableFrame {
+  min-width: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-container);
+  background: var(--color-background-surface);
+  overflow: hidden;
+}
+
+.tableFrame td,
+.tableFrame td > * {
+  overflow-wrap: anywhere;
+}
+
+.pager {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-3);
+  padding: var(--spacing-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.summary {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

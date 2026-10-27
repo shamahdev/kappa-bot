@@ -1,23 +1,29 @@
+import { AppShell } from "@astryxdesign/core/AppShell";
+import { LinkProvider } from "@astryxdesign/core/Link";
+import { Text } from "@astryxdesign/core/Text";
 import { Theme } from "@astryxdesign/core/theme";
-import { neutralTheme } from "@astryxdesign/theme-neutral/built";
-import * as stylex from "@stylexjs/stylex";
+import { TopNav, TopNavHeading, TopNavItem } from "@astryxdesign/core/TopNav";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   createRootRoute,
   HeadContent,
-  Link,
+  Link as RouterLink,
   Outlet,
   Scripts,
+  useLocation,
   useNavigate,
 } from "@tanstack/react-router";
 import { useMemo } from "react";
+import type { AnchorHTMLAttributes, ReactNode } from "react";
 
 import "../styles.css";
 import { Button } from "../components/ui";
 import { loginUrl } from "../lib/api";
 import { useLogout, useMe } from "../lib/queries";
 import { useMounted } from "../lib/use-mounted";
-import { fonts, tokens } from "../theme.stylex";
+import { kappaTheme } from "../themes/built/kappa";
+
+import styles from "./root.module.css";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -30,121 +36,44 @@ export const Route = createRootRoute({
   component: () => <RootComponent />,
 });
 
-const layout = stylex.create({
-  shell: {
-    minHeight: "100vh",
-    display: "flex",
-    flexDirection: "column",
-    backgroundColor: tokens.bg,
-    color: tokens.ink,
-  },
-  topbar: {
-    borderBottomWidth: 1,
-    borderBottomStyle: "solid",
-    borderBottomColor: tokens.line,
-    backgroundColor: tokens.surface,
-  },
-  topbarInner: {
-    maxWidth: 960,
-    marginLeft: "auto",
-    marginRight: "auto",
-    paddingLeft: 20,
-    paddingRight: 20,
-    height: 58,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 16,
-  },
-  wordmark: {
-    fontFamily: fonts.sans,
-    fontSize: 16,
-    fontWeight: 800,
-    letterSpacing: "-0.01em",
-    textDecoration: "none",
-    color: tokens.ink,
-  },
-  nav: { display: "flex", alignItems: "center", gap: 8 },
-  navLink: {
-    fontFamily: fonts.sans,
-    fontSize: 14,
-    fontWeight: 600,
-    color: tokens.muted,
-    textDecoration: "none",
-    padding: "6px 10px",
-    borderRadius: tokens.radiusSm,
-    ":hover": { color: tokens.ink, backgroundColor: tokens.surfaceSunken },
-  },
-  main: {
-    flex: 1,
-    width: "100%",
-    maxWidth: 960,
-    marginLeft: "auto",
-    marginRight: "auto",
-    paddingLeft: 20,
-    paddingRight: 20,
-    paddingTop: 36,
-    paddingBottom: 64,
-  },
-  footer: {
-    borderTopWidth: 1,
-    borderTopStyle: "solid",
-    borderTopColor: tokens.line,
-  },
-  footerInner: {
-    maxWidth: 960,
-    marginLeft: "auto",
-    marginRight: "auto",
-    paddingLeft: 20,
-    paddingRight: 20,
-    paddingTop: 18,
-    paddingBottom: 18,
-    fontFamily: fonts.sans,
-    fontSize: 13,
-    color: tokens.muted,
-    display: "flex",
-    justifyContent: "space-between",
-    gap: 12,
-    flexWrap: "wrap",
-  },
-});
+/** App routes use the router; API login and external links keep native navigation. */
+const AppLink = ({
+  href,
+  children,
+  ...props
+}: AnchorHTMLAttributes<HTMLAnchorElement>) => {
+  if (
+    href?.startsWith("/") &&
+    !href.startsWith("//") &&
+    !href.startsWith("/api/")
+  ) {
+    return (
+      <RouterLink {...props} activeOptions={{ exact: true }} to={href}>
+        {children}
+      </RouterLink>
+    );
+  }
+  return (
+    <a {...props} href={href}>
+      {children}
+    </a>
+  );
+};
 
-const TopNav = () => {
+const Navigation = () => {
   const mounted = useMounted();
   const me = useMe();
   const logout = useLogout();
   const navigate = useNavigate();
-
-  if (!mounted || me.isPending) {
-    return <div {...stylex.props(layout.nav)} />;
-  }
-  if (!me.data) {
-    return (
-      <nav {...stylex.props(layout.nav)} aria-label="Account">
-        <a {...stylex.props(layout.navLink)} href={loginUrl}>
-          Log in with Discord
-        </a>
-      </nav>
-    );
-  }
-  return (
-    <nav {...stylex.props(layout.nav)} aria-label="Account">
-      <Link
-        {...stylex.props(layout.navLink)}
-        activeProps={{ style: { color: tokens.brand } }}
-        to="/dashboard"
-      >
-        Dashboard
-      </Link>
-      <Link
-        {...stylex.props(layout.navLink)}
-        activeProps={{ style: { color: tokens.brand } }}
-        to="/dashboard/settings"
-      >
-        Settings
-      </Link>
+  const pathname = useLocation({ select: (location) => location.pathname });
+  const signedIn = mounted && Boolean(me.data);
+  const isSettings = pathname === "/dashboard/settings";
+  let accountAction: ReactNode = null;
+  if (signedIn) {
+    accountAction = (
       <Button
         disabled={logout.isPending}
+        loading={logout.isPending}
         onClick={() => {
           logout.mutate(undefined, {
             onSettled: () => {
@@ -157,41 +86,73 @@ const TopNav = () => {
       >
         {logout.isPending ? "Signing out…" : "Sign out"}
       </Button>
-    </nav>
+    );
+  } else if (mounted && !me.isPending) {
+    accountAction = (
+      <Button href={loginUrl} small variant="subtle">
+        Log in with Discord
+      </Button>
+    );
+  }
+
+  return (
+    <TopNav
+      heading={<TopNavHeading heading="Kappa" headingHref="/" />}
+      label="Account"
+      startContent={
+        signedIn ? (
+          <>
+            <TopNavItem
+              href="/dashboard"
+              isSelected={pathname.startsWith("/dashboard") && !isSettings}
+              label="Dashboard"
+            />
+            <TopNavItem
+              href="/dashboard/settings"
+              isSelected={isSettings}
+              label="Settings"
+            />
+          </>
+        ) : undefined
+      }
+      endContent={accountAction}
+    />
   );
 };
 
 const RootComponent = () => {
   const queryClient = useMemo(() => new QueryClient(), []);
   return (
-    <html data-astryx-theme="neutral" lang="en">
+    <html data-astryx-theme="kappa" data-theme="light" lang="en">
       <head>
         <HeadContent />
       </head>
       <body>
         <QueryClientProvider client={queryClient}>
-          <Theme mode="light" theme={neutralTheme}>
-            <div {...stylex.props(layout.shell)}>
-              <header {...stylex.props(layout.topbar)}>
-                <div {...stylex.props(layout.topbarInner)}>
-                  <Link {...stylex.props(layout.wordmark)} to="/">
-                    Kappa
-                  </Link>
-                  <TopNav />
-                </div>
-              </header>
-              <main {...stylex.props(layout.main)}>
-                <Outlet />
-              </main>
-              <footer {...stylex.props(layout.footer)}>
-                <div {...stylex.props(layout.footerInner)}>
-                  <span>Kappa job subscriptions</span>
-                  <span>
-                    Delivery happens in Discord; this dashboard manages it.
-                  </span>
-                </div>
-              </footer>
-            </div>
+          <Theme mode="light" theme={kappaTheme}>
+            <LinkProvider component={AppLink}>
+              <div className={styles.shell}>
+                <AppShell
+                  height="auto"
+                  topNav={<Navigation />}
+                  variant="section"
+                >
+                  <div className={styles.content}>
+                    <Outlet />
+                  </div>
+                </AppShell>
+                <footer className={styles.footer}>
+                  <div className={styles.footerInner}>
+                    <Text color="secondary" type="supporting">
+                      Kappa job subscriptions
+                    </Text>
+                    <Text color="secondary" type="supporting">
+                      Delivery happens in Discord; this dashboard manages it.
+                    </Text>
+                  </div>
+                </footer>
+              </div>
+            </LinkProvider>
           </Theme>
         </QueryClientProvider>
         <Scripts />

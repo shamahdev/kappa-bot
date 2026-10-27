@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "vite build",
+    "theme:build": "node ../../node_modules/@astryxdesign/cli/clients/cli/bin/astryx.mjs theme build src/themes/kappa.ts --out src/themes/built/kappa.css",
+    "build": "bun run theme:build && vite build",
     "dev": "vite --port 3444",
     "start": "bun .output/server/index.mjs",
     "typecheck": "tsc --noEmit"

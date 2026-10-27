@@ -4,36 +4,35 @@ import { Button as AstryxButton } from "@astryxdesign/core/Button";
 import { Card } from "@astryxdesign/core/Card";
 import { EmptyState } from "@astryxdesign/core/EmptyState";
 import { Heading } from "@astryxdesign/core/Heading";
+import { HStack, VStack } from "@astryxdesign/core/Layout";
+import { Link } from "@astryxdesign/core/Link";
 import { Selector } from "@astryxdesign/core/Selector";
 import { StatusDot as AstryxStatusDot } from "@astryxdesign/core/StatusDot";
 import { Tab, TabList } from "@astryxdesign/core/TabList";
 import { Text } from "@astryxdesign/core/Text";
 import { TextInput as AstryxTextInput } from "@astryxdesign/core/TextInput";
-import * as stylex from "@stylexjs/stylex";
-import { Link as RouterLink } from "@tanstack/react-router";
+import { useId } from "react";
 import type { ChangeEventHandler, MouseEventHandler, ReactNode } from "react";
 
 import { loginUrl } from "../lib/api";
 import { ApiError, apiMessage } from "../lib/queries";
 
 type ButtonVariant = "primary" | "brand" | "subtle" | "danger" | "dangerSubtle";
-
-const VARIANT: Record<
-  ButtonVariant,
-  "primary" | "secondary" | "ghost" | "destructive"
-> = {
-  primary: "primary",
-  brand: "primary",
-  subtle: "secondary",
-  danger: "destructive",
-  dangerSubtle: "ghost",
-};
+const VARIANT: Record<ButtonVariant, "primary" | "secondary" | "destructive"> =
+  {
+    primary: "primary",
+    brand: "primary",
+    subtle: "secondary",
+    danger: "destructive",
+    dangerSubtle: "destructive",
+  };
 
 export const Button = ({
   variant = "primary",
   small = false,
   type = "button",
   disabled = false,
+  loading = false,
   onClick,
   href,
   children,
@@ -42,13 +41,15 @@ export const Button = ({
   small?: boolean;
   type?: "button" | "submit" | "reset";
   disabled?: boolean;
+  loading?: boolean;
   onClick?: MouseEventHandler<HTMLButtonElement>;
   href?: string;
   children: string;
 }) => (
   <AstryxButton
     href={href}
-    isDisabled={disabled}
+    isDisabled={disabled && !loading}
+    isLoading={loading}
     label={children}
     onClick={onClick}
     size={small ? "sm" : "md"}
@@ -81,10 +82,11 @@ export const TextInput = ({
     description={description}
     isDisabled={disabled}
     label={label}
-    onChange={(_value, e) => onChange(e)}
+    onChange={(_value, event) => onChange(event)}
     placeholder={placeholder}
     status={error ? { type: "error", message: error } : undefined}
     value={value}
+    width="100%"
   />
 );
 
@@ -109,48 +111,42 @@ export const Select = ({
     label={label}
     onChange={onChange}
     options={options}
+    presentation="adaptive"
     value={value}
+    width="100%"
   />
 );
 
 export const ErrorNote = ({ children }: { children: ReactNode }) => (
   <Banner status="error" title={children} />
 );
-
 export const InfoNote = ({ children }: { children: ReactNode }) => (
   <Banner status="info" title={children} />
 );
 
-const queryError = stylex.create({
-  row: {
-    display: "flex",
-    gap: 12,
-    alignItems: "center",
-    flexWrap: "wrap",
-    marginTop: 12,
-  },
-});
-
-/** Query failure banner; a stale Discord grant (409) gets a Reconnect button. */
 export const QueryError = ({ error }: { error: unknown }) => {
   if (!(error instanceof ApiError && error.isReconnectRequired)) {
     return <ErrorNote>{apiMessage(error)}</ErrorNote>;
   }
   return (
-    <div>
+    <VStack gap={3}>
       <ErrorNote>Server data needs a fresh Discord login.</ErrorNote>
-      <div {...stylex.props(queryError.row)}>
-        <Button
-          onClick={() => {
-            window.location.href = loginUrl;
-          }}
-        >
-          Reconnect Discord
-        </Button>
-      </div>
-    </div>
+      <HStack>
+        <Button href={loginUrl}>Reconnect Discord</Button>
+      </HStack>
+    </VStack>
   );
 };
+
+export const LoadingNote = ({
+  children = "Loading…",
+}: {
+  children?: string;
+}) => (
+  <output>
+    <Text color="secondary">{children}</Text>
+  </output>
+);
 
 export const Badge = ({
   children,
@@ -161,9 +157,13 @@ export const Badge = ({
 }) => <AstryxBadge label={children} variant={strong ? "info" : "neutral"} />;
 
 export const StatusDot = ({ on, label }: { on: boolean; label: string }) => (
-  <AstryxStatusDot label={label} variant={on ? "success" : "neutral"} />
+  <HStack gap={2} vAlign="center" wrap="wrap">
+    <AstryxStatusDot label={label} variant={on ? "success" : "neutral"} />
+    <Text type="supporting">{label}</Text>
+  </HStack>
 );
 
+/** Local view tabs own their associated panels and keyboard/ARIA semantics. */
 export const Tabs = ({
   value,
   onChange,
@@ -171,16 +171,43 @@ export const Tabs = ({
 }: {
   value: string;
   onChange: (value: string) => void;
-  tabs: { value: string; label: string }[];
-}) => (
-  <TabList hasDivider onChange={onChange} value={value}>
-    {tabs.map((t) => (
-      <Tab key={t.value} label={t.label} value={t.value} />
-    ))}
-  </TabList>
-);
+  tabs: { value: string; label: string; content: ReactNode }[];
+}) => {
+  const id = useId();
+  return (
+    <VStack gap={4}>
+      <TabList
+        aria-label="Page views"
+        hasDivider
+        onChange={onChange}
+        role="tablist"
+        value={value}
+      >
+        {tabs.map((tab) => (
+          <Tab
+            id={`${id}-${tab.value}-tab`}
+            key={tab.value}
+            label={tab.label}
+            panelId={`${id}-${tab.value}-panel`}
+            value={tab.value}
+          />
+        ))}
+      </TabList>
+      {tabs.map((tab) => (
+        <div
+          aria-labelledby={`${id}-${tab.value}-tab`}
+          hidden={value !== tab.value}
+          id={`${id}-${tab.value}-panel`}
+          key={tab.value}
+          role="tabpanel"
+        >
+          {value === tab.value ? tab.content : null}
+        </div>
+      ))}
+    </VStack>
+  );
+};
 
-/** Standard page heading: Astryx H1 + secondary supporting line. */
 export const PageHeader = ({
   title,
   description,
@@ -188,19 +215,16 @@ export const PageHeader = ({
   title: string;
   description?: string;
 }) => (
-  <div>
+  <VStack gap={2}>
     <Heading level={1}>{title}</Heading>
     {description ? (
-      <div style={{ marginTop: 6 }}>
-        <Text color="secondary" type="supporting">
-          {description}
-        </Text>
-      </div>
+      <Text color="secondary" type="supporting">
+        {description}
+      </Text>
     ) : null}
-  </div>
+  </VStack>
 );
 
-/** Standard section: Astryx Card with H3 title. Replaces per-page panel styles. */
 export const SectionCard = ({
   title,
   children,
@@ -211,14 +235,13 @@ export const SectionCard = ({
   variant?: "default" | "muted";
 }) => (
   <Card padding={4} variant={variant ?? "default"}>
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <Heading level={3}>{title}</Heading>
+    <VStack gap={3}>
+      <Heading level={2}>{title}</Heading>
       <div>{children}</div>
-    </div>
+    </VStack>
   </Card>
 );
 
-/** Standard empty state inside a Card. Replaces per-page empty divs. */
 export const EmptyList = ({
   title,
   body,
@@ -233,16 +256,8 @@ export const EmptyList = ({
   </Card>
 );
 
-/** Standard back link. Single source for ← Dashboard / ← Back chrome. */
 export const BackLink = ({ to, label }: { to: string; label: string }) => (
-  <RouterLink
-    style={{
-      fontSize: 13,
-      color: "var(--color-text-secondary)",
-      textDecoration: "none",
-    }}
-    to={to}
-  >
+  <Link color="secondary" href={to} type="supporting">
     {label}
-  </RouterLink>
+  </Link>
 );

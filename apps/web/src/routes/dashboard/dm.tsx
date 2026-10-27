@@ -1,5 +1,4 @@
 import { VStack } from "@astryxdesign/core/Layout";
-import { Text } from "@astryxdesign/core/Text";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 
@@ -9,6 +8,7 @@ import { CreateForm, SubscriptionsTable } from "../../components/subscriptions";
 import type { OpenPanel } from "../../components/subscriptions";
 import {
   BackLink,
+  LoadingNote,
   PageHeader,
   QueryError,
   SectionCard,
@@ -26,12 +26,13 @@ const DmDetailComponent = () => {
   const subs = useSubscriptions(Boolean(me.data));
   const [tab, setTab] = useState("jobs");
   const [open, setOpen] = useState<OpenPanel>(null);
-
-  if (me.isPending || me.data === null) {
-    return <Text color="secondary">Loading…</Text>;
+  if (me.isError) {
+    return <QueryError error={me.error} />;
   }
-
-  const dmSubs = subs.data?.filter((s) => s.scope === "dm") ?? [];
+  if (!me.data) {
+    return <LoadingNote />;
+  }
+  const dmSubs = subs.data?.filter((sub) => sub.scope === "dm") ?? [];
 
   return (
     <VStack gap={4}>
@@ -43,34 +44,44 @@ const DmDetailComponent = () => {
       <Tabs
         onChange={setTab}
         tabs={[
-          { value: "jobs", label: "Jobs" },
-          { value: "manage", label: "Manage" },
+          {
+            value: "jobs",
+            label: "Jobs",
+            content: (
+              <VStack gap={4}>
+                {subs.isError ? <QueryError error={subs.error} /> : null}
+                <JobsTable base={{ scope: "dm" }} subscriptions={dmSubs} />
+              </VStack>
+            ),
+          },
+          {
+            value: "manage",
+            label: "Manage",
+            content: (
+              <VStack gap={4}>
+                <SectionCard title="CV for match scores">
+                  <CvPanel />
+                </SectionCard>
+                <SectionCard title="New DM subscription">
+                  <CreateForm />
+                </SectionCard>
+                {subs.isPending ? <LoadingNote /> : null}
+                {subs.isError ? <QueryError error={subs.error} /> : null}
+                {subs.isSuccess ? (
+                  <SubscriptionsTable
+                    emptyBody="Create one above."
+                    emptyTitle="No subscriptions yet"
+                    open={open}
+                    setOpen={setOpen}
+                    subs={dmSubs}
+                  />
+                ) : null}
+              </VStack>
+            ),
+          },
         ]}
         value={tab}
       />
-      {tab === "jobs" ? (
-        <JobsTable base={{ scope: "dm" }} subscriptions={dmSubs} />
-      ) : (
-        <VStack gap={4}>
-          <SectionCard title="CV for match scores">
-            <CvPanel />
-          </SectionCard>
-          <SectionCard title="New DM subscription">
-            <CreateForm />
-          </SectionCard>
-          {subs.isPending ? <Text color="secondary">Loading…</Text> : null}
-          {subs.isError ? <QueryError error={subs.error} /> : null}
-          {subs.isSuccess ? (
-            <SubscriptionsTable
-              emptyBody="Create one above."
-              emptyTitle="No subscriptions yet"
-              open={open}
-              setOpen={setOpen}
-              subs={dmSubs}
-            />
-          ) : null}
-        </VStack>
-      )}
     </VStack>
   );
 };

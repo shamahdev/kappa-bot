@@ -1,12 +1,17 @@
 import { VStack } from "@astryxdesign/core/Layout";
-import { Text } from "@astryxdesign/core/Text";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { JobsTable } from "../../../components/jobs";
 import { SubscriptionsTable } from "../../../components/subscriptions";
 import type { OpenPanel } from "../../../components/subscriptions";
-import { BackLink, PageHeader, QueryError, Tabs } from "../../../components/ui";
+import {
+  BackLink,
+  LoadingNote,
+  PageHeader,
+  QueryError,
+  Tabs,
+} from "../../../components/ui";
 import {
   useGuilds,
   useRequireAuth,
@@ -25,12 +30,13 @@ const ServerDetailComponent = () => {
   const subs = useSubscriptions(Boolean(me.data), guildId);
   const [tab, setTab] = useState("jobs");
   const [open, setOpen] = useState<OpenPanel>(null);
-
-  if (me.isPending || me.data === null) {
-    return <Text color="secondary">Loading…</Text>;
+  if (me.isError) {
+    return <QueryError error={me.error} />;
   }
-
-  const guild = guilds.data?.find((g) => g.id === guildId);
+  if (!me.data) {
+    return <LoadingNote />;
+  }
+  const guild = guilds.data?.find((item) => item.id === guildId);
 
   return (
     <VStack gap={4}>
@@ -39,32 +45,45 @@ const ServerDetailComponent = () => {
         description="Jobs and subscriptions for this server."
         title={guild?.name ?? "Server"}
       />
+      {guilds.isError ? <QueryError error={guilds.error} /> : null}
       <Tabs
         onChange={setTab}
         tabs={[
-          { value: "jobs", label: "Jobs" },
-          { value: "manage", label: "Manage" },
+          {
+            value: "jobs",
+            label: "Jobs",
+            content: (
+              <VStack gap={4}>
+                {subs.isError ? <QueryError error={subs.error} /> : null}
+                <JobsTable
+                  base={{ guild: guildId }}
+                  subscriptions={subs.data ?? []}
+                />
+              </VStack>
+            ),
+          },
+          {
+            value: "manage",
+            label: "Manage",
+            content: (
+              <>
+                {subs.isPending ? <LoadingNote /> : null}
+                {subs.isError ? <QueryError error={subs.error} /> : null}
+                {subs.isSuccess ? (
+                  <SubscriptionsTable
+                    emptyBody="Run /jobs subscribe in the server."
+                    emptyTitle="No subscriptions here yet"
+                    open={open}
+                    setOpen={setOpen}
+                    subs={subs.data}
+                  />
+                ) : null}
+              </>
+            ),
+          },
         ]}
         value={tab}
       />
-      {tab === "jobs" ? (
-        <JobsTable base={{ guild: guildId }} subscriptions={subs.data ?? []} />
-      ) : null}
-      {tab !== "jobs" && subs.isPending ? (
-        <Text color="secondary">Loading…</Text>
-      ) : null}
-      {tab !== "jobs" && subs.isError ? (
-        <QueryError error={subs.error} />
-      ) : null}
-      {tab !== "jobs" && subs.isSuccess ? (
-        <SubscriptionsTable
-          emptyBody="Run /jobs subscribe in the server."
-          emptyTitle="No subscriptions here yet"
-          open={open}
-          setOpen={setOpen}
-          subs={subs.data}
-        />
-      ) : null}
     </VStack>
   );
 };
