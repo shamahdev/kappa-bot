@@ -1,33 +1,50 @@
-import { FileInput } from "@astryxdesign/core/FileInput";
-import { HStack } from "@astryxdesign/core/HStack";
-import { Text } from "@astryxdesign/core/Text";
-import { TextArea } from "@astryxdesign/core/TextArea";
-import { VStack } from "@astryxdesign/core/VStack";
 import { CV_MAX_CHARS, CV_MIN_CHARS } from "@kappa/contracts";
-import { useState } from "react";
+import { useId } from "react";
 
 import { useCv } from "../lib/queries";
 import type { CvDtoType } from "../lib/queries";
 import { useCvEditor } from "../lib/use-cv-editor";
 import { formatDate } from "./subscriptions";
-import { Button, ErrorNote, InfoNote, QueryError } from "./ui";
+import {
+  Button,
+  ErrorNote,
+  HStack,
+  InfoNote,
+  LoadingNote,
+  QueryError,
+  Text,
+  TextArea,
+  VStack,
+} from "./ui";
+
+import styles from "./data-views.module.css";
 
 const CvStatus = ({ cv }: { cv: CvDtoType }) => (
-  <Text as="p" color="secondary">
+  <div className={styles.cvStatus}>
     {cv.hasCv ? (
       <>
-        <Text color="primary" weight="bold">
+        <Text as="p" color="primary" weight="bold">
           {cv.filename ?? "Pasted CV"}
         </Text>
-        {` · ${cv.charCount} chars · updated ${cv.updatedAt ? formatDate(cv.updatedAt) : "—"}`}
+        <div className={styles.meta}>
+          <Text as="span" color="secondary" type="supporting">
+            {cv.charCount} chars
+          </Text>
+          <Text as="span" color="secondary" type="supporting">
+            Updated {cv.updatedAt ? formatDate(cv.updatedAt) : "—"}
+          </Text>
+        </div>
       </>
     ) : (
-      "No CV saved yet. Paste your CV or upload a file — your DM job cards will show an AI match score."
+      <Text as="p" color="secondary">
+        No CV saved yet. Paste your CV or upload a file — your DM job cards will
+        show an AI match score.
+      </Text>
     )}
-  </Text>
+  </div>
 );
 
-/** Keyed by the stored update time so selection resets just like the native input did. */
+/** Keyed by the stored update time so the native file selection resets. */
 const CvFileInput = ({
   busy,
   fileError,
@@ -39,24 +56,35 @@ const CvFileInput = ({
   isLoading: boolean;
   onFile: (file: File | undefined) => Promise<void>;
 }) => {
-  const [file, setFile] = useState<File | null>(null);
+  const id = useId();
 
   return (
-    <FileInput
-      accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown"
-      description="Upload a .pdf, .txt, or .md file."
-      isDisabled={busy}
-      isLoading={isLoading}
-      label="Upload CV file"
-      onChange={(files) => {
-        const selected = Array.isArray(files) ? (files[0] ?? null) : files;
-        setFile(selected);
-        void onFile(selected ?? undefined);
-      }}
-      status={fileError ? { type: "error", message: fileError } : undefined}
-      value={file}
-      width="100%"
-    />
+    <div className={styles.fileField}>
+      <label className={styles.fileLabel} htmlFor={id}>
+        Upload CV file
+      </label>
+      <input
+        accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown"
+        aria-busy={isLoading}
+        aria-describedby={`${id}-description${fileError ? ` ${id}-error` : ""}`}
+        aria-invalid={Boolean(fileError)}
+        className={styles.fileInput}
+        disabled={busy}
+        id={id}
+        onChange={(event) => {
+          void onFile(event.currentTarget.files?.[0]);
+        }}
+        type="file"
+      />
+      <p className={styles.fileDescription} id={`${id}-description`}>
+        Upload a .pdf, .txt, or .md file.
+      </p>
+      {fileError ? (
+        <div id={`${id}-error`}>
+          <ErrorNote>{fileError}</ErrorNote>
+        </div>
+      ) : null}
+    </div>
   );
 };
 
@@ -84,11 +112,7 @@ export const CvPanel = () => {
   } = useCvEditor(cv.data);
 
   if (cv.isPending) {
-    return (
-      <Text as="p" color="secondary">
-        Loading…
-      </Text>
-    );
+    return <LoadingNote />;
   }
   if (cv.isError) {
     return <QueryError error={cv.error} />;
@@ -99,19 +123,20 @@ export const CvPanel = () => {
     saveLabel = "Saving…";
   }
 
+  const textDescription = `${count} chars — needs ${CV_MIN_CHARS}–${CV_MAX_CHARS}.`;
+
   return (
     <VStack gap={3}>
       <CvStatus cv={cv.data} />
-      {/* Use the editor's trimmed UTF-16 count, not Astryx's grapheme maxLength counter. */}
+      {/* Keep the editor's trimmed UTF-16 count; do not truncate native textarea input. */}
       <TextArea
-        description={`${count} chars — needs ${CV_MIN_CHARS}–${CV_MAX_CHARS}.`}
-        isDisabled={busy}
+        description={textDescription}
+        disabled={busy}
+        error={valid ? undefined : textDescription}
         label="CV text"
         onChange={setDraft}
         placeholder="Paste your CV text here…"
-        status={valid ? undefined : { type: "error" }}
         value={shown}
-        width="100%"
       />
       <VStack gap={2}>
         <CvFileInput

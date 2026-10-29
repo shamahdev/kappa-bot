@@ -1,17 +1,22 @@
-import { HStack, VStack } from "@astryxdesign/core/Layout";
-import { Link } from "@astryxdesign/core/Link";
-import { Text } from "@astryxdesign/core/Text";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Link as RouterLink,
+  useNavigate,
+} from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import {
   BackLink,
   Button,
   ErrorNote,
+  HStack,
+  LoadingNote,
   PageHeader,
   QueryError,
   SectionCard,
+  Text,
   TextInput,
+  VStack,
 } from "../../components/ui";
 import {
   apiMessage,
@@ -24,6 +29,7 @@ import styles from "./settings.module.css";
 
 export const Route = createFileRoute("/dashboard/settings")({
   ssr: false,
+  head: () => ({ meta: [{ title: "Settings | Kappa" }] }),
   component: () => <SettingsComponent />,
 });
 
@@ -47,41 +53,41 @@ const SettingsComponent = () => {
   }
 
   if (me.isPending || me.data === null) {
-    return <Text color="secondary">Loading settings…</Text>;
+    return <LoadingNote>Loading settings…</LoadingNote>;
   }
 
   const phraseOk = phrase.trim() === CONFIRM_PHRASE;
 
   return (
-    <VStack className={styles.settings} gap={4} maxWidth={640} width="100%">
-      <BackLink label="← Back to dashboard" to="/dashboard" />
+    <VStack className={styles.settings} gap={6} width="100%">
+      <BackLink label="Back to dashboard" to="/dashboard" />
       <PageHeader
         description="Review your account details and deletion options."
         title="Settings"
       />
       <SectionCard title="Account">
         {summary.isPending ? (
-          <Text color="secondary">Loading account summary…</Text>
+          <LoadingNote>Loading account summary…</LoadingNote>
         ) : null}
         {summary.isError ? (
           <ErrorNote>{apiMessage(summary.error)}</ErrorNote>
         ) : null}
         {summary.isSuccess ? (
-          <VStack as="dl" className={styles.accountMetadata} gap={3}>
-            <HStack gap={3} vAlign="start" wrap="wrap">
+          <dl className={`app-account-metadata ${styles.accountMetadata}`}>
+            <div>
               <dt className={styles.metadataTerm}>
                 <Text color="secondary" type="label">
                   Discord
                 </Text>
               </dt>
               <dd className={styles.metadataValue}>
-                <Text>@{summary.data.username}</Text>{" "}
+                <Text>@{summary.data.username}</Text>
                 <Text color="secondary" type="code">
-                  ({summary.data.discordId})
+                  {summary.data.discordId}
                 </Text>
               </dd>
-            </HStack>
-            <HStack gap={3} vAlign="start" wrap="wrap">
+            </div>
+            <div>
               <dt className={styles.metadataTerm}>
                 <Text color="secondary" type="label">
                   Connections
@@ -94,8 +100,8 @@ const SettingsComponent = () => {
                     : "none"}
                 </Text>
               </dd>
-            </HStack>
-            <HStack gap={3} vAlign="start" wrap="wrap">
+            </div>
+            <div>
               <dt className={styles.metadataTerm}>
                 <Text color="secondary" type="label">
                   DM subscriptions
@@ -104,8 +110,8 @@ const SettingsComponent = () => {
               <dd className={styles.metadataValue}>
                 <Text>{summary.data.dmSubscriptions}</Text>
               </dd>
-            </HStack>
-            <HStack gap={3} vAlign="start" wrap="wrap">
+            </div>
+            <div>
               <dt className={styles.metadataTerm}>
                 <Text color="secondary" type="label">
                   Server subscriptions created
@@ -114,8 +120,8 @@ const SettingsComponent = () => {
               <dd className={styles.metadataValue}>
                 <Text>{summary.data.guildSubscriptionsCreated}</Text>
               </dd>
-            </HStack>
-            <HStack gap={3} vAlign="start" wrap="wrap">
+            </div>
+            <div>
               <dt className={styles.metadataTerm}>
                 <Text color="secondary" type="label">
                   Active sessions
@@ -124,8 +130,8 @@ const SettingsComponent = () => {
               <dd className={styles.metadataValue}>
                 <Text>{summary.data.sessionsActive}</Text>
               </dd>
-            </HStack>
-          </VStack>
+            </div>
+          </dl>
         ) : null}
       </SectionCard>
 
@@ -186,9 +192,9 @@ const SettingsComponent = () => {
                 >
                   {destroy.isPending ? "Deleting…" : "Delete my account"}
                 </Button>
-                <Link color="secondary" href="/dashboard">
+                <RouterLink className="app-back" to="/dashboard">
                   Keep my account
-                </Link>
+                </RouterLink>
               </HStack>
             </VStack>
           </form>

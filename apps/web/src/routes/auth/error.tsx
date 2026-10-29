@@ -1,36 +1,34 @@
-import { Card } from "@astryxdesign/core/Card";
-import { EmptyState } from "@astryxdesign/core/EmptyState";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 
-import { Button } from "../../components/ui";
+import { Button, HStack, PageHeader, Text } from "../../components/ui";
 import { loginUrl } from "../../lib/api";
 
 export const Route = createFileRoute("/auth/error")({
+  head: () => ({ meta: [{ title: "Sign-in error | Kappa" }] }),
   component: () => <AuthErrorComponent />,
 });
 
 const AuthErrorComponent = () => {
   const navigate = useNavigate();
   return (
-    <Card padding={6}>
-      <EmptyState
-        actions={
-          <>
-            <Button href={loginUrl}>Try again</Button>
-            <Button
-              onClick={() => {
-                void navigate({ to: "/" });
-              }}
-              small
-              variant="subtle"
-            >
-              Back home
-            </Button>
-          </>
-        }
-        description="Discord didn't approve the sign-in, or the request expired. No account was created and nothing changed — try again, or head back home."
-        title="Sign-in didn't go through"
-      />
-    </Card>
+    <section className="app-stack">
+      <PageHeader title="Sign-in didn't go through" />
+      <Text as="p" color="secondary">
+        Discord didn&apos;t approve the sign-in, or the request expired. Try
+        again, or head back home.
+      </Text>
+      <HStack gap={3} wrap="wrap">
+        <Button href={loginUrl}>Try again</Button>
+        <Button
+          onClick={() => {
+            void navigate({ to: "/" });
+          }}
+          small
+          variant="subtle"
+        >
+          Back home
+        </Button>
+      </HStack>
+    </section>
   );
 };

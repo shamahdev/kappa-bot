@@ -1,0 +1,82 @@
+:root {
+  --color-paper: oklch(98% 0.004 155);
+  --color-paper-2: oklch(96% 0.007 155);
+  --color-paper-3: oklch(92% 0.011 155);
+  --color-surface: oklch(99% 0.003 155);
+  --color-ink: oklch(25% 0.021 155);
+  --color-ink-2: oklch(37% 0.021 155);
+  --color-muted: oklch(47% 0.018 155);
+  --color-rule: oklch(86% 0.012 155);
+  --color-input-edge: oklch(60% 0.02 155);
+  --color-accent: #3f6b55;
+  --color-accent-hover: oklch(43% 0.052 158);
+  --color-accent-ink: oklch(99% 0.005 155);
+  --color-accent-soft: oklch(93% 0.023 155);
+  --color-focus: oklch(43% 0.075 155);
+  --color-error: oklch(45% 0.16 26);
+  --color-error-soft: oklch(95% 0.017 26);
+  --color-error-ink: oklch(99% 0.004 26);
+  --color-chat: oklch(27% 0.008 265);
+  --color-chat-2: oklch(23% 0.008 265);
+  --color-chat-3: oklch(32% 0.008 265);
+  --color-chat-ink: oklch(95% 0.005 265);
+  --color-chat-muted: oklch(77% 0.01 265);
+  --color-chat-rule: oklch(45% 0.01 265);
+  --color-chat-focus: oklch(83% 0.07 155);
+  --color-chat-brand: oklch(83% 0.052 155);
+  --color-backdrop: oklch(20% 0.015 155 / 0.45);
+  --color-clear: transparent;
+  --font-display: "DM Sans", ui-sans-serif, sans-serif;
+  --font-body: "DM Sans", ui-sans-serif, sans-serif;
+  --font-code: ui-monospace, SFMono-Regular, Consolas, monospace;
+  --space-3xs: 2px;
+  --space-2xs: 4px;
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 40px;
+  --space-2xl: 64px;
+  --space-3xl: 96px;
+  --space-4xl: 144px;
+  --container: 1440px;
+  --app-container: 1180px;
+  --gutter: 64px;
+  --gap-columns: 32px;
+  --radius-control: 8px;
+  --radius-panel: 16px;
+  --radius-small: 6px;
+  --text-body: 1rem;
+  --text-small: 0.875rem;
+  --text-title: 1.25rem;
+  --text-section: clamp(2rem, 3.5vw, 3.25rem);
+  --text-display: clamp(2.625rem, 5.3vw, 5rem);
+  --text-lead: 1.125rem;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-micro: 120ms;
+}
+
+@theme inline {
+  --color-kappa-paper: var(--color-paper);
+  --color-kappa-surface: var(--color-surface);
+  --color-kappa-stock: var(--color-paper-2);
+  --color-kappa-ink: var(--color-ink);
+  --color-kappa-muted: var(--color-muted);
+  --color-kappa-accent: var(--color-accent);
+  --color-kappa-on-accent: var(--color-accent-ink);
+  --color-kappa-rule: var(--color-rule);
+  --font-kappa-body: var(--font-body);
+  --font-kappa-display: var(--font-display);
+}
+
+@media (max-width: 60rem) {
+  :root {
+    --gutter: 24px;
+  }
+}
+@media (max-width: 40rem) {
+  :root {
+    --gutter: 16px;
+    --gap-columns: 16px;
+  }
+}

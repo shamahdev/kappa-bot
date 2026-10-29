@@ -4,16 +4,33 @@
 }
 
 .accountMetadata {
+  display: grid;
+  gap: var(--space-lg);
   margin: 0;
+}
+
+.accountMetadata > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+  gap: var(--space-md);
 }
 
 .metadataTerm,
 .metadataValue {
-  flex: 1 1 auto;
   min-width: 0;
 }
 
 .metadataValue {
-  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: calc(var(--space-2xs) * 2);
+  row-gap: var(--space-2xs);
   overflow-wrap: anywhere;
+}
+
+@media (max-width: 40rem) {
+  .accountMetadata > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-xs);
+  }
 }

@@ -1,8 +1,3 @@
-import { Dialog, DialogHeader } from "@astryxdesign/core/Dialog";
-import { HStack, VStack } from "@astryxdesign/core/Layout";
-import { pixel, proportional, Table } from "@astryxdesign/core/Table";
-import type { TableColumn } from "@astryxdesign/core/Table";
-import { Text } from "@astryxdesign/core/Text";
 import { SUBSCRIPTION_SOURCES } from "@kappa/contracts";
 import { useState } from "react";
 
@@ -19,9 +14,12 @@ import {
   Button,
   EmptyList,
   ErrorNote,
+  HStack,
+  Modal,
   Select,
-  StatusDot,
+  Text,
   TextInput,
+  VStack,
 } from "./ui";
 
 import styles from "./data-views.module.css";
@@ -164,10 +162,20 @@ const DeletePanel = ({
   const remove = useDeleteSubscription();
   return (
     <VStack gap={4}>
-      <Text>
-        {sub.source} · {sub.keywords ?? "—"} · {sub.location ?? "—"} →{" "}
-        {sub.scope === "dm" ? "your DMs" : `#${sub.channelId}`}
-      </Text>
+      <VStack gap={2}>
+        <HStack>
+          <Badge>{sub.source}</Badge>
+        </HStack>
+        <Text weight="semibold">{sub.keywords ?? "—"}</Text>
+        <div className={styles.meta}>
+          <Text as="span" color="secondary">
+            {sub.location ?? "—"}
+          </Text>
+          <Text as="span" color="secondary">
+            {sub.scope === "dm" ? "your DMs" : `#${sub.channelId}`}
+          </Text>
+        </div>
+      </VStack>
       <Text color="secondary">
         Past deliveries are deleted with this subscription. This cannot be
         undone.
@@ -259,40 +267,6 @@ export const SubscriptionsTable = ({
   emptyBody: string;
 }) => {
   const selected = open ? subs.find((sub) => sub.id === open.id) : undefined;
-  const columns: TableColumn<SubscriptionDtoType>[] = [
-    {
-      key: "keywords",
-      header: "Subscription",
-      width: proportional(1),
-      renderCell: (sub) => (
-        <VStack gap={2}>
-          <HStack gap={2} wrap="wrap">
-            <Badge>{sub.source}</Badge>
-            <StatusDot
-              label={sub.isActive ? "Active" : "Paused"}
-              on={sub.isActive}
-            />
-          </HStack>
-          <Text weight="semibold">{sub.keywords ?? "—"}</Text>
-          <Text color="secondary" type="supporting">
-            {sub.location ?? "—"} ·{" "}
-            {sub.scope === "dm" ? "Your DMs" : `Channel #${sub.channelId}`}
-          </Text>
-          <Text color="secondary" type="supporting">
-            Created {formatDate(sub.createdAt)}
-          </Text>
-        </VStack>
-      ),
-    },
-    // 88px fits the longest existing action label with Astryx's compact padding;
-    // actions wrap vertically rather than forcing management off-screen on phones.
-    {
-      key: "actions",
-      header: "Actions",
-      width: pixel(88),
-      renderCell: (sub) => <SubscriptionActions setOpen={setOpen} sub={sub} />,
-    },
-  ];
   if (subs.length === 0) {
     return <EmptyList body={emptyBody} title={emptyTitle} />;
   }
@@ -316,37 +290,57 @@ export const SubscriptionsTable = ({
   return (
     <>
       <div className={styles.tableFrame}>
-        <Table
-          aria-label="Subscriptions"
-          columns={columns}
-          data={[...subs]}
-          density="balanced"
-          dividers="rows"
-          idKey="id"
-          verticalAlign="top"
-        />
+        <table aria-label="Subscriptions" className="app-table">
+          <thead>
+            <tr>
+              <th scope="col">Subscription</th>
+              <th scope="col">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {subs.map((sub) => (
+              <tr key={sub.id}>
+                <td aria-label="Subscription" data-label="Subscription">
+                  <VStack gap={2}>
+                    <HStack gap={2} wrap="wrap">
+                      <Badge>{sub.source}</Badge>
+                      <Badge strong={sub.isActive}>
+                        {sub.isActive ? "Active" : "Paused"}
+                      </Badge>
+                    </HStack>
+                    <Text weight="semibold">{sub.keywords ?? "—"}</Text>
+                    <div className={styles.meta}>
+                      <Text as="span" color="secondary" type="supporting">
+                        {sub.location ?? "—"}
+                      </Text>
+                      <Text as="span" color="secondary" type="supporting">
+                        {sub.scope === "dm"
+                          ? "Your DMs"
+                          : `Channel #${sub.channelId}`}
+                      </Text>
+                    </div>
+                    <Text color="secondary" type="supporting">
+                      Created {formatDate(sub.createdAt)}
+                    </Text>
+                  </VStack>
+                </td>
+                <td data-label="Actions">
+                  <SubscriptionActions setOpen={setOpen} sub={sub} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
-      <Dialog
-        isOpen={Boolean(selected)}
-        onOpenChange={(isOpen) => {
-          if (!isOpen) {
-            setOpen(null);
-          }
-        }}
-        padding={4}
-        purpose="form"
+      <Modal
+        onClose={() => setOpen(null)}
+        open={Boolean(selected)}
+        title={
+          open?.mode === "delete" ? "Delete subscription?" : "Edit subscription"
+        }
       >
-        <VStack gap={4}>
-          <DialogHeader
-            title={
-              open?.mode === "delete"
-                ? "Delete subscription?"
-                : "Edit subscription"
-            }
-          />
-          {panel}
-        </VStack>
-      </Dialog>
+        {panel}
+      </Modal>
     </>
   );
 };

@@ -1,36 +1,34 @@
-import { Avatar } from "@astryxdesign/core/Avatar";
-import { ClickableCard } from "@astryxdesign/core/ClickableCard";
-import { Grid } from "@astryxdesign/core/Grid";
-import { Heading } from "@astryxdesign/core/Heading";
-import { HStack, VStack } from "@astryxdesign/core/Layout";
-import { Text } from "@astryxdesign/core/Text";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link as RouterLink } from "@tanstack/react-router";
 import { useState } from "react";
 
 import {
+  Avatar,
   Button,
   EmptyList,
+  HStack,
   LoadingNote,
   PageHeader,
   QueryError,
+  Text,
   TextInput,
+  VStack,
 } from "../../components/ui";
 import { guildIconUrl, userAvatarUrl } from "../../lib/api";
 import { useGuilds, useRequireAuth, useSubscriptions } from "../../lib/queries";
 
 export const Route = createFileRoute("/dashboard/")({
   ssr: false,
+  head: () => ({ meta: [{ title: "Subscriptions | Kappa" }] }),
   component: () => <DashboardComponent />,
 });
 
 const countsLine = (active: number, total: number): string =>
-  `${active} active · ${total} total`;
+  `${active} active, ${total} total`;
 
 const DashboardComponent = () => {
   const me = useRequireAuth();
   const guilds = useGuilds(Boolean(me.data));
   const subs = useSubscriptions(Boolean(me.data));
-  const navigate = useNavigate();
   const [q, setQ] = useState("");
 
   if (me.isError) {
@@ -69,13 +67,12 @@ const DashboardComponent = () => {
           placeholder="Server name"
           value={q}
         />
-        <Grid columns={{ minWidth: 260, repeat: "fit" }} gap={4}>
+        <div className="app-scope-grid">
           {showDm ? (
-            <ClickableCard
-              label="Direct messages"
-              onClick={() => {
-                void navigate({ to: "/dashboard/dm" });
-              }}
+            <RouterLink
+              aria-label="Direct messages"
+              className="app-scope-card"
+              to="/dashboard/dm"
             >
               <HStack gap={3} vAlign="center">
                 <Avatar
@@ -83,25 +80,24 @@ const DashboardComponent = () => {
                   size="lg"
                   src={dmAvatar ?? undefined}
                 />
-                <VStack gap={0}>
-                  <Heading level={3}>Direct messages</Heading>
+                <VStack gap={1}>
+                  <Text as="h2" weight="semibold">
+                    Direct messages
+                  </Text>
                   <Text color="secondary" type="supporting">
                     {dmCount}
                   </Text>
                 </VStack>
               </HStack>
-            </ClickableCard>
+            </RouterLink>
           ) : null}
           {visibleGuilds.map((g) => (
-            <ClickableCard
+            <RouterLink
+              aria-label={g.name}
+              className="app-scope-card"
               key={g.id}
-              label={g.name}
-              onClick={() => {
-                void navigate({
-                  to: "/dashboard/servers/$guildId",
-                  params: { guildId: g.id },
-                });
-              }}
+              params={{ guildId: g.id }}
+              to="/dashboard/servers/$guildId"
             >
               <HStack gap={3} vAlign="center">
                 <Avatar
@@ -109,16 +105,18 @@ const DashboardComponent = () => {
                   size="lg"
                   src={guildIconUrl(g.id, g.icon) ?? undefined}
                 />
-                <VStack gap={0}>
-                  <Heading level={3}>{g.name}</Heading>
+                <VStack gap={1}>
+                  <Text as="h2" weight="semibold">
+                    {g.name}
+                  </Text>
                   <Text color="secondary" type="supporting">
                     {countsLine(g.subscriptions.active, g.subscriptions.total)}
                   </Text>
                 </VStack>
               </HStack>
-            </ClickableCard>
+            </RouterLink>
           ))}
-        </Grid>
+        </div>
         {guilds.isPending ? <LoadingNote>Loading servers…</LoadingNote> : null}
         {subs.isError ? <QueryError error={subs.error} /> : null}
         {guilds.isError ? <QueryError error={guilds.error} /> : null}

@@ -1,7 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 
-import { LandingDemo } from "../components/landing-demo";
-import { Button } from "../components/ui";
+import { LandingSoft } from "../components/landing-soft";
 import { loginUrl } from "../lib/api";
 import { useMe } from "../lib/queries";
 import { useMounted } from "../lib/use-mounted";
@@ -10,39 +9,42 @@ export const Route = createFileRoute("/")({
   component: () => <LandingComponent />,
   head: () => ({
     meta: [
-      { title: "Kappa — a focused job signal" },
+      { title: "Kappa | Your next job, in Discord" },
       {
         name: "description",
         content:
-          "Kappa ranks new job postings against your CV and sends the strongest matches to Discord.",
+          "Create subscriptions by source, keywords, and location. New postings arrive in Discord.",
       },
     ],
   }),
 });
 
-const AuthAction = () => {
+const LandingAction = () => {
   const mounted = useMounted();
   const me = useMe();
   const navigate = useNavigate();
-  // SSR and signed-out states show the static login link; only a positively
-  // authenticated client swaps it for the dashboard link.
+  // Keep the signed-out action available during SSR; authenticated clients
+  // use the existing dashboard destination.
   if (mounted && me.data) {
     return (
-      <Button
+      <button
+        className="app-button"
         onClick={() => {
           void navigate({ to: "/dashboard" });
         }}
-        small
+        type="button"
       >
         Open dashboard
-      </Button>
+      </button>
     );
   }
   return (
-    <Button href={loginUrl} small>
+    <a className="app-button" href={loginUrl}>
       Login with Discord
-    </Button>
+    </a>
   );
 };
 
-const LandingComponent = () => <LandingDemo authAction={<AuthAction />} />;
+const LandingComponent = () => (
+  <LandingSoft primaryAction={<LandingAction />} />
+);

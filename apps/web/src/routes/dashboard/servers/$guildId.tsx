@@ -1,4 +1,3 @@
-import { VStack } from "@astryxdesign/core/Layout";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 
@@ -11,6 +10,7 @@ import {
   PageHeader,
   QueryError,
   Tabs,
+  VStack,
 } from "../../../components/ui";
 import {
   useGuilds,
@@ -20,6 +20,7 @@ import {
 
 export const Route = createFileRoute("/dashboard/servers/$guildId")({
   ssr: false,
+  head: () => ({ meta: [{ title: "Server subscriptions | Kappa" }] }),
   component: () => <ServerDetailComponent />,
 });
 
@@ -39,8 +40,8 @@ const ServerDetailComponent = () => {
   const guild = guilds.data?.find((item) => item.id === guildId);
 
   return (
-    <VStack gap={4}>
-      <BackLink label="← Dashboard" to="/dashboard" />
+    <VStack gap={6}>
+      <BackLink label="Dashboard" to="/dashboard" />
       <PageHeader
         description="Jobs and subscriptions for this server."
         title={guild?.name ?? "Server"}
@@ -66,7 +67,7 @@ const ServerDetailComponent = () => {
             value: "manage",
             label: "Manage",
             content: (
-              <>
+              <VStack gap={4}>
                 {subs.isPending ? <LoadingNote /> : null}
                 {subs.isError ? <QueryError error={subs.error} /> : null}
                 {subs.isSuccess ? (
@@ -78,7 +79,7 @@ const ServerDetailComponent = () => {
                     subs={subs.data}
                   />
                 ) : null}
-              </>
+              </VStack>
             ),
           },
         ]}
