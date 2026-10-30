@@ -5,7 +5,6 @@ import { JobsTable } from "../../../components/jobs";
 import { SubscriptionsTable } from "../../../components/subscriptions";
 import type { OpenPanel } from "../../../components/subscriptions";
 import {
-  BackLink,
   LoadingNote,
   PageHeader,
   QueryError,
@@ -41,7 +40,6 @@ const ServerDetailComponent = () => {
 
   return (
     <VStack gap={6}>
-      <BackLink label="Dashboard" to="/dashboard" />
       <PageHeader
         description="Jobs and subscriptions for this server."
         title={guild?.name ?? "Server"}

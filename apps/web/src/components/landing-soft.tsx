@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { KappaMark } from "./kappa-mark";
 import { ProductShowcase } from "./product-showcase";
 
 import "./landing-soft.css";
@@ -14,18 +15,13 @@ export const LandingSoft = ({
       Skip to content
     </a>
     <header className="landing-nav">
-      <nav
-        aria-label="Main navigation"
-        className="landing-container flex items-center justify-between"
-      >
+      <nav aria-label="Main navigation" className="landing-container">
         <a aria-label="Kappa home" className="app-wordmark" href="/">
-          <span aria-hidden="true" className="app-logo">
-            κ
-          </span>
+          <KappaMark />
           kappa
         </a>
-        <div className="landing-nav-links flex items-center">
-          <a href="#showcase">Showcase</a>
+        <div className="landing-nav-links">
+          <a href="#showcase">Preview</a>
           <a href="#faq">FAQ</a>
           <a href="#pricing">Pricing</a>
         </div>
@@ -34,13 +30,19 @@ export const LandingSoft = ({
     <main id="main">
       <section aria-labelledby="hero-title" className="landing-hero">
         <div className="landing-container">
-          <h1 id="hero-title">Your next job, in Discord.</h1>
-          <p>Follow the roles you want. Kappa brings new posts to you.</p>
-          <div className="landing-actions flex flex-wrap items-center">
-            {primaryAction}
-            <a className="landing-link" href="#showcase">
-              Try the preview
-            </a>
+          <div className="landing-hero-heading">
+            <h1 id="hero-title">
+              Job matches,
+              <span>delivered to you.</span>
+            </h1>
+            <KappaMark className="landing-mascot" />
+          </div>
+          <div className="landing-hero-bottom">
+            <p>
+              Get notified in Discord when new jobs match your keywords or CV.
+              Spend less time checking job sites.
+            </p>
+            <div className="landing-actions">{primaryAction}</div>
           </div>
         </div>
       </section>
@@ -51,8 +53,7 @@ export const LandingSoft = ({
       >
         <div className="landing-container">
           <div className="landing-section-head">
-            <h2 id="showcase-title">See it before you sign in.</h2>
-            <p>Reply in Discord. Browse and manage on the web.</p>
+            <h2 id="showcase-title">Get notified while you’re away.</h2>
           </div>
           <ProductShowcase />
         </div>
@@ -71,7 +72,7 @@ export const LandingSoft = ({
             </details>
             <details>
               <summary>Do I need to upload my CV?</summary>
-              <p>No. It’s optional.</p>
+              <p>No. CV matching is optional.</p>
             </details>
             <details>
               <summary>Can I use it in a server?</summary>
@@ -82,7 +83,7 @@ export const LandingSoft = ({
             </details>
             <details>
               <summary>Can I pause a subscription?</summary>
-              <p>Yes. Pause or remove it.</p>
+              <p>Yes. You can pause or remove a subscription.</p>
             </details>
           </div>
         </div>
@@ -92,32 +93,49 @@ export const LandingSoft = ({
         className="landing-section pricing-section"
         id="pricing"
       >
-        <div className="landing-container pricing-grid">
-          <div>
-            <h2 id="pricing-title">Good jobs. No subscription bill.</h2>
-            <p>Everything here is free.</p>
+        <div className="landing-container">
+          <div className="pricing-intro">
+            <h2 id="pricing-title">Start free. Get more control.</h2>
           </div>
-          <div className="pricing-offer">
-            <h3>Free</h3>
-            <p>Job alerts and a web dashboard.</p>
-            <ul>
-              <li>Personal and server subscriptions</li>
-              <li>Optional CV matching</li>
-              <li>Pause and manage your alerts</li>
-            </ul>
-            {primaryAction}
+          <div className="pricing-grid">
+            <article
+              aria-labelledby="free-plan-title"
+              className="pricing-offer"
+            >
+              <div className="pricing-plan-heading">
+                <h3 id="free-plan-title">Free</h3>
+              </div>
+              <p>Job alerts and a web dashboard.</p>
+              <ul>
+                <li>Personal and server subscriptions</li>
+                <li>Optional CV matching</li>
+                <li>Pause and manage your alerts</li>
+              </ul>
+            </article>
+            <article
+              aria-labelledby="premium-plan-title"
+              className="pricing-offer pricing-premium"
+            >
+              <div className="pricing-plan-heading">
+                <h3 id="premium-plan-title">Premium</h3>
+                <span className="pricing-plan-status">[Coming Soon]</span>
+              </div>
+              <p>More ways to receive and personalize your job alerts.</p>
+              <ul>
+                <li>Subscriptions to multiple channels via webhooks</li>
+                <li>Configurable notification times</li>
+                <li>Automatic keywords from your CV</li>
+              </ul>
+            </article>
           </div>
         </div>
       </section>
     </main>
     <footer className="landing-footer">
-      <div className="landing-container flex flex-wrap items-center justify-between">
+      <div className="landing-container">
         <a aria-label="Kappa home" className="app-wordmark" href="/">
+          <KappaMark />
           kappa
-        </a>
-        <p>Job posts where you already hang out.</p>
-        <a className="landing-link" href="#showcase">
-          Back to the preview
         </a>
       </div>
     </footer>

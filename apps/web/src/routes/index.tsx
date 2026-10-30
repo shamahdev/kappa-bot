@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 
 import { LandingSoft } from "../components/landing-soft";
-import { loginUrl } from "../lib/api";
+import { DiscordLogin } from "../components/ui";
 import { useMe } from "../lib/queries";
 import { useMounted } from "../lib/use-mounted";
 
@@ -9,11 +9,11 @@ export const Route = createFileRoute("/")({
   component: () => <LandingComponent />,
   head: () => ({
     meta: [
-      { title: "Kappa | Your next job, in Discord" },
+      { title: "Kappa | Job matches, delivered to you" },
       {
         name: "description",
         content:
-          "Create subscriptions by source, keywords, and location. New postings arrive in Discord.",
+          "Get notified in Discord when new jobs match your keywords or CV. Spend less time checking job sites.",
       },
     ],
   }),
@@ -38,11 +38,7 @@ const LandingAction = () => {
       </button>
     );
   }
-  return (
-    <a className="app-button" href={loginUrl}>
-      Login with Discord
-    </a>
-  );
+  return <DiscordLogin />;
 };
 
 const LandingComponent = () => (

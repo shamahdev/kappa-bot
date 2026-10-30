@@ -2,12 +2,13 @@
   display: flex;
   align-items: flex-end;
   flex-wrap: wrap;
-  gap: var(--space-sm);
+  gap: var(--space-md);
 }
 
 .filters > * {
   flex: 1 1 0;
   min-width: 0;
+  flex-basis: 180px;
 }
 
 .tableFrame {
@@ -32,7 +33,7 @@
 
 .tableFrame :global(.app-table) th,
 .tableFrame :global(.app-table) td {
-  padding: var(--space-md);
+  padding: 20px 24px;
   border-bottom: 0;
   text-align: left;
   vertical-align: top;
@@ -40,6 +41,7 @@
 }
 
 .tableFrame :global(.app-table) th {
+  padding: var(--space-md) 24px;
   border-bottom: 1px solid var(--color-rule);
   color: var(--color-muted);
   font-size: var(--text-small);
@@ -58,7 +60,15 @@
 .jobLink {
   color: var(--color-accent);
   font-weight: 600;
+  font-size: 1rem;
+  text-decoration: none;
   overflow-wrap: anywhere;
+}
+
+@media (hover: hover) {
+  .jobLink:hover {
+    text-decoration: underline;
+  }
 }
 
 .meta {

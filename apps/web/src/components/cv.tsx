@@ -123,6 +123,11 @@ export const CvPanel = () => {
     saveLabel = "Saving…";
   }
 
+  let removeLabel = confirmingRemoval ? "Confirm remove" : "Remove";
+  if (remove.isPending) {
+    removeLabel = "Removing…";
+  }
+
   const textDescription = `${count} chars — needs ${CV_MIN_CHARS}–${CV_MAX_CHARS}.`;
 
   return (
@@ -158,49 +163,43 @@ export const CvPanel = () => {
         ) : null}
       </VStack>
       {errorMessage === null ? null : <ErrorNote>{errorMessage}</ErrorNote>}
+      {confirmingRemoval ? (
+        <InfoNote>
+          Remove your CV? DM job cards will no longer show match scores.
+        </InfoNote>
+      ) : null}
       <HStack gap={2} vAlign="center" wrap="wrap">
-        <Button
-          disabled={busy || draft === null || !valid}
-          loading={save.isPending}
-          onClick={onSave}
-        >
-          {saveLabel}
-        </Button>
+        {confirmingRemoval ? null : (
+          <Button
+            disabled={busy || draft === null || !valid}
+            loading={save.isPending}
+            onClick={onSave}
+          >
+            {saveLabel}
+          </Button>
+        )}
         {cv.data.hasCv ? (
           <Button
             disabled={busy}
             loading={remove.isPending}
-            onClick={() => setConfirmingRemoval(true)}
+            onClick={
+              confirmingRemoval ? onRemove : () => setConfirmingRemoval(true)
+            }
             variant="danger"
           >
-            {remove.isPending ? "Removing…" : "Remove"}
+            {removeLabel}
+          </Button>
+        ) : null}
+        {confirmingRemoval ? (
+          <Button
+            disabled={busy}
+            onClick={() => setConfirmingRemoval(false)}
+            variant="subtle"
+          >
+            Cancel
           </Button>
         ) : null}
       </HStack>
-      {confirmingRemoval ? (
-        <VStack gap={3}>
-          <InfoNote>
-            Remove your CV? DM job cards will no longer show match scores.
-          </InfoNote>
-          <HStack gap={2} vAlign="center" wrap="wrap">
-            <Button
-              disabled={busy}
-              loading={remove.isPending}
-              onClick={onRemove}
-              variant="danger"
-            >
-              {remove.isPending ? "Removing…" : "Confirm remove"}
-            </Button>
-            <Button
-              disabled={busy}
-              onClick={() => setConfirmingRemoval(false)}
-              variant="subtle"
-            >
-              Cancel
-            </Button>
-          </HStack>
-        </VStack>
-      ) : null}
     </VStack>
   );
 };

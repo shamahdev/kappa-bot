@@ -6,7 +6,6 @@ import { JobsTable } from "../../components/jobs";
 import { CreateForm, SubscriptionsTable } from "../../components/subscriptions";
 import type { OpenPanel } from "../../components/subscriptions";
 import {
-  BackLink,
   LoadingNote,
   PageHeader,
   QueryError,
@@ -37,7 +36,6 @@ const DmDetailComponent = () => {
 
   return (
     <VStack gap={6}>
-      <BackLink label="Dashboard" to="/dashboard" />
       <PageHeader
         description="Jobs delivered to your DMs."
         title="Direct messages"
@@ -59,13 +57,15 @@ const DmDetailComponent = () => {
             value: "manage",
             label: "Manage",
             content: (
-              <VStack gap={4}>
-                <SectionCard title="CV for match scores">
-                  <CvPanel />
-                </SectionCard>
-                <SectionCard title="New DM subscription">
-                  <CreateForm />
-                </SectionCard>
+              <VStack className="app-manage-layout" gap={6}>
+                <div className="app-manage-forms">
+                  <SectionCard title="CV for match scores">
+                    <CvPanel />
+                  </SectionCard>
+                  <SectionCard title="New DM subscription">
+                    <CreateForm />
+                  </SectionCard>
+                </div>
                 {subs.isPending ? <LoadingNote /> : null}
                 {subs.isError ? <QueryError error={subs.error} /> : null}
                 {subs.isSuccess ? (

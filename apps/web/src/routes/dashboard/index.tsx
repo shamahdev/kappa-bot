@@ -60,7 +60,7 @@ const DashboardComponent = () => {
         description="DMs and servers you can manage."
         title="Subscriptions"
       />
-      <VStack gap={4}>
+      <VStack className="app-scope-browser" gap={4}>
         <TextInput
           label="Search servers"
           onChange={(e) => setQ(e.target.value)}

@@ -335,6 +335,7 @@ export const SubscriptionsTable = ({
       <Modal
         onClose={() => setOpen(null)}
         open={Boolean(selected)}
+        showCloseButton={false}
         title={
           open?.mode === "delete" ? "Delete subscription?" : "Edit subscription"
         }

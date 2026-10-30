@@ -1,18 +1,21 @@
 :root {
-  --color-paper: oklch(98% 0.004 155);
-  --color-paper-2: oklch(96% 0.007 155);
-  --color-paper-3: oklch(92% 0.011 155);
-  --color-surface: oklch(99% 0.003 155);
-  --color-ink: oklch(25% 0.021 155);
-  --color-ink-2: oklch(37% 0.021 155);
-  --color-muted: oklch(47% 0.018 155);
-  --color-rule: oklch(86% 0.012 155);
-  --color-input-edge: oklch(60% 0.02 155);
+  --color-paper: #fafbf9;
+  --color-paper-2: #f2f5f1;
+  --color-paper-3: #e5ebe3;
+  --color-surface: #ffffff;
+  --color-ink: #22372a;
+  --color-ink-2: #45564a;
+  --color-muted: #607064;
+  --color-rule: #dae2d8;
+  --color-input-edge: #849680;
   --color-accent: #3f6b55;
-  --color-accent-hover: oklch(43% 0.052 158);
-  --color-accent-ink: oklch(99% 0.005 155);
-  --color-accent-soft: oklch(93% 0.023 155);
-  --color-focus: oklch(43% 0.075 155);
+  --color-accent-hover: #315541;
+  --color-accent-ink: #ffffff;
+  --color-accent-soft: #e3eee5;
+  --color-focus: #3f6b55;
+  --color-discord: #5865f2;
+  --color-discord-hover: #4752c4;
+  --color-discord-active: #3c45a5;
   --color-error: oklch(45% 0.16 26);
   --color-error-soft: oklch(95% 0.017 26);
   --color-error-ink: oklch(99% 0.004 26);
@@ -26,8 +29,8 @@
   --color-chat-brand: oklch(83% 0.052 155);
   --color-backdrop: oklch(20% 0.015 155 / 0.45);
   --color-clear: transparent;
-  --font-display: "DM Sans", ui-sans-serif, sans-serif;
-  --font-body: "DM Sans", ui-sans-serif, sans-serif;
+  --font-display: Onest, ui-sans-serif, sans-serif;
+  --font-body: Onest, ui-sans-serif, sans-serif;
   --font-code: ui-monospace, SFMono-Regular, Consolas, monospace;
   --space-3xs: 2px;
   --space-2xs: 4px;
@@ -54,6 +57,8 @@
   --text-lead: 1.125rem;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --dur-micro: 120ms;
+  /* Brand greeting uses the existing generated theme's 700ms slow step. */
+  --dur-greeting: 700ms;
 }
 
 @theme inline {

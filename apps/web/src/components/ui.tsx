@@ -9,6 +9,7 @@ import type {
   ReactNode,
 } from "react";
 
+import discordSymbol from "../assets/brands/discord-symbol-white.svg";
 import { loginUrl } from "../lib/api";
 import { ApiError, apiMessage } from "../lib/queries";
 
@@ -89,7 +90,7 @@ export const Button = ({
   loading?: boolean;
   onClick?: MouseEventHandler<HTMLButtonElement>;
   href?: string;
-  children: string;
+  children: ReactNode;
 }) => {
   const className = `app-button ${variant === "brand" ? "primary" : variant} ${small ? "compact" : ""}`;
   if (href) {
@@ -116,6 +117,22 @@ export const Button = ({
     </button>
   );
 };
+
+export const DiscordLogin = ({
+  label = "Log in with Discord",
+  small = false,
+}: {
+  label?: string;
+  small?: boolean;
+}) => (
+  <a
+    className={`app-button discord-login ${small ? "compact" : ""}`}
+    href={loginUrl}
+  >
+    <img alt="" aria-hidden="true" height="19" src={discordSymbol} width="25" />
+    {label}
+  </a>
+);
 
 export const TextInput = ({
   label,
@@ -267,7 +284,7 @@ export const QueryError = ({ error }: { error: unknown }) =>
     <VStack gap={3}>
       <ErrorNote>Server data needs a fresh Discord login.</ErrorNote>
       <HStack>
-        <Button href={loginUrl}>Reconnect Discord</Button>
+        <DiscordLogin label="Reconnect Discord" />
       </HStack>
     </VStack>
   ) : (
@@ -425,11 +442,13 @@ export const Modal = ({
   onClose,
   title,
   children,
+  showCloseButton = true,
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   children: ReactNode;
+  showCloseButton?: boolean;
 }) => {
   const dialog = useRef<HTMLDialogElement>(null);
   const id = useId();
@@ -473,14 +492,16 @@ export const Modal = ({
     >
       <header className="app-modal-header">
         <h2 id={id}>{title}</h2>
-        <button
-          aria-label="Close dialog"
-          className="app-button subtle compact"
-          onClick={onClose}
-          type="button"
-        >
-          Close
-        </button>
+        {showCloseButton ? (
+          <button
+            aria-label="Close dialog"
+            className="app-button subtle compact"
+            onClick={onClose}
+            type="button"
+          >
+            Close
+          </button>
+        ) : null}
       </header>
       {open ? children : null}
     </dialog>

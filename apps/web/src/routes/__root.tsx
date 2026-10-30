@@ -12,25 +12,13 @@ import { useMemo } from "react";
 import type { ReactNode } from "react";
 
 import "../styles.css";
-import { Button } from "../components/ui";
-import { loginUrl } from "../lib/api";
+import { KappaMark } from "../components/kappa-mark";
+import { Button, DiscordLogin } from "../components/ui";
 import { useLogout, useMe } from "../lib/queries";
 import { useMounted } from "../lib/use-mounted";
 
 export const Route = createRootRoute({
   head: () => ({
-    links: [
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      {
-        rel: "preconnect",
-        href: "https://fonts.gstatic.com",
-        crossOrigin: "anonymous",
-      },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap",
-      },
-    ],
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
@@ -72,20 +60,14 @@ const Navigation = () => {
         {logout.isPending ? "Signing out…" : "Sign out"}
       </Button>
     );
-  } else if (mounted && !me.isPending) {
-    accountAction = (
-      <Button href={loginUrl} small variant="subtle">
-        Log in with Discord
-      </Button>
-    );
+  } else if (mounted && !me.isPending && pathname !== "/auth/error") {
+    accountAction = <DiscordLogin small />;
   }
   return (
     <header className="app-nav">
       <nav aria-label="Account" className="app-nav-inner">
         <Link aria-label="Kappa home" className="app-wordmark" to="/">
-          <span aria-hidden="true" className="app-logo">
-            κ
-          </span>
+          <KappaMark />
           kappa
         </Link>
         <div className="app-nav-links">
@@ -135,8 +117,11 @@ const RootComponent = () => {
             <Outlet />
           ) : (
             <div className="app-shell">
+              <a className="app-skip" href="#app-main">
+                Skip to content
+              </a>
               <Navigation />
-              <main className="app-content">
+              <main className="app-content" id="app-main">
                 <Outlet />
               </main>
             </div>

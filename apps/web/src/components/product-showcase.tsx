@@ -1,115 +1,84 @@
 import { useId, useState } from "react";
 
-import { DEMO_JOBS, resolveDemoReply } from "./showcase-data";
+import { KappaMark } from "./kappa-mark";
+import {
+  DEMO_JOBS,
+  DISCORD_DEMO_JOBS,
+  DISCORD_DEMO_SUMMARY,
+} from "./showcase-data";
 import { Tabs } from "./ui";
 
+const DiscordAuthor = ({ time }: { time: string }) => (
+  <div className="discord-author">
+    <strong>Kappa</strong>
+    <span className="discord-app-label">APP</span>
+    <time>{time}</time>
+  </div>
+);
+
 export const DiscordPreview = () => {
-  const [reply, setReply] = useState("");
-  const [selected, setSelected] = useState<number | null>(null);
-  const [error, setError] = useState("");
-  const id = useId();
-  const job = DEMO_JOBS.find((item) => item.id === selected);
-  const choose = (number: number) => {
-    setReply(String(number));
-    setSelected(number);
-    setError("");
-  };
+  const job = DISCORD_DEMO_SUMMARY;
   return (
     <div
-      aria-label="Interactive Discord delivery demo"
+      aria-label="Discord job alert and summary conversation"
       className="discord-preview"
     >
-      <div className="discord-channel">
-        <span aria-hidden="true">#</span> job-alerts{" "}
-        <span className="discord-demo-label">Demo</span>
-      </div>
       <div className="discord-message">
-        <span aria-hidden="true" className="discord-avatar">
-          κ
-        </span>
+        <KappaMark className="discord-avatar" />
         <div className="discord-content">
-          <div className="discord-author">
-            Kappa <span>App</span>
+          <DiscordAuthor time="3:30 PM" />
+          <div className="discord-embed">
+            <h3>4 new &apos;database&apos; jobs found in Kalibrr</h3>
+            <ol className="discord-jobs">
+              {DISCORD_DEMO_JOBS.map((item) => (
+                <li key={item.id}>
+                  <span className="discord-job-title">
+                    {item.title} @ {item.company}
+                  </span>
+                </li>
+              ))}
+            </ol>
+            <p className="discord-hint">
+              Reply with 1–4 to get the summary of the job
+            </p>
           </div>
-          <ol className="discord-jobs">
-            {DEMO_JOBS.map((item) => (
-              <li key={item.id}>
-                <button
-                  aria-label={`Reply ${item.id}: ${item.title}`}
-                  aria-pressed={selected === item.id}
-                  onClick={() => choose(item.id)}
-                  type="button"
-                >
-                  <strong>{item.title}</strong>
-                  <span>{item.location}</span>
-                </button>
-              </li>
-            ))}
-          </ol>
-          <p className="discord-hint">Reply with a number to open a posting.</p>
         </div>
       </div>
-      <form
-        className="discord-reply"
-        onSubmit={(event) => {
-          event.preventDefault();
-          const result = resolveDemoReply(reply);
-          if (result) {
-            setSelected(result.id);
-            setError("");
-          } else {
-            setError("Choose a job number: 1, 2 or 3.");
-          }
-        }}
-      >
-        <label htmlFor={id}>Try a reply</label>
-        <div className="discord-reply-row">
-          <input
-            aria-describedby={`${id}-help`}
-            aria-invalid={Boolean(error) || undefined}
-            autoComplete="off"
-            id={id}
-            inputMode="numeric"
-            name="demo-reply"
-            onChange={(event) => {
-              setReply(event.target.value);
-              setError("");
-            }}
-            placeholder="1, 2 or 3"
-            value={reply}
-          />
-          <button type="submit">Reply</button>
+      <div className="discord-user-message">
+        <div className="discord-user-reply">
+          <span className="discord-reply-reference">Replying to @Kappa</span>
+          <div className="discord-author discord-user-author">
+            <strong>You</strong>
+            <time>3:36 PM</time>
+          </div>
+          <p>{job.reply}</p>
         </div>
-        <output className="discord-feedback" id={`${id}-help`}>
-          {error || "Demo only. Nothing sent."}
-        </output>
-      </form>
-      <div aria-live="polite" className="discord-result">
-        {job ? (
-          <>
-            <div className="discord-result-title">
-              <strong>{job.title}</strong>
-              <button
-                onClick={() => {
-                  setSelected(null);
-                  setReply("");
-                }}
-                type="button"
-              >
-                Reset
-              </button>
-            </div>
+      </div>
+      <div className="discord-message discord-summary-message">
+        <KappaMark className="discord-avatar" />
+        <div className="discord-content">
+          <DiscordAuthor time="3:36 PM" />
+          <div className="discord-embed discord-summary" lang="id">
+            <h3 className="discord-job-title">{job.title}</h3>
             <p>
-              {job.company}, {job.location}
+              <strong>Peran:</strong> {job.role}
             </p>
-            <p>{job.summary}</p>
-            <span className="discord-result-source">
-              Source: {job.source}. Example posting.
-            </span>
-          </>
-        ) : (
-          <p>Reply 1, 2 or 3.</p>
-        )}
+            <h4>Kewajiban Utama:</h4>
+            <ul>
+              {job.responsibilities.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+            <h4>Keahlian Tambahan (Nice-to-have):</h4>
+            <ul>
+              {job.skills.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+            <h4>Lokasi:</h4>
+            <p>{job.location}</p>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -129,12 +98,9 @@ export const DashboardPreview = () => {
     >
       <div className="dashboard-preview-nav">
         <span className="app-wordmark">
-          <span aria-hidden="true" className="app-logo">
-            κ
-          </span>
+          <KappaMark />
           kappa
         </span>
-        <span className="app-muted">Demo dashboard</span>
       </div>
       <div className="dashboard-preview-content">
         <h3>Direct messages</h3>
@@ -195,9 +161,6 @@ export const DashboardPreview = () => {
                     </span>
                     <span className="app-status active">Active</span>
                   </div>
-                  <p className="app-muted">
-                    Example subscriptions. Sign in to create your own.
-                  </p>
                 </div>
               ),
             },
@@ -210,22 +173,8 @@ export const DashboardPreview = () => {
 };
 
 export const ProductShowcase = () => (
-  <div className="showcase-panels grid lg:grid-cols-2">
-    <figure>
-      <div className="showcase-panel-title">
-        <h3>Discord</h3>
-        <span>Try a number</span>
-      </div>
-      <DiscordPreview />
-      <figcaption>Example postings.</figcaption>
-    </figure>
-    <figure>
-      <div className="showcase-panel-title">
-        <h3>Dashboard</h3>
-        <span>Try the tabs</span>
-      </div>
-      <DashboardPreview />
-      <figcaption>Example dashboard.</figcaption>
-    </figure>
+  <div className="showcase-panels">
+    <DiscordPreview />
+    <DashboardPreview />
   </div>
 );

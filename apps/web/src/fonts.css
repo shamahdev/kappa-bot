@@ -1,0 +1,7 @@
+@font-face {
+  font-family: Onest;
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url("./assets/fonts/onest-latin-variable.woff2") format("woff2");
+}

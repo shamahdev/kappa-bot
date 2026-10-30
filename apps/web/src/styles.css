@@ -1,13 +1,8 @@
-/* Hallmark · shape: Workbench · genre: modern-minimal · theme: Kappa soft (user revision) · job: try
- * hero: Banner · nav: edge-aligned · footer: colophon · imagery: interactive product samples, real Discord capture requires private auth · signature: reply with a number opens a posting · posture: restrained · v2.0.0 */
-/* Hallmark · pre-emit critique: P4 H4 E4 S5 R5 V4 · weakest: V, removed print fields and oversized caps in favour of the requested four-section product showcase */
-/* Hallmark · waive 44c · Banner hero, user requested separate showcase section · Kappa previews belong in the next section rather than duplicated in the hero */
-/* Hallmark · answered F18 · the showcase is an interactive demo, a static image cannot replace its numbered reply behaviour */
-/* Hallmark · dismissed F4 · the Kappa login is the primary action, destructive recipes belong to account dialogs and tabs use selection feedback rather than primary fills */
 @layer theme, base, components, utilities;
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
 @import "./tokens.css";
+@import "./fonts.css";
 @source "./**/*.tsx";
 
 @layer base {
@@ -22,6 +17,7 @@
   }
   html {
     -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
     scrollbar-color: var(--color-muted) var(--color-paper);
     scroll-padding-top: var(--space-lg);
   }
@@ -63,6 +59,11 @@
   textarea {
     font: inherit;
     color: inherit;
+  }
+  button,
+  a,
+  summary {
+    touch-action: manipulation;
   }
   button {
     cursor: pointer;
@@ -116,13 +117,13 @@
   min-height: 100dvh;
 }
 .app-nav {
-  background: var(--color-surface);
+  background: var(--color-paper);
   border-bottom: 1px solid var(--color-rule);
 }
 .app-nav-inner {
   max-width: var(--app-container);
   margin-inline: auto;
-  padding: var(--space-md) var(--space-lg);
+  padding: 20px var(--space-lg);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -132,21 +133,18 @@
 .app-wordmark {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-xs);
+  gap: 10px;
   text-decoration: none;
-  font-size: 25px;
-  font-weight: 600;
-  letter-spacing: -0.05em;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.035em;
 }
 .app-logo {
-  width: 32px;
-  height: 32px;
-  display: grid;
-  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
   border-radius: var(--radius-control);
-  background: var(--color-accent);
-  color: var(--color-accent-ink);
-  font-size: 24px;
+  object-fit: contain;
 }
 .app-nav-links {
   display: flex;
@@ -167,25 +165,23 @@
   color: var(--color-accent);
   background: var(--color-accent-soft);
 }
-.app-nav-link:hover {
-  background: var(--color-paper-2);
-}
 .app-nav-link:active {
   background: var(--color-paper-3);
 }
 .app-content {
   max-width: var(--app-container);
   margin-inline: auto;
-  padding: var(--space-xl) var(--space-lg) var(--space-2xl);
+  padding: 48px var(--space-lg) 80px;
 }
 .app-page-header {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
+  gap: var(--space-sm);
   margin-bottom: var(--space-md);
 }
 .app-page-header h1 {
-  font-size: clamp(1.75rem, 3vw, 2.25rem);
+  font-size: 2rem;
+  letter-spacing: -0.03em;
 }
 .app-page-header p {
   color: var(--color-muted);
@@ -199,8 +195,10 @@
   font-size: var(--text-small);
 }
 .app-section {
+  min-width: 0;
   padding: var(--space-lg);
   background: var(--color-surface);
+  border: 1px solid var(--color-rule);
   border-radius: var(--radius-panel);
 }
 .app-section > h2 {
@@ -244,9 +242,6 @@
   min-height: 44px;
   padding-inline: var(--space-md);
 }
-.app-button:hover {
-  background: var(--color-accent-hover);
-}
 .app-button:active {
   background: var(--color-ink);
 }
@@ -255,9 +250,6 @@
   background: var(--color-clear);
   color: var(--color-ink-2);
   border-color: var(--color-rule);
-}
-.app-button.subtle:hover {
-  background: var(--color-paper-2);
 }
 .app-button.subtle:active {
   background: var(--color-paper-3);
@@ -268,9 +260,6 @@
 }
 .app-button.dangerSubtle {
   color: var(--color-error);
-}
-.app-button.dangerSubtle:hover {
-  background: var(--color-error-soft);
 }
 .app-button.danger:active,
 .app-button.dangerSubtle:active {
@@ -315,9 +304,6 @@
 .app-field input::placeholder,
 .app-field textarea::placeholder {
   color: var(--color-muted);
-}
-.app-field :is(input, select, textarea):hover {
-  background: var(--color-paper-2);
 }
 .app-field :is(input, select, textarea):disabled {
   opacity: 0.55;
@@ -382,9 +368,6 @@
   color: var(--color-accent);
   font-weight: 600;
 }
-.app-tabs button:hover {
-  background: var(--color-paper-2);
-}
 .app-tabs button:active {
   background: var(--color-paper-3);
 }
@@ -411,22 +394,33 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--gap-columns);
 }
+.app-scope-browser > .app-field {
+  max-width: 480px;
+  margin-bottom: 8px;
+}
 .app-scope-card {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--space-md);
   padding: var(--space-lg);
-  min-height: 136px;
+  min-height: 112px;
   text-decoration: none;
   background: var(--color-surface);
   border: 1px solid var(--color-rule);
   border-radius: var(--radius-panel);
 }
-.app-scope-card:hover {
-  background: var(--color-accent-soft);
-}
 .app-scope-card:active {
   background: var(--color-paper-3);
+}
+.app-scope-card::after {
+  content: "";
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  background: var(--color-muted);
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m9 5 7 7-7 7' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    center / contain no-repeat;
 }
 .app-scope-card h2,
 .app-scope-card h3 {
@@ -452,7 +446,7 @@
   overflow-wrap: anywhere;
 }
 .app-table td:last-child {
-  width: 180px;
+  width: 28%;
 }
 .app-table a {
   color: var(--color-accent);
@@ -461,7 +455,7 @@
   position: fixed;
   inset: 0;
   margin: auto;
-  padding: var(--space-lg);
+  padding: 32px;
   width: min(640px, calc(100% - var(--space-xl)));
   max-height: calc(100dvh - var(--space-xl));
   border: 0;
@@ -486,7 +480,82 @@
   margin: 0;
 }
 
+.app-manage-forms {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-lg);
+}
+.app-manage-forms > .app-section:last-child form > .app-stack > :first-child {
+  flex-direction: column;
+  align-items: stretch;
+}
+.app-manage-forms
+  > .app-section:last-child
+  form
+  > .app-stack
+  > :first-child
+  > * {
+  flex: initial;
+}
+.app-auth-error {
+  max-width: 640px;
+  margin: 48px auto;
+  gap: var(--space-lg);
+}
+.app-auth-mascot {
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-panel);
+  margin-bottom: 8px;
+}
+.app-skip {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 20;
+  padding: 12px 16px;
+  transform: translateY(-200%);
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+.app-skip:focus-visible {
+  transform: none;
+}
+.app-button.discord-login.discord-login {
+  gap: 12px;
+  background: var(--color-discord);
+  color: #ffffff;
+}
+.discord-login img {
+  width: 25px;
+  height: 19px;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+.app-button.discord-login:focus-visible {
+  outline-color: var(--color-discord);
+}
+.app-button.discord-login.discord-login:active {
+  background: var(--color-discord-active);
+  opacity: 1;
+}
+@media (max-width: 60rem) {
+  .app-manage-forms {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 @media (max-width: 40rem) {
+  .app-wordmark {
+    font-size: 24px;
+  }
+  .app-logo {
+    width: 32px;
+    height: 32px;
+  }
+  .app-page-header h1 {
+    font-size: 1.75rem;
+  }
   .app-nav-inner {
     padding-inline: var(--space-md);
     gap: var(--space-sm);
@@ -496,7 +565,13 @@
     justify-content: space-between;
   }
   .app-content {
-    padding-inline: var(--space-md);
+    padding: 32px var(--space-md) 48px;
+  }
+  .app-auth-error {
+    margin-top: 24px;
+  }
+  .app-modal {
+    padding: 20px;
   }
   .app-scope-grid {
     grid-template-columns: minmax(0, 1fr);
@@ -530,6 +605,30 @@
   }
   .app-section {
     padding: var(--space-md);
+  }
+}
+@media (hover: hover) and (pointer: fine) {
+  .app-nav-link:hover,
+  .app-button.subtle:hover,
+  .app-field :is(input, select, textarea):hover,
+  .app-tabs button:hover {
+    background: var(--color-paper-2);
+  }
+  .app-button:hover {
+    background: var(--color-accent-hover);
+  }
+  .app-button.dangerSubtle:hover {
+    background: var(--color-error-soft);
+  }
+  .app-button.danger:hover {
+    background: var(--color-error);
+  }
+  .app-scope-card:hover {
+    background: var(--color-paper-2);
+    border-color: var(--color-input-edge);
+  }
+  .app-button.discord-login.discord-login:hover {
+    background: var(--color-discord-hover);
   }
 }
 @media (pointer: coarse) {
