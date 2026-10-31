@@ -2,11 +2,25 @@ export type { AccountSummaryType, DeleteAccountResponseType } from "./account";
 export { AccountSummary, DeleteAccountResponse } from "./account";
 export type { AuthMeResponseType, UserDtoType } from "./auth";
 export { AuthMeResponse, UserDto } from "./auth";
+export type {
+  CvReportType,
+  CvReportJobType,
+  CvReportSummaryType,
+} from "./cv-reports";
+export {
+  CV_REPORT_JOB_COUNT,
+  CvReport,
+  CvReportsResponse,
+  CvReportSummary,
+  decodeCvReportSummary,
+  decodeCvReport,
+} from "./cv-reports";
 export type { CvDtoType, SaveCvBodyType } from "./cv";
 export {
   CV_MAX_CHARS,
   CV_MAX_FILENAME,
   CV_MAX_PDF_BYTES,
+  CV_MAX_TEXT_BYTES,
   CV_MIN_CHARS,
   CvDto,
   SaveCvBody,
@@ -28,6 +42,21 @@ export {
 } from "./job-listings";
 export type { JobDtoType, JobsResponseType } from "./jobs";
 export { JobDto, JobsResponse } from "./jobs";
+export type {
+  JobMatchType,
+  MatchBreakdownType,
+  MatchGradeType,
+} from "./matching";
+export {
+  JobMatch,
+  MatchBreakdown,
+  MatchGrade,
+  MATCH_FACTORS,
+  MATCH_GRADE_LABELS,
+  matchGradeForScore,
+  weightedMatchScore,
+  decodeMatchBreakdown,
+} from "./matching";
 export { API_V1, PATHS, SESSION_COOKIE } from "./paths";
 export type {
   CreateSubscriptionBodyType,

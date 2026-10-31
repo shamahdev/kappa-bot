@@ -1,4 +1,4 @@
-import type { JobPosting } from "@kappa/contracts";
+import type { JobMatchType, JobPosting } from "@kappa/contracts";
 
 export type { JobPosting } from "@kappa/contracts";
 
@@ -20,11 +20,8 @@ export interface JobDetail {
   closed: boolean;
 }
 
-/** 0–100 fit of one posting against the user's CV, plus a one-line reason. */
-export interface JobMatch {
-  score: number;
-  reason: string;
-}
+/** Weighted factor assessment shared by service, web and Discord. */
+export type JobMatch = JobMatchType;
 
 /** Transport-neutral enrichment for one posting. */
 export interface EnrichedJobPosting {

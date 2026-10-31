@@ -4,18 +4,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "theme:build": "node ../../node_modules/@astryxdesign/cli/clients/cli/bin/astryx.mjs theme build src/themes/kappa.ts --out src/themes/built/kappa.css",
-    "build": "bun run theme:build && vite build",
+    "build": "vite build",
     "dev": "vite --port 3444",
     "start": "bun .output/server/index.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@astryxdesign/core": "^0.6.2",
-    "@astryxdesign/theme-neutral": "^0.6.2",
     "@effect/platform": "^0.97.2",
     "@kappa/contracts": "workspace:*",
-    "@stylexjs/stylex": "^0.19.1",
     "@tanstack/react-query": "^5.103.0",
     "@tanstack/react-router": "^1.168.54",
     "@tanstack/react-start": "^1.168.54",
@@ -25,7 +21,6 @@
     "react-dom": "^19.3.0"
   },
   "devDependencies": {
-    "@stylexjs/unplugin": "^0.19.1",
     "@tailwindcss/vite": "^4.3.3",
     "@types/bun": "1.1.6",
     "@types/react": "^19.2.0",

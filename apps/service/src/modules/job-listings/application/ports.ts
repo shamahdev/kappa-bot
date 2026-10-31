@@ -3,6 +3,7 @@ import type { Database } from "@kappa/db";
 import type { Logger } from "../../../core/logger";
 import type { EnrichedJobPosting, JobPosting } from "../domain/posting";
 import type { createCvProfiles } from "./cv";
+import type { createCvReports } from "./cv-reports";
 import type { createJobEnrichment } from "./enrichment";
 import type { createDeliveryRecall } from "./recall";
 
@@ -13,6 +14,7 @@ export interface JobNotifications {
     posting: EnrichedJobPosting,
     keyword?: string | null
   ) => Promise<void>;
+  report: (userId: string, reportId: number, grade: string) => Promise<void>;
   batch: (
     channelId: string,
     jobs: JobPosting[],
@@ -30,4 +32,5 @@ export interface JobPollingContext {
   cv: ReturnType<typeof createCvProfiles>;
   enrichment: ReturnType<typeof createJobEnrichment>;
   recall: ReturnType<typeof createDeliveryRecall>;
+  reports?: ReturnType<typeof createCvReports>;
 }

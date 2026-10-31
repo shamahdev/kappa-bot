@@ -1,3 +1,4 @@
+import { matchGradeForScore } from "@kappa/contracts";
 import { Elysia, t } from "elysia";
 
 import { resolveSession } from "../core/auth";
@@ -50,8 +51,13 @@ export const jobRoutes = (deps: RouteDeps) => {
             firstSeenAt: job.firstSeenAt.toISOString(),
             id: job.id,
             location: job.snapshot?.location ?? null,
-            matchReason: job.matchReason,
-            matchScore: job.matchScore,
+            matchBreakdown: wantDm ? job.matchBreakdown : null,
+            matchGrade:
+              wantDm && job.matchScore !== null
+                ? matchGradeForScore(job.matchScore)
+                : null,
+            matchReason: wantDm ? job.matchReason : null,
+            matchScore: wantDm ? job.matchScore : null,
             source: job.source,
             subscriptionId: job.subscriptionId,
             title: job.snapshot?.title ?? null,

@@ -377,7 +377,10 @@ describe("CV attachment adapter", () => {
           "cv.pdf",
           bytes.length
         ) as unknown as ChatInputCommandInteraction,
-        context({}, { cv: { savePdf } as unknown as JobListings["cv"] })
+        context(
+          {},
+          { cv: { saveFile: savePdf } as unknown as JobListings["cv"] }
+        )
       );
       expect(savePdf).toHaveBeenCalledTimes(1);
     } finally {

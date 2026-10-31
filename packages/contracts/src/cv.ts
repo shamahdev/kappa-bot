@@ -5,14 +5,13 @@ export const CV_MIN_CHARS = 200;
 export const CV_MAX_CHARS = 20_000;
 export const CV_MAX_FILENAME = 255;
 export const CV_MAX_PDF_BYTES = 2_000_000;
+// Preserve the web's existing text-upload allowance when extraction moves server-side.
+export const CV_MAX_TEXT_BYTES = 512_000;
 
-// Owner-only view: GET echoes the stored text so the dashboard can edit it.
+// Public CV responses are metadata-only. Extracted text never leaves the service.
 export const CvDto = Schema.Struct({
-  charCount: Schema.Number,
   filename: Schema.NullOr(Schema.String),
   hasCv: Schema.Boolean,
-  text: Schema.NullOr(Schema.String),
-  // ISO 8601
   updatedAt: Schema.NullOr(Schema.String),
 });
 export type CvDtoType = typeof CvDto.Type;

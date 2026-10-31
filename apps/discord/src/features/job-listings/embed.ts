@@ -1,4 +1,8 @@
-import { jobSourceName } from "@kappa/contracts";
+import {
+  jobSourceName,
+  MATCH_FACTORS,
+  MATCH_GRADE_LABELS,
+} from "@kappa/contracts";
 import type {
   EnrichedJobPosting,
   JobDetail,
@@ -95,8 +99,22 @@ export const embedForJobPosting = (
     fields.push({
       inline: false,
       name: "Match",
-      value: truncate(`${match.score}% — ${match.reason}`, MAX_FIELD),
+      value: truncate(
+        `${match.grade} — ${MATCH_GRADE_LABELS[match.grade]}`,
+        MAX_FIELD
+      ),
     });
+    for (const factor of MATCH_FACTORS) {
+      const assessment = match.factors[factor.key];
+      fields.push({
+        inline: false,
+        name: `${factor.label} · ${factor.weight}% weight`,
+        value: truncate(
+          `${assessment.score}/100 — ${assessment.reason}`,
+          MAX_FIELD
+        ),
+      });
+    }
   }
   // Embed text has a combined 6000-character limit, including title, footer, field names and values.
   let remaining = MAX_EMBED_TEXT - title.length - footer.length;

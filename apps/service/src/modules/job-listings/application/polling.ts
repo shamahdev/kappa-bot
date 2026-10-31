@@ -216,6 +216,9 @@ export const flushSub = async (
       const posting = await ctx.enrichment.enrich(job, cvText);
       await ctx.notifications.card(sub.channelId, posting, keyword);
       delivered = 1;
+      await ctx.reports?.recordDelivered(sub.id, [
+        { job, seenId: first.seenId },
+      ]);
       const { match } = posting;
       const seenId = items[0]?.seenId;
       if (match && seenId !== undefined) {
@@ -234,6 +237,14 @@ export const flushSub = async (
       keyword
     )) {
       delivered += sent.jobs.length;
+      const deliveredItems = sent.jobs.flatMap((job) => {
+        const item = items.find(
+          (candidate) =>
+            candidate.job.id === job.id && candidate.job.source === job.source
+        );
+        return item ? [item] : [];
+      });
+      await ctx.reports?.recordDelivered(sub.id, deliveredItems);
       if (sent.messageId) {
         await ctx.recall.record(
           sub.channelId,
@@ -335,6 +346,9 @@ export interface PollResult {
   durationMs: number;
 }
 
+const processReports = (ctx: JobPollingContext): Promise<void> =>
+  ctx.reports?.processPending() ?? Promise.resolve();
+
 export const pollSubscriptions = async (
   ctx: JobPollingContext,
   targetSubs?: Subscription[]
@@ -352,6 +366,7 @@ export const pollSubscriptions = async (
       .where(eq(subscriptions.isActive, true)));
 
   if (subs.length === 0) {
+    await processReports(ctx);
     ctx.log.info(
       { module: "job-listings" },
       "poll tick: no active subscriptions"
@@ -479,6 +494,7 @@ export const pollSubscriptions = async (
     }
   }
 
+  await processReports(ctx);
   await enforceTtl(ctx);
   setGauge("linkedin_circuit_open", linkedinCircuitCount());
   incCounter("poll_ticks_total", { module: "job-listings" });

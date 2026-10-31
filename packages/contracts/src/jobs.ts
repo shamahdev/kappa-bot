@@ -1,9 +1,9 @@
 import { Schema } from "effect";
 
-// One delivered job (a `seen_jobs` row): what the Jobs tab lists. Title/company/
-// location come from the delivery snapshot (null for legacy rows without one).
-// matchScore/matchReason are the personal CV match (DM scope only, null
-// otherwise); aiSummary is the shared cached summary from `jobs`.
+import { MatchBreakdown, MatchGrade } from "./matching";
+
+// One delivered job. Percentage history is kept internally for compatibility;
+// public presentation uses an A–E grade and the factor breakdown when available.
 export const JobDto = Schema.Struct({
   aiSummary: Schema.NullOr(Schema.String),
   company: Schema.NullOr(Schema.String),
@@ -12,6 +12,8 @@ export const JobDto = Schema.Struct({
   firstSeenAt: Schema.String,
   id: Schema.Number,
   location: Schema.NullOr(Schema.String),
+  matchBreakdown: Schema.NullOr(MatchBreakdown),
+  matchGrade: Schema.NullOr(MatchGrade),
   matchReason: Schema.NullOr(Schema.String),
   matchScore: Schema.NullOr(Schema.Number),
   source: Schema.String,

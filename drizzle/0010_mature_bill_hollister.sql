@@ -1,0 +1,1 @@
+ALTER TABLE "seen_jobs" ADD COLUMN "match_breakdown" jsonb;

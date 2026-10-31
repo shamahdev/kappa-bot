@@ -1,61 +1,40 @@
-.settings {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
+@layer theme, base, components, utilities;
+@reference "../../styles.css";
 
-.panels {
-  display: grid;
-  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
-  align-items: start;
-  gap: var(--space-lg);
-}
-
-.accountMetadata {
-  display: grid;
-  gap: 0;
-  margin: 0;
-}
-
-.accountMetadata > div {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
-  gap: var(--space-md);
-  padding-block: var(--space-md);
-  border-bottom: 1px solid var(--color-rule);
-}
-
-.accountMetadata > div:first-child {
-  padding-top: 0;
-}
-
-.accountMetadata > div:last-child {
-  padding-bottom: 0;
-  border-bottom: 0;
-}
-
-.metadataTerm,
-.metadataValue {
-  min-width: 0;
-  margin: 0;
-}
-
-.metadataValue {
-  display: flex;
-  flex-wrap: wrap;
-  column-gap: calc(var(--space-2xs) * 2);
-  row-gap: var(--space-2xs);
-  overflow-wrap: anywhere;
-}
-
-@media (max-width: 60rem) {
-  .panels {
-    grid-template-columns: minmax(0, 1fr);
+@layer components {
+  .settings {
+    @apply min-w-0 wrap-anywhere;
   }
-}
-
-@media (max-width: 40rem) {
+  .panels {
+    @apply grid grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] items-start gap-6;
+  }
+  .accountMetadata {
+    @apply m-0 grid gap-0;
+  }
   .accountMetadata > div {
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--space-xs);
+    @apply border-kappa-rule grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] gap-4 border-0 border-b border-solid py-4;
+  }
+  .accountMetadata > div:first-child {
+    @apply pt-0;
+  }
+  .accountMetadata > div:last-child {
+    @apply border-b-0 pb-0;
+  }
+  .metadataTerm,
+  .metadataValue {
+    @apply m-0 min-w-0;
+  }
+  .metadataValue {
+    @apply flex flex-wrap gap-x-2 gap-y-1 wrap-anywhere;
+  }
+  @media (max-width: 60rem) {
+    .panels {
+      @apply grid-cols-1;
+    }
+  }
+  @media (max-width: 40rem) {
+    .accountMetadata > div {
+      @apply grid-cols-1 gap-2;
+    }
   }
 }

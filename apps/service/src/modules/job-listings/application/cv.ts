@@ -2,6 +2,7 @@ import {
   CV_MAX_CHARS,
   CV_MAX_FILENAME,
   CV_MAX_PDF_BYTES,
+  CV_MAX_TEXT_BYTES,
   CV_MIN_CHARS,
 } from "@kappa/contracts";
 import { cvProfiles } from "@kappa/db";
@@ -100,6 +101,39 @@ export const createCvProfiles = (db: Database) => {
       return rows.length > 0;
     },
     save,
+    async saveFile(
+      userId: string,
+      bytes: Uint8Array,
+      filename: string
+    ): Promise<CvProfile> {
+      const error = cvFilenameError(filename);
+      if (error) {
+        throw new JobSubscriptionError("VALIDATION", error);
+      }
+      const isPdf = filename.trim().toLowerCase().endsWith(".pdf");
+      const maxBytes = isPdf ? CV_MAX_PDF_BYTES : CV_MAX_TEXT_BYTES;
+      if (bytes.byteLength > maxBytes) {
+        throw new JobSubscriptionError(
+          "VALIDATION",
+          isPdf
+            ? "PDF must be 2MB or smaller"
+            : "Text file must be 500KB or smaller"
+        );
+      }
+      if (isPdf) {
+        return await this.savePdf(userId, bytes, filename);
+      }
+      let text: string;
+      try {
+        text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+      } catch {
+        throw new JobSubscriptionError(
+          "VALIDATION",
+          "Could not read this text file. Upload UTF-8 .txt or .md."
+        );
+      }
+      return save(userId, text, filename);
+    },
     async savePdf(
       userId: string,
       bytes: Uint8Array,

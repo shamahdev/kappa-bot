@@ -1,4 +1,9 @@
-import type { JobPosting } from "@kappa/contracts";
+import type {
+  JobPosting,
+  MatchBreakdownType,
+  CvReportSummaryType,
+  CvReportJobType,
+} from "@kappa/contracts";
 import { sql } from "drizzle-orm";
 import {
   boolean,
@@ -112,9 +117,9 @@ export const seenJobs = pgTable(
     // Shared posting row (nullable: legacy rows are backfilled, but a failed
     // jobs upsert must never block delivery, so collection tolerates null).
     jobId: integer("job_id").references(() => jobs.id, { onDelete: "cascade" }),
+    matchBreakdown: jsonb("match_breakdown").$type<MatchBreakdownType>(),
     matchReason: text("match_reason"),
-    // Personal-only AI match against the subscriber's CV (DM scope only;
-    // guild rows stay NULL). Written when a DM card is scored.
+    /** Legacy numeric history plus the weighted breakdown for new assessments. */
     matchScore: smallint("match_score"),
     snapshot: jsonb("snapshot").$type<{
       title: string;
@@ -153,6 +158,63 @@ export const cvProfiles = pgTable("cv_profiles", {
     .defaultNow()
     .notNull(),
 });
+
+/** Immutable job batches; CV content is never persisted inside a report. */
+export const cvReports = pgTable(
+  "cv_reports",
+  {
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    cvFilename: text("cv_filename"),
+    cvUploadedAt: timestamp("cv_uploaded_at", { withTimezone: true }),
+    factors: jsonb("factors").$type<MatchBreakdownType>(),
+    grade: text("grade"),
+    id: serial("id").primaryKey(),
+    jobs: jsonb("jobs").$type<CvReportJobType[]>().notNull(),
+    keywords: text("keywords"),
+    message: text("message"),
+    notifiedAt: timestamp("notified_at", { withTimezone: true }),
+    postings: jsonb("postings").$type<JobPosting[]>().notNull(),
+    source: text("source").notNull(),
+    status: text("status").notNull().default("pending"),
+    subscriptionId: integer("subscription_id")
+      .notNull()
+      .references(() => subscriptions.id, { onDelete: "cascade" }),
+    summary: jsonb("summary").$type<CvReportSummaryType>(),
+    userId: text("user_id").notNull(),
+  },
+  (table) => [
+    index("cv_reports_user_created_idx").on(table.userId, table.createdAt),
+    index("cv_reports_pending_idx").on(table.status),
+  ]
+);
+
+/** Only successfully delivered personal jobs enter this durable accumulation queue. */
+export const cvReportDeliveries = pgTable(
+  "cv_report_deliveries",
+  {
+    deliveredAt: timestamp("delivered_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    id: serial("id").primaryKey(),
+    posting: jsonb("posting").$type<JobPosting>().notNull(),
+    reportId: integer("report_id").references(() => cvReports.id, {
+      onDelete: "cascade",
+    }),
+    seenId: integer("seen_id").notNull(),
+    subscriptionId: integer("subscription_id")
+      .notNull()
+      .references(() => subscriptions.id, { onDelete: "cascade" }),
+  },
+  (table) => [
+    uniqueIndex("cv_report_delivery_seen_uidx").on(table.seenId),
+    index("cv_report_delivery_subscription_idx").on(
+      table.subscriptionId,
+      table.id
+    ),
+  ]
+);
 
 export const botConfig = pgTable(
   "bot_config",

@@ -103,10 +103,8 @@ test("HTTP CV controller serializes the shared personal profile result", async (
   const response = await cvRoutes(deps(store.db)).handle(request("/api/v1/cv"));
   expect(response.status).toBe(200);
   expect(await response.json()).toEqual({
-    charCount: 7,
     filename: null,
     hasCv: true,
-    text: "example",
     updatedAt: updatedAt.toISOString(),
   });
 });

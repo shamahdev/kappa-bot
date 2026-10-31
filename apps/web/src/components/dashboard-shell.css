@@ -1,0 +1,302 @@
+@layer theme, base, components, utilities;
+@reference "../styles.css";
+
+@layer components {
+  .dashboard-shell {
+    @apply bg-kappa-paper-2 grid min-h-dvh grid-cols-[256px_minmax(0,1fr)];
+  }
+  .dashboard-sidebar {
+    @apply bg-kappa-paper-2 border-kappa-rule sticky top-0 flex h-dvh min-w-0 flex-col overflow-y-auto overscroll-contain border-0 border-r border-solid px-5 py-7;
+  }
+  .dashboard-brand {
+    @apply mb-10 px-3;
+  }
+  .dashboard-navigation {
+    @apply flex flex-col gap-7;
+  }
+  .dashboard-personal-links,
+  .dashboard-server-links {
+    @apply flex min-w-0 flex-col gap-1;
+  }
+  .dashboard-link {
+    @apply text-kappa-ink-2 rounded-control flex min-h-12 w-full min-w-0 items-center gap-3 border-0 bg-transparent px-3 py-3 text-left text-[14px] leading-[1.4] no-underline;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .dashboard-link span {
+    @apply min-w-0 wrap-anywhere;
+  }
+  .dashboard-link svg {
+    @apply text-kappa-muted;
+  }
+  .dashboard-link[aria-current="page"] {
+    @apply bg-kappa-accent-soft text-kappa-accent font-semibold;
+  }
+  .dashboard-link[aria-current="page"] svg {
+    @apply text-kappa-accent;
+  }
+  .dashboard-link:active {
+    @apply bg-kappa-paper-3;
+  }
+  .dashboard-link:disabled {
+    @apply cursor-not-allowed opacity-55;
+  }
+  .dashboard-server-section {
+    @apply border-kappa-rule min-w-0 border-0 border-t border-solid pt-6;
+  }
+  .dashboard-server-section > .app-field {
+    @apply px-3;
+  }
+  .dashboard-server-section .app-field select {
+    @apply px-3;
+  }
+  .dashboard-server-section .app-field-help {
+    @apply text-[13px];
+  }
+  .dashboard-server-section > .app-note,
+  .dashboard-server-section > .app-stack {
+    @apply mt-3;
+  }
+  .dashboard-server-links {
+    @apply mt-4;
+  }
+  .dashboard-server-name {
+    @apply text-kappa-muted flex min-w-0 items-center gap-2 px-3 pb-2 text-[13px] leading-[1.4];
+  }
+  .dashboard-server-name > span:last-child {
+    @apply min-w-0 wrap-anywhere;
+  }
+  .dashboard-server-name .app-avatar {
+    @apply size-6 text-[12px];
+  }
+  .dashboard-server-links .dashboard-link {
+    @apply pl-6;
+  }
+  .dashboard-sidebar-footer {
+    @apply border-kappa-rule mt-auto flex flex-col gap-1 border-0 border-t border-solid pt-5;
+  }
+  .dashboard-navigation + .dashboard-sidebar-footer {
+    @apply pt-5;
+    margin-top: auto;
+  }
+  .dashboard-user {
+    @apply mb-3 flex min-w-0 items-center gap-3 px-3 pt-3;
+  }
+  .dashboard-user .app-avatar {
+    @apply size-9 text-[16px];
+  }
+  .dashboard-user > div {
+    @apply flex min-w-0 flex-col gap-1;
+  }
+  .dashboard-user strong {
+    @apply text-[14px] font-semibold wrap-anywhere;
+  }
+  .dashboard-user div > span {
+    @apply text-kappa-muted text-[12px];
+  }
+  .dashboard-workspace {
+    @apply bg-kappa-paper min-h-dvh min-w-0;
+  }
+  .dashboard-content {
+    @apply mx-auto w-full max-w-[var(--app-container)] px-10 pt-12 pb-20;
+  }
+  .dashboard-mobile-header {
+    @apply hidden;
+  }
+  .dashboard-menu-button {
+    @apply rounded-control text-kappa-ink grid size-12 shrink-0 place-items-center border-0 bg-transparent;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .dashboard-menu-button:active {
+    @apply bg-kappa-paper-3;
+  }
+  .dashboard-drawer {
+    @apply bg-kappa-paper-2 text-kappa-ink fixed inset-y-0 left-0 m-0 h-dvh max-h-dvh w-[min(320px,calc(100%_-_24px))] max-w-none overflow-y-auto overscroll-contain border-0 px-5 py-5;
+    padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  }
+  .dashboard-drawer[open] {
+    @apply flex flex-col;
+  }
+  .dashboard-drawer::backdrop {
+    @apply bg-kappa-backdrop;
+  }
+  .dashboard-drawer-header {
+    @apply mb-6 flex items-center justify-between gap-3;
+  }
+  .dashboard-home-overview {
+    @apply grid grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] items-start gap-6;
+  }
+  .dashboard-home-summary {
+    @apply border-kappa-rule flex flex-wrap gap-x-10 gap-y-6 border-0 border-b border-solid py-6;
+  }
+  .dashboard-home-summary > div {
+    @apply flex min-w-0 flex-col gap-1;
+  }
+  .dashboard-home-summary strong {
+    @apply text-[20px] font-semibold tabular-nums;
+  }
+  .dashboard-home-summary span {
+    @apply text-kappa-muted text-[14px];
+  }
+  .dashboard-home-actions {
+    @apply flex flex-wrap gap-3 pt-6;
+  }
+  .dashboard-home-server-list {
+    @apply m-0 flex list-none flex-col gap-3 p-0;
+  }
+  .dashboard-home-server-list .app-scope-card {
+    @apply border-kappa-rule min-h-0 rounded-none border-0 border-b border-solid bg-transparent px-0 py-4;
+  }
+  .dashboard-home-server-list li:last-child .app-scope-card {
+    @apply border-b-0;
+  }
+  .dashboard-home-server-list .app-avatar {
+    @apply size-9 text-[16px];
+  }
+  .dashboard-home-server-list .app-scope-card strong {
+    @apply text-[14px] font-semibold wrap-anywhere;
+  }
+  .dashboard-home-server-list .app-scope-card small {
+    @apply text-kappa-muted text-[13px];
+  }
+  .dashboard-settings-section {
+    @apply flex min-w-0 flex-col gap-4;
+  }
+  .dashboard-settings-section > h2 {
+    @apply text-[20px];
+  }
+  .dashboard-scope-heading {
+    @apply flex min-w-0 items-center gap-3;
+  }
+  .dashboard-scope-heading .app-avatar {
+    @apply size-9 text-[16px];
+  }
+  .dashboard-scope-heading > span:last-child {
+    @apply text-kappa-muted text-[14px] wrap-anywhere;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .dashboard-link:hover,
+    .dashboard-menu-button:hover {
+      @apply bg-kappa-paper-3;
+    }
+    .dashboard-link[aria-current="page"]:hover {
+      @apply bg-kappa-accent-soft;
+    }
+  }
+  @media (width < 60rem) {
+    .dashboard-shell {
+      @apply bg-kappa-paper block;
+    }
+    .dashboard-sidebar {
+      @apply hidden;
+    }
+    .dashboard-mobile-header {
+      @apply bg-kappa-paper-2 border-kappa-rule flex min-w-0 items-center justify-between gap-4 border-0 border-b border-solid px-6 py-3;
+    }
+    .dashboard-content {
+      @apply px-6 pt-8 pb-12;
+    }
+    .dashboard-home-overview {
+      @apply grid-cols-1;
+    }
+  }
+  @media (max-width: 40rem) {
+    .dashboard-mobile-header {
+      @apply px-4;
+    }
+    .dashboard-content {
+      @apply px-4;
+    }
+    .dashboard-home-summary {
+      @apply gap-x-6;
+    }
+  }
+}
+
+@layer components {
+  .cv-report-list {
+    @apply m-0 list-none p-0;
+  }
+  .cv-report-link {
+    @apply border-kappa-rule flex min-w-0 flex-wrap items-center justify-between gap-4 border-0 border-b border-solid py-4 no-underline;
+  }
+  .cv-report-link > span:first-child {
+    @apply flex min-w-0 flex-col gap-1;
+  }
+  .cv-report-link strong {
+    @apply font-semibold wrap-anywhere;
+  }
+  .cv-report-link small {
+    @apply text-kappa-muted text-[13px];
+  }
+  .cv-report-result {
+    @apply text-kappa-accent text-[14px] font-semibold;
+  }
+  .cv-reports-disclosure > summary {
+    @apply text-kappa-accent cursor-pointer py-3 font-semibold;
+  }
+  .cv-report-overview {
+    @apply bg-kappa-accent-soft rounded-panel flex min-w-0 flex-col gap-3 p-6;
+  }
+  .cv-report-overview h2,
+  .cv-report-section h2 {
+    @apply text-[20px];
+  }
+  .cv-report-section {
+    @apply flex min-w-0 flex-col gap-4;
+  }
+  .cv-report-factors {
+    @apply border-kappa-rule m-0 grid grid-cols-3 gap-6 border-0 border-b border-solid pb-6;
+  }
+  .cv-report-factors dt {
+    @apply flex flex-col gap-1 text-[14px] font-semibold;
+  }
+  .cv-report-factors dt span {
+    @apply text-kappa-muted text-[12px] font-normal;
+  }
+  .cv-report-factors dd {
+    @apply m-0 mt-3;
+  }
+  .cv-report-factors dd strong {
+    @apply text-[20px] font-semibold tabular-nums;
+  }
+  .cv-report-factors dd p {
+    @apply text-kappa-muted mt-2 text-[14px];
+  }
+  .cv-report-summary {
+    @apply grid grid-cols-2 gap-x-10 gap-y-8;
+  }
+  .cv-report-section ul {
+    @apply m-0 pl-5;
+  }
+  .cv-report-section li + li {
+    @apply mt-2;
+  }
+  .cv-report-jobs {
+    @apply m-0 pl-5;
+  }
+  .cv-report-jobs li {
+    @apply border-kappa-rule border-0 border-b border-solid py-3;
+  }
+  .cv-report-jobs a {
+    @apply text-kappa-accent font-semibold;
+  }
+  .cv-report-jobs p,
+  .cv-report-jobs span {
+    @apply text-kappa-muted text-[14px];
+  }
+  @media (width < 60rem) {
+    .cv-report-summary {
+      @apply grid-cols-1;
+    }
+  }
+  @media (max-width: 40rem) {
+    .cv-report-factors {
+      @apply grid-cols-1;
+    }
+    .cv-report-overview {
+      @apply p-4;
+    }
+  }
+}

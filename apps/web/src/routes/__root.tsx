@@ -40,7 +40,6 @@ const Navigation = () => {
   const navigate = useNavigate();
   const pathname = useLocation({ select: (location) => location.pathname });
   const signedIn = mounted && Boolean(me.data);
-  const isSettings = pathname === "/dashboard/settings";
   let accountAction: ReactNode = null;
   if (signedIn) {
     accountAction = (
@@ -73,25 +72,11 @@ const Navigation = () => {
         <div className="app-nav-links">
           {signedIn ? (
             <>
-              <Link
-                activeOptions={{ exact: true }}
-                aria-current={
-                  !isSettings && pathname.startsWith("/dashboard")
-                    ? "page"
-                    : undefined
-                }
-                className="app-nav-link"
-                to="/dashboard"
-              >
+              <Link className="app-nav-link" to="/dashboard">
                 Dashboard
               </Link>
-              <Link
-                activeOptions={{ exact: true }}
-                aria-current={isSettings ? "page" : undefined}
-                className="app-nav-link"
-                to="/dashboard/settings"
-              >
-                Settings
+              <Link className="app-nav-link" to="/dashboard/account">
+                Account
               </Link>
             </>
           ) : null}
@@ -106,6 +91,8 @@ const RootComponent = () => {
   const queryClient = useMemo(() => new QueryClient(), []);
   const pathname = useLocation({ select: (location) => location.pathname });
   const isLanding = pathname === "/";
+  const isDashboard =
+    pathname === "/dashboard" || pathname.startsWith("/dashboard/");
   return (
     <html data-theme="kappa-soft" lang="en">
       <head>
@@ -113,7 +100,7 @@ const RootComponent = () => {
       </head>
       <body>
         <QueryClientProvider client={queryClient}>
-          {isLanding ? (
+          {isLanding || isDashboard ? (
             <Outlet />
           ) : (
             <div className="app-shell">

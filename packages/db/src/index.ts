@@ -5,6 +5,8 @@ export {
   botConfig,
   channels,
   cvProfiles,
+  cvReportDeliveries,
+  cvReports,
   deliveryMessages,
   fingerprintSnapshots,
   guilds,

@@ -16,7 +16,7 @@ export const extractPdfText = async (data: Uint8Array): Promise<string> => {
     raw = result.text;
   } catch {
     throw new Error(
-      "Could not read this PDF — it may be corrupted. Try exporting as .txt or pasting the text."
+      "Could not read this PDF — it may be corrupted. Try exporting and uploading a .txt file."
     );
   }
   const text = raw
@@ -26,7 +26,7 @@ export const extractPdfText = async (data: Uint8Array): Promise<string> => {
     .trim();
   if (!text) {
     throw new Error(
-      "No text found in this PDF — it may be scanned. Try exporting as .txt or pasting the text."
+      "No text found in this PDF — it may be scanned. Try exporting and uploading a .txt file."
     );
   }
   return text;

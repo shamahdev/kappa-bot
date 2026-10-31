@@ -117,7 +117,11 @@ export const storeMatchScore = async (
   try {
     await db
       .update(seenJobs)
-      .set({ matchReason: match.reason, matchScore: match.score })
+      .set({
+        matchBreakdown: match.factors,
+        matchReason: match.reason,
+        matchScore: match.score,
+      })
       .where(eq(seenJobs.id, seenId));
   } catch (error) {
     log.warn(
@@ -160,7 +164,11 @@ export const storeMatchScoreForChannelDelivery = async (
       // oxlint-disable-next-line no-await-in-loop
       await db
         .update(seenJobs)
-        .set({ matchReason: args.match.reason, matchScore: args.match.score })
+        .set({
+          matchBreakdown: args.match.factors,
+          matchReason: args.match.reason,
+          matchScore: args.match.score,
+        })
         .where(eq(seenJobs.id, row.id));
     }
   } catch (error) {

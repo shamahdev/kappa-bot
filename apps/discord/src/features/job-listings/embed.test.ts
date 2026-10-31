@@ -127,7 +127,19 @@ describe("deliveryPages", () => {
       {
         detail: { closed: false, description: "Summary", salary: "$100" },
         job: job(1),
-        match: { reason: "Good fit", score: 90 },
+        match: {
+          factors: {
+            keywordMatch: { reason: "Role terms covered.", score: 90 },
+            relevantExperience: {
+              reason: "Relevant work supported.",
+              score: 90,
+            },
+            skills: { reason: "Required skills covered.", score: 90 },
+          },
+          grade: "A",
+          reason: "Good fit",
+          score: 90,
+        },
       },
       "engineer"
     );
@@ -135,7 +147,7 @@ describe("deliveryPages", () => {
     expect(payload.embeds?.[0]?.fields).toContainEqual({
       inline: false,
       name: "Match",
-      value: "90% — Good fit",
+      value: "A — Strong match",
     });
   });
 });

@@ -1,112 +1,78 @@
-import { CV_MAX_CHARS, CV_MAX_PDF_BYTES, CV_MIN_CHARS } from "@kappa/contracts";
+import {
+  CV_MAX_PDF_BYTES,
+  CV_MAX_TEXT_BYTES,
+  CV_MAX_FILENAME,
+} from "@kappa/contracts";
 import { useState } from "react";
 
-import type { CvDtoType } from "./api";
-import { apiMessage, useDeleteCv, useSaveCv, useSaveCvFile } from "./queries";
+import { apiMessage, useDeleteCv, useSaveCvFile } from "./queries";
 
-const CV_MAX_UPLOAD_BYTES = 512_000;
-
-/** Coordinates the CV draft, local file reading and explicit removal confirmation. */
-export const useCvEditor = (cv: CvDtoType | undefined) => {
-  const save = useSaveCv();
+/** Upload-only CV state: extracted content never reaches the browser. */
+export const useCvEditor = () => {
   const remove = useDeleteCv();
   const upload = useSaveCvFile();
-  // null = pristine stored text.
-  const [draft, setDraft] = useState<string | null>(null);
-  const [filename, setFilename] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
-  const [reading, setReading] = useState(false);
   const [confirmingRemoval, setConfirmingRemoval] = useState(false);
+  const busy = remove.isPending || upload.isPending;
+  let errorMessage = fileError;
+  if (!errorMessage && upload.isError) {
+    errorMessage = apiMessage(upload.error);
+  } else if (!errorMessage && remove.isError) {
+    errorMessage = apiMessage(remove.error);
+  }
 
-  const shown = draft ?? cv?.text ?? "";
-  const count = shown.trim().length;
-  const valid = count >= CV_MIN_CHARS && count <= CV_MAX_CHARS;
-  const busy =
-    reading || save.isPending || remove.isPending || upload.isPending;
-  const errorMessage =
-    save.isError || remove.isError || upload.isError
-      ? apiMessage(save.error ?? remove.error ?? upload.error)
-      : null;
-
-  const onFile = async (file: File | undefined) => {
+  const resetErrors = () => {
     setFileError(null);
-    if (!file) {
+    upload.reset();
+    remove.reset();
+  };
+  const onFile = (file: File | undefined) => {
+    if (!file || busy) {
       return;
     }
-    const lower = file.name.toLowerCase();
-    // PDFs are parsed server-side (binary can't load into the textarea).
-    if (lower.endsWith(".pdf")) {
-      if (file.size > CV_MAX_PDF_BYTES) {
-        setFileError("That PDF is too big — max 2MB.");
-        return;
-      }
-      upload.reset();
-      upload.mutate(file);
+    resetErrors();
+    setConfirmingRemoval(false);
+    const name = file.name.trim().toLowerCase();
+    if (file.name.trim().length > CV_MAX_FILENAME) {
+      setFileError(`Filename must be ${CV_MAX_FILENAME} characters or fewer.`);
       return;
     }
-    if (!(lower.endsWith(".txt") || lower.endsWith(".md"))) {
+    const isPdf = name.endsWith(".pdf");
+    if (!isPdf && !name.endsWith(".txt") && !name.endsWith(".md")) {
       setFileError("Upload a .pdf, .txt, or .md file.");
       return;
     }
-    if (file.size > CV_MAX_UPLOAD_BYTES) {
-      setFileError("That file is too big — max 500KB.");
+    if (file.size > (isPdf ? CV_MAX_PDF_BYTES : CV_MAX_TEXT_BYTES)) {
+      setFileError(
+        isPdf
+          ? "PDF must be 2MB or smaller."
+          : "Text file must be 500KB or smaller."
+      );
       return;
     }
-    setReading(true);
-    try {
-      const text = await file.text();
-      setDraft(text);
-      setFilename(file.name);
-    } catch {
-      setFileError("Couldn't read that file.");
-    }
-    setReading(false);
+    // Send original bytes to the service. Never call file.text() client-side.
+    upload.mutate(file);
   };
-
-  const resetDraft = () => {
-    setDraft(null);
-    setFilename(null);
+  const confirmRemoval = () => {
+    resetErrors();
+    setConfirmingRemoval(true);
   };
-
-  const onSave = () => {
-    save.reset();
-    const name = filename ?? cv?.filename ?? undefined;
-    save.mutate(
-      { text: shown.trim(), ...(name ? { filename: name } : {}) },
-      { onSuccess: resetDraft }
-    );
-  };
-
   const onRemove = () => {
     if (!confirmingRemoval || busy) {
       return;
     }
-    remove.reset();
-    remove.mutate(undefined, {
-      onSuccess: () => {
-        resetDraft();
-        setConfirmingRemoval(false);
-      },
-    });
+    resetErrors();
+    remove.mutate(undefined, { onSuccess: () => setConfirmingRemoval(false) });
   };
-
   return {
-    save,
-    remove,
+    busy,
     upload,
-    draft,
-    setDraft,
-    fileError,
+    remove,
     errorMessage,
-    reading,
     confirmingRemoval,
     setConfirmingRemoval,
-    shown,
-    count,
-    valid,
-    busy,
+    confirmRemoval,
     onFile,
-    onSave,
     onRemove,
   };
 };

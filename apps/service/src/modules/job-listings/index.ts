@@ -2,6 +2,7 @@ import type { Database } from "@kappa/db";
 
 import type { Logger } from "../../core/logger";
 import { createCvProfiles } from "./application/cv";
+import { createCvReports } from "./application/cv-reports";
 import { createJobEnrichment } from "./application/enrichment";
 import { pollSubscriptions } from "./application/polling";
 import type { JobNotifications } from "./application/ports";
@@ -45,7 +46,12 @@ export const createJobListings = (deps: {
   const cv = createCvProfiles(deps.db);
   const enrichment = createJobEnrichment(deps);
   const recall = createDeliveryRecall({ ...deps, cv, enrichment });
-  const polling = { ...deps, cv, enrichment, recall };
+  const reports = createCvReports({
+    ...deps,
+    enrichment,
+    notify: deps.notifications.report,
+  });
+  const polling = { ...deps, cv, enrichment, recall, reports };
 
   return {
     cv,

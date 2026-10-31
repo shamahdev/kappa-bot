@@ -16,6 +16,8 @@ import {
   deleteSubscription,
   fetchAccountSummary,
   fetchCv,
+  fetchCvReport,
+  fetchCvReports,
   fetchGuilds,
   fetchJobs,
   fetchMe,
@@ -160,6 +162,21 @@ export const useUpdateSubscription = () =>
 export const useDeleteSubscription = () =>
   useMutation(deleteSubscriptionOptions(useQueryClient()));
 
+export const useCvReports = (enabled: boolean) =>
+  useQuery({
+    queryKey: ["cv-reports"],
+    queryFn: fetchCvReports,
+    enabled,
+    retry: false,
+  });
+export const useCvReport = (id: number, enabled: boolean) =>
+  useQuery({
+    queryKey: ["cv-report", id],
+    queryFn: () => fetchCvReport(id),
+    enabled,
+    retry: false,
+  });
+
 export const useCv = (enabled: boolean) =>
   useQuery({
     queryKey: queryKeys.cv,
@@ -182,8 +199,8 @@ export const useSaveCvFile = () => {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (file: File) => saveCvFile(file),
-    onSuccess: () => {
-      void client.invalidateQueries({ queryKey: queryKeys.cv });
+    onSuccess: (cv) => {
+      client.setQueryData(queryKeys.cv, cv);
     },
   });
 };
@@ -192,8 +209,8 @@ export const useDeleteCv = () => {
   const client = useQueryClient();
   return useMutation({
     mutationFn: deleteCv,
-    onSuccess: () => {
-      void client.invalidateQueries({ queryKey: queryKeys.cv });
+    onSuccess: (cv) => {
+      client.setQueryData(queryKeys.cv, cv);
     },
   });
 };

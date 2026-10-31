@@ -22,9 +22,7 @@ export const createJobEnrichment = ({
   db: Database;
   log: Logger;
 }) => {
-  const detailWithCachedSummary = async (
-    job: JobPosting
-  ): Promise<JobDetail | null> => {
+  const sourceDetail = async (job: JobPosting): Promise<JobDetail | null> => {
     let detail: JobDetail | null = null;
     try {
       detail = await fetchJobPostingDetail(job);
@@ -43,8 +41,15 @@ export const createJobEnrichment = ({
         salary: job.salary ?? null,
       };
     }
+    return input ?? detail;
+  };
+
+  const detailWithCachedSummary = async (
+    job: JobPosting,
+    input: JobDetail | null
+  ): Promise<JobDetail | null> => {
     if (!input?.description) {
-      return detail;
+      return input;
     }
     const cached = await readCachedSummary(db, job.source, job.id);
     if (cached) {
@@ -67,25 +72,26 @@ export const createJobEnrichment = ({
   };
 
   return {
+    async assessForReport(job: JobPosting, cvText: string) {
+      const source = await sourceDetail(job);
+      const description = source?.description ?? job.description ?? "";
+      const match = description
+        ? await scoreJobMatch(cvText, job.position, job.company, description)
+        : null;
+      return { description, match };
+    },
     async enrich(
       job: JobPosting,
       cvText?: string | null
     ): Promise<EnrichedJobPosting> {
-      const detail = await detailWithCachedSummary(job);
-      // Personal callers explicitly supply their CV; scoring never blocks enrichment.
+      const source = await sourceDetail(job);
+      const detail = await detailWithCachedSummary(job, source);
+      // Use the full original posting for matching, never the shortened summary.
       let match: JobMatch | null = null;
       const cv = cvText?.trim();
-      const description = detail?.description ?? job.description ?? null;
+      const description = source?.description ?? job.description ?? null;
       if (cv && description) {
-        match = await scoreJobMatch(
-          cv,
-          job.position,
-          job.company,
-          description,
-          {
-            location: job.location ?? null,
-          }
-        );
+        match = await scoreJobMatch(cv, job.position, job.company, description);
       }
       return { detail, job, match };
     },

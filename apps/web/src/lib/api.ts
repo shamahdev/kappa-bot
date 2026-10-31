@@ -9,6 +9,8 @@ import {
   AuthMeResponse,
   CreateSubscriptionBody,
   CvDto,
+  CvReport,
+  CvReportsResponse,
   DeleteAccountResponse,
   DeleteSubscriptionResponse,
   ErrorEnvelope,
@@ -25,6 +27,7 @@ import type {
   AuthMeResponseType,
   CreateSubscriptionBodyType,
   CvDtoType,
+  CvReportType,
   GuildsResponseType,
   JobsResponseType,
   SaveCvBodyType,
@@ -275,6 +278,14 @@ export const deleteSubscription = (id: number): Promise<string> =>
       DeleteSubscriptionResponse
     )
   ).then((res) => res.summary);
+
+export const fetchCvReports = (): Promise<readonly CvReportType[]> =>
+  runApi(
+    request(HttpClientRequest.get(PATHS.cvReports), CvReportsResponse)
+  ).then((response) => response.reports);
+
+export const fetchCvReport = (id: number): Promise<CvReportType> =>
+  runApi(request(HttpClientRequest.get(PATHS.cvReportById(id)), CvReport));
 
 export const fetchCv = (): Promise<CvDtoType> =>
   runApi(request(HttpClientRequest.get(PATHS.cv), CvDto));

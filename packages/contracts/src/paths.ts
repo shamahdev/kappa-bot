@@ -12,6 +12,8 @@ export const PATHS = {
   authMe: `${API_V1}/auth/me`,
   cv: `${API_V1}/cv`,
   cvFile: `${API_V1}/cv/file`,
+  cvReportById: (id: number): string => `${API_V1}/cv/reports/${id}`,
+  cvReports: `${API_V1}/cv/reports`,
   guilds: `${API_V1}/guilds`,
   health: "/health",
   jobs: `${API_V1}/jobs`,

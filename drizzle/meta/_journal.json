@@ -71,6 +71,20 @@
       "when": 1789976629565,
       "tag": "0009_orange_wolfpack",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793434003584,
+      "tag": "0010_mature_bill_hollister",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1793435934755,
+      "tag": "0011_colossal_kat_farrell",
+      "breakpoints": true
     }
   ]
 }

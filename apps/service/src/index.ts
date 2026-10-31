@@ -9,6 +9,7 @@ import { renderMetrics } from "./core/metrics";
 import { accountRoutes } from "./routes/account";
 import { authRoutes } from "./routes/auth";
 import { cvRoutes } from "./routes/cv";
+import { cvReportRoutes } from "./routes/cv-reports";
 import type { RouteDeps } from "./routes/deps";
 import { guildRoutes } from "./routes/guilds";
 import { jobRoutes } from "./routes/jobs";
@@ -47,6 +48,7 @@ const app = new Elysia()
   })
   .use(authRoutes(deps))
   .use(cvRoutes(deps))
+  .use(cvReportRoutes(deps))
   .use(guildRoutes(deps))
   .use(jobRoutes(deps))
   .use(subscriptionRoutes(deps))

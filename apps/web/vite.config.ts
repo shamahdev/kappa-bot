@@ -1,4 +1,3 @@
-import stylex from "@stylexjs/unplugin/vite";
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
@@ -11,7 +10,6 @@ export default defineConfig({
     tanstackStart(),
     nitro({ preset: "bun" }),
     viteReact(),
-    stylex({ useCSSLayers: true }),
   ],
   server: {
     // Development-only same-origin API routing; manual production hosting

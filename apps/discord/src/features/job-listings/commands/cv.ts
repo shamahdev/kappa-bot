@@ -1,7 +1,4 @@
-import {
-  CV_MAX_UPLOAD_BYTES,
-  cvFilenameError,
-} from "@kappa/service/job-listings";
+import { CV_MAX_UPLOAD_BYTES } from "@kappa/service/job-listings";
 import { EmbedBuilder } from "discord.js";
 import type { ChatInputCommandInteraction } from "discord.js";
 
@@ -42,11 +39,6 @@ export const executeCvUpload = async (
     });
     return;
   }
-  const filenameError = cvFilenameError(file.name);
-  if (filenameError) {
-    await interaction.editReply({ embeds: [errorEmbed(filenameError)] });
-    return;
-  }
   let bytes: Uint8Array;
   try {
     const response = await fetch(file.url);
@@ -69,26 +61,12 @@ export const executeCvUpload = async (
     });
     return;
   }
-  const isPdf = file.name.toLowerCase().endsWith(".pdf");
-  let text = "";
-  if (!isPdf) {
-    try {
-      text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-    } catch {
-      await interaction.editReply({
-        embeds: [
-          errorEmbed(
-            "Couldn't read that file — try re-uploading a plain `.txt` file."
-          ),
-        ],
-      });
-      return;
-    }
-  }
-  // PDF parsing and content validation are application concerns, not Discord concerns.
-  const saved = isPdf
-    ? await ctx.jobListings.cv.savePdf(interaction.user.id, bytes, file.name)
-    : await ctx.jobListings.cv.save(interaction.user.id, text, file.name);
+  // All format validation and extraction occur in the shared application.
+  const saved = await ctx.jobListings.cv.saveFile(
+    interaction.user.id,
+    bytes,
+    file.name
+  );
   await interaction.editReply({
     embeds: [
       new EmbedBuilder()
@@ -96,8 +74,9 @@ export const executeCvUpload = async (
         .setTitle("CV saved")
         .setDescription(
           [
-            `File: \`${saved.filename ?? file.name}\` (${saved.text.length} chars)`,
-            "Your DM job cards will now show an AI match score.",
+            `File: ${saved.filename ?? file.name}`,
+            `Uploaded: ${saved.updatedAt.toISOString().slice(0, 10)}`,
+            "Your personal job cards can now show an A–E match grade with a factor breakdown.",
           ].join("\n")
         ),
     ],
@@ -120,7 +99,7 @@ export const executeCvStatus = async (
           .setColor(0x3f_6b_55)
           .setTitle("No CV yet")
           .setDescription(
-            "Upload one with `/jobs cv_upload` (`.pdf`/`.txt`/`.md`) to get AI match scores on your DM job cards."
+            "Upload one with `/jobs cv_upload` (`.pdf`/`.txt`/`.md`) to get A–E match grades on your personal job cards."
           ),
       ],
     });
@@ -133,8 +112,8 @@ export const executeCvStatus = async (
         .setTitle("Your CV")
         .setDescription(
           [
-            `File: \`${cv.filename ?? "pasted text"}\` (${cv.text.length} chars)`,
-            `Updated: ${cv.updatedAt.toISOString().slice(0, 10)}`,
+            `File: ${cv.filename ?? "Uploaded CV"}`,
+            `Uploaded: ${cv.updatedAt.toISOString().slice(0, 10)}`,
             "Replace it anytime with `/jobs cv_upload`, or remove it with `/jobs cv_remove`.",
           ].join("\n")
         ),

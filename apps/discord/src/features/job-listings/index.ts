@@ -113,7 +113,7 @@ export const jobsCommand = new SlashCommandBuilder()
   .addSubcommand((s) =>
     s
       .setName("cv_upload")
-      .setDescription("Upload your CV for AI match scores (DM only)")
+      .setDescription("Upload your CV for A–E match grades (DM only)")
       .addAttachmentOption((o) =>
         o
           .setName("file")

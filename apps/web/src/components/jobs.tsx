@@ -1,4 +1,8 @@
-import { SUBSCRIPTION_SOURCES } from "@kappa/contracts";
+import {
+  SUBSCRIPTION_SOURCES,
+  MATCH_FACTORS,
+  MATCH_GRADE_LABELS,
+} from "@kappa/contracts";
 
 import type { SubscriptionDtoType } from "../lib/api";
 import { ALL_SOURCES, useJobsTable } from "../lib/use-jobs-table";
@@ -159,16 +163,57 @@ export const JobsTable = ({
                     </VStack>
                   </td>
                   <td data-label="Match">
-                    <VStack gap={2}>
-                      <Text weight="semibold">
-                        {job.matchScore === null ? "—" : `${job.matchScore}%`}
-                      </Text>
-                      {job.matchReason ? (
-                        <Text color="secondary" type="supporting">
-                          {job.matchReason}
-                        </Text>
-                      ) : null}
-                    </VStack>
+                    {(() => {
+                      const breakdown = job.matchBreakdown;
+                      return (
+                        <VStack gap={2}>
+                          {job.matchGrade ? (
+                            <>
+                              <Text weight="semibold">
+                                {job.matchGrade} —{" "}
+                                {MATCH_GRADE_LABELS[job.matchGrade]}
+                              </Text>
+                              {breakdown ? (
+                                <details className={styles.matchDetails}>
+                                  <summary>Match breakdown</summary>
+                                  <dl className={styles.matchFactors}>
+                                    {MATCH_FACTORS.map((factor) => {
+                                      const assessment = breakdown[factor.key];
+                                      return (
+                                        <div key={factor.key}>
+                                          <dt>
+                                            {factor.label}{" "}
+                                            <span>{factor.weight}% weight</span>
+                                          </dt>
+                                          <dd>
+                                            <strong>
+                                              {assessment.score}/100
+                                            </strong>
+                                            <p>{assessment.reason}</p>
+                                          </dd>
+                                        </div>
+                                      );
+                                    })}
+                                  </dl>
+                                  <p className="app-muted app-small">
+                                    Advisory CV match, not a hiring prediction.
+                                  </p>
+                                </details>
+                              ) : (
+                                <Text color="secondary" type="supporting">
+                                  Historical assessment; factor breakdown
+                                  unavailable.
+                                </Text>
+                              )}
+                            </>
+                          ) : (
+                            <Text color="secondary" type="supporting">
+                              Not assessed
+                            </Text>
+                          )}
+                        </VStack>
+                      );
+                    })()}
                   </td>
                 </tr>
               ))}

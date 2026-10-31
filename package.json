@@ -25,7 +25,6 @@
     "dotenv": "16.4.5"
   },
   "devDependencies": {
-    "@astryxdesign/cli": "0.6.3",
     "drizzle-kit": "0.31.10",
     "lefthook": "2.2.2",
     "oxfmt": "0.74.0",
