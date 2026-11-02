@@ -8,7 +8,21 @@ export type DashboardIconName =
   | "account"
   | "menu"
   | "close"
-  | "logout";
+  | "logout"
+  | "report"
+  | "plus"
+  | "trendUp"
+  | "trendDown"
+  | "calendar"
+  | "file"
+  | "target"
+  | "gap"
+  | "spark"
+  | "user"
+  | "refresh"
+  | "clock"
+  | "alert"
+  | "external";
 
 const paths: Record<DashboardIconName, ReactNode> = {
   home: (
@@ -48,13 +62,80 @@ const paths: Record<DashboardIconName, ReactNode> = {
   logout: (
     <path d="M9 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h4M10 12h11m-4-4 4 4-4 4" />
   ),
+  report: (
+    <>
+      <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+      <path d="M14 3v6h6M8 17v-3M12 17v-6M16 17v-2" />
+    </>
+  ),
+  plus: <path d="M12 5v14M5 12h14" />,
+  trendUp: <path d="m3 17 6-6 4 4 8-8M15 7h6v6" />,
+  trendDown: <path d="m3 7 6 6 4-4 8 8M15 17h6v-6" />,
+  calendar: (
+    <>
+      <rect x="3" y="5" width="18" height="16" rx="2" />
+      <path d="M16 3v4M8 3v4M3 10h18" />
+    </>
+  ),
+  file: (
+    <>
+      <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+      <path d="M14 3v6h6" />
+    </>
+  ),
+  target: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="5" />
+      <circle cx="12" cy="12" r="1" />
+    </>
+  ),
+  gap: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 8v4M12 16h.01" />
+    </>
+  ),
+  spark: (
+    <path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6" />
+  ),
+  user: (
+    <>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M5 21a7 7 0 0 1 14 0" />
+    </>
+  ),
+  refresh: (
+    <path d="M20 11a8 8 0 0 0-14.9-3M4 4v4h4M4 13a8 8 0 0 0 14.9 3M20 20v-4h-4" />
+  ),
+  clock: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
+    </>
+  ),
+  alert: (
+    <>
+      <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />
+      <path d="M12 9v4M12 17h.01" />
+    </>
+  ),
+  external: (
+    <path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+  ),
 };
 
-export const DashboardIcon = ({ name }: { name: DashboardIconName }) => (
+export const DashboardIcon = ({
+  name,
+  size = 20,
+}: {
+  name: DashboardIconName;
+  size?: number;
+}) => (
   <svg
     aria-hidden="true"
-    width="20"
-    height="20"
+    width={size}
+    height={size}
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"

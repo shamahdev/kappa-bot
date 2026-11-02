@@ -346,8 +346,12 @@ export interface PollResult {
   durationMs: number;
 }
 
-const processReports = (ctx: JobPollingContext): Promise<void> =>
-  ctx.reports?.processPending() ?? Promise.resolve();
+/** Scheduled ticks only: a manual /jobs fetch must not wait on report generation. */
+const processReports = (
+  ctx: JobPollingContext,
+  isFullTick: boolean
+): Promise<void> =>
+  (isFullTick ? ctx.reports?.processPending() : undefined) ?? Promise.resolve();
 
 export const pollSubscriptions = async (
   ctx: JobPollingContext,
@@ -366,7 +370,7 @@ export const pollSubscriptions = async (
       .where(eq(subscriptions.isActive, true)));
 
   if (subs.length === 0) {
-    await processReports(ctx);
+    await processReports(ctx, isFullTick);
     ctx.log.info(
       { module: "job-listings" },
       "poll tick: no active subscriptions"
@@ -494,7 +498,7 @@ export const pollSubscriptions = async (
     }
   }
 
-  await processReports(ctx);
+  await processReports(ctx, isFullTick);
   await enforceTtl(ctx);
   setGauge("linkedin_circuit_open", linkedinCircuitCount());
   incCounter("poll_ticks_total", { module: "job-listings" });

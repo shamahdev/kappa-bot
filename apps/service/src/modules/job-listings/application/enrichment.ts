@@ -14,6 +14,11 @@ import {
 } from "../infrastructure/job-store";
 import { fetchJobPostingDetail } from "../infrastructure/sources";
 
+export type ReportAssessment =
+  | { kind: "scored"; match: JobMatch }
+  | { kind: "skipped" }
+  | { kind: "failed" };
+
 /** Source detail, shared summary caching, and optional personal CV matching. */
 export const createJobEnrichment = ({
   db,
@@ -72,13 +77,26 @@ export const createJobEnrichment = ({
   };
 
   return {
-    async assessForReport(job: JobPosting, cvText: string) {
+    /**
+     * "skipped" is permanent (nothing to assess); "failed" is transient
+     * (provider error/timeout/invalid reply) and is retried on a later run.
+     */
+    async assessForReport(
+      job: JobPosting,
+      cvText: string
+    ): Promise<ReportAssessment> {
       const source = await sourceDetail(job);
-      const description = source?.description ?? job.description ?? "";
-      const match = description
-        ? await scoreJobMatch(cvText, job.position, job.company, description)
-        : null;
-      return { description, match };
+      const description = (source?.description ?? job.description ?? "").trim();
+      if (!description) {
+        return { kind: "skipped" };
+      }
+      const match = await scoreJobMatch(
+        cvText,
+        job.position,
+        job.company,
+        description
+      );
+      return match ? { kind: "scored", match } : { kind: "failed" };
     },
     async enrich(
       job: JobPosting,

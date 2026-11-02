@@ -3,12 +3,18 @@ export { AccountSummary, DeleteAccountResponse } from "./account";
 export type { AuthMeResponseType, UserDtoType } from "./auth";
 export { AuthMeResponse, UserDto } from "./auth";
 export type {
+  CvReportBaselineType,
   CvReportType,
   CvReportJobType,
   CvReportSummaryType,
 } from "./cv-reports";
 export {
-  CV_REPORT_JOB_COUNT,
+  CV_REPORT_FIT_MAX_WORDS,
+  CV_REPORT_ITEM_MAX_WORDS,
+  CV_REPORT_PERIOD_DAYS,
+  CV_REPORT_PERIOD_MS,
+  clampCvReportSummary,
+  clampWords,
   CvReport,
   CvReportsResponse,
   CvReportSummary,

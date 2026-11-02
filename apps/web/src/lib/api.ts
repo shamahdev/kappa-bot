@@ -287,6 +287,10 @@ export const fetchCvReports = (): Promise<readonly CvReportType[]> =>
 export const fetchCvReport = (id: number): Promise<CvReportType> =>
   runApi(request(HttpClientRequest.get(PATHS.cvReportById(id)), CvReport));
 
+/** Manually close the current report window; generation continues server-side. */
+export const createCvReport = (): Promise<CvReportType> =>
+  runApi(request(HttpClientRequest.post(PATHS.cvReports), CvReport));
+
 export const fetchCv = (): Promise<CvDtoType> =>
   runApi(request(HttpClientRequest.get(PATHS.cv), CvDto));
 
