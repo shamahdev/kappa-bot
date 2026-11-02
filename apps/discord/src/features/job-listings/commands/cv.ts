@@ -76,7 +76,7 @@ export const executeCvUpload = async (
           [
             `File: ${saved.filename ?? file.name}`,
             `Uploaded: ${saved.updatedAt.toISOString().slice(0, 10)}`,
-            "Your personal job cards can now show an A–E match grade with a factor breakdown.",
+            "Your personal job cards now show an A–E match grade. Score details and 3-day CV reports are on the dashboard.",
           ].join("\n")
         ),
     ],

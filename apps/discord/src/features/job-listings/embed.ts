@@ -1,8 +1,4 @@
-import {
-  jobSourceName,
-  MATCH_FACTORS,
-  MATCH_GRADE_LABELS,
-} from "@kappa/contracts";
+import { jobSourceName, MATCH_GRADE_LABELS } from "@kappa/contracts";
 import type {
   EnrichedJobPosting,
   JobDetail,
@@ -95,6 +91,7 @@ export const embedForJobPosting = (
       value: truncate(salary, MAX_FIELD),
     });
   }
+  // DMs show only the A–E grade; the factor breakdown lives on the dashboard.
   if (match) {
     fields.push({
       inline: false,
@@ -104,17 +101,6 @@ export const embedForJobPosting = (
         MAX_FIELD
       ),
     });
-    for (const factor of MATCH_FACTORS) {
-      const assessment = match.factors[factor.key];
-      fields.push({
-        inline: false,
-        name: `${factor.label} · ${factor.weight}% weight`,
-        value: truncate(
-          `${assessment.score}/100 — ${assessment.reason}`,
-          MAX_FIELD
-        ),
-      });
-    }
   }
   // Embed text has a combined 6000-character limit, including title, footer, field names and values.
   let remaining = MAX_EMBED_TEXT - title.length - footer.length;

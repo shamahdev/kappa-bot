@@ -15,6 +15,7 @@ import {
   deleteCv,
   deleteSubscription,
   fetchAccountSummary,
+  createCvReport,
   fetchCv,
   fetchCvReport,
   fetchCvReports,
@@ -161,6 +162,14 @@ export const useUpdateSubscription = () =>
 
 export const useDeleteSubscription = () =>
   useMutation(deleteSubscriptionOptions(useQueryClient()));
+
+export const useCreateCvReport = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: createCvReport,
+    onSuccess: () => client.invalidateQueries({ queryKey: ["cv-reports"] }),
+  });
+};
 
 export const useCvReports = (enabled: boolean) =>
   useQuery({

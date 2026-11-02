@@ -149,6 +149,9 @@ describe("deliveryPages", () => {
       name: "Match",
       value: "A — Strong match",
     });
+    // Factor scores and reasons are dashboard-only.
+    expect(payload.embeds?.[0]?.fields).toHaveLength(4);
+    expect(JSON.stringify(payload)).not.toContain("Required skills covered.");
   });
 });
 

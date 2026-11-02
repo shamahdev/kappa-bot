@@ -1,16 +1,159 @@
-import { CV_REPORT_JOB_COUNT, MATCH_FACTORS } from "@kappa/contracts";
+import { MATCH_FACTORS } from "@kappa/contracts";
+import type { CvReportType } from "@kappa/contracts";
 import { createFileRoute, Link } from "@tanstack/react-router";
 
-import { cvReportLabel } from "../../../components/cv-reports";
 import {
+  cvReportLabel,
+  DeltaChip,
+  GradeTile,
+  reportWindow,
+  scoreDelta,
+} from "../../../components/cv-reports";
+import { DashboardIcon } from "../../../components/dashboard-icon";
+import type { DashboardIconName } from "../../../components/dashboard-icon";
+import { InlineMarkdown, Markdown } from "../../../components/markdown";
+import {
+  Button,
   InfoNote,
   LoadingNote,
-  PageHeader,
   QueryError,
   Text,
   VStack,
 } from "../../../components/ui";
 import { useCvReport } from "../../../lib/queries";
+
+const fullDate = (iso: string) =>
+  new Date(iso).toLocaleDateString(undefined, { dateStyle: "medium" });
+
+const SummaryList = ({
+  icon,
+  title,
+  items,
+}: {
+  icon: DashboardIconName;
+  title: string;
+  items: readonly string[];
+}) => (
+  <section className="cv-summary-card">
+    <h3>
+      <DashboardIcon name={icon} size={18} />
+      {title}
+    </h3>
+    {items.length > 0 ? (
+      <ul>
+        {items.map((item, index) => (
+          <li key={index}>
+            <InlineMarkdown text={item} />
+          </li>
+        ))}
+      </ul>
+    ) : (
+      <p className="app-muted">None identified.</p>
+    )}
+  </section>
+);
+
+const Hero = ({ report }: { report: CvReportType }) => (
+  <section className="cv-report-hero" aria-label="Overall result">
+    <GradeTile report={report} large />
+    <div className="cv-report-hero-body">
+      <p className="cv-report-eyebrow">Overall CV match</p>
+      <h2>{cvReportLabel(report)}</h2>
+      <div className="cv-report-hero-score">
+        {report.score === null ? null : (
+          <span>
+            <strong>{report.score}</strong>/100
+          </span>
+        )}
+        <DeltaChip
+          delta={scoreDelta(report)}
+          suffix={report.previous ? `vs #${report.previous.id}` : undefined}
+        />
+        {report.status === "ready" && !report.previous ? (
+          <span className="app-muted app-small">
+            First report, no comparison yet
+          </span>
+        ) : null}
+      </div>
+    </div>
+    <dl className="cv-report-meta">
+      <div>
+        <dt>
+          <DashboardIcon name="calendar" size={16} />
+          Period
+        </dt>
+        <dd>{reportWindow(report)}</dd>
+      </div>
+      <div>
+        <dt>
+          <DashboardIcon name="jobs" size={16} />
+          Jobs
+        </dt>
+        <dd>
+          {report.jobs.length} ·{" "}
+          {report.trigger === "manual" ? "Manual" : "Scheduled"}
+        </dd>
+      </div>
+      {report.cvFilename ? (
+        <div>
+          <dt>
+            <DashboardIcon name="file" size={16} />
+            CV
+          </dt>
+          <dd>
+            {report.cvFilename}
+            {report.cvUploadedAt ? ` · ${fullDate(report.cvUploadedAt)}` : ""}
+          </dd>
+        </div>
+      ) : null}
+    </dl>
+  </section>
+);
+
+const Factors = ({ report }: { report: CvReportType }) => {
+  const { factors } = report;
+  if (!factors) {
+    return null;
+  }
+  const previous = report.previous?.factors ?? null;
+  const assessed = report.jobs.filter((job) => job.grade).length;
+  return (
+    <section className="cv-report-section" aria-labelledby="factors-title">
+      <h2 id="factors-title">Score breakdown</h2>
+      <div className="cv-factor-grid">
+        {MATCH_FACTORS.map((factor) => {
+          const { score } = factors[factor.key];
+          return (
+            <div className="cv-factor-card" key={factor.key}>
+              <div className="cv-factor-head">
+                <span>{factor.label}</span>
+                <span className="app-muted app-small">
+                  {factor.weight}% weight
+                </span>
+              </div>
+              <div className="cv-factor-value">
+                <strong>{Math.round(score)}</strong>
+                <span className="app-muted">/100</span>
+                <DeltaChip
+                  delta={previous ? score - previous[factor.key].score : null}
+                />
+              </div>
+              <div aria-hidden="true" className="cv-factor-bar">
+                <span
+                  style={{ width: `${Math.min(100, Math.max(0, score))}%` }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <p className="app-muted app-small">
+        Averaged across {assessed} assessed job{assessed === 1 ? "" : "s"}, then
+        weighted into the overall grade. Advisory only, not a hiring prediction.
+      </p>
+    </section>
+  );
+};
 
 const ReportPage = () => {
   const { reportId } = Route.useParams();
@@ -22,124 +165,95 @@ const ReportPage = () => {
     return <QueryError error={query.error} />;
   }
   const report = query.data;
-  const { summary, factors } = report;
+  const { summary } = report;
   return (
-    <VStack gap={6}>
+    <VStack gap={8}>
       <Link className="app-back" to="/dashboard">
         Back to Home
       </Link>
-      <PageHeader
-        title="CV report"
-        description={`${report.keywords ?? "Personal subscription"} · ${report.jobs.length} delivered jobs · Report #${report.id}`}
-      />
-      <div className="cv-report-overview">
-        <h2>{cvReportLabel(report)}</h2>
-        <Text as="p" color="secondary" type="supporting">
-          Created{" "}
-          {new Date(report.createdAt).toLocaleString(undefined, {
-            dateStyle: "medium",
-            timeStyle: "short",
-          })}
-        </Text>
-        {report.cvFilename ? (
-          <Text as="p" color="secondary" type="supporting">
-            CV: {report.cvFilename}
-            {report.cvUploadedAt
-              ? ` · uploaded ${new Date(report.cvUploadedAt).toLocaleDateString(undefined, { dateStyle: "medium" })}`
-              : ""}
-          </Text>
-        ) : null}
-        <Text as="p" color="secondary" type="supporting">
-          {report.status === "ready"
-            ? "Assessed against the CV current when this report was generated. This report does not change when you replace your CV."
-            : "This batch has no completed CV assessment."}
-        </Text>
-      </div>
+      <header className="cv-report-title">
+        <DashboardIcon name="report" size={24} />
+        <h1>CV report #{report.id}</h1>
+      </header>
+
+      <Hero report={report} />
+
       {report.message ? <InfoNote>{report.message}</InfoNote> : null}
+      {report.status === "pending" ? (
+        <div className="cv-report-pending">
+          <DashboardIcon name="clock" size={18} />
+          <Text as="p" color="secondary">
+            This report is being assessed. Check back shortly.
+          </Text>
+          <Button
+            small
+            variant="subtle"
+            loading={query.isFetching}
+            onClick={() => query.refetch()}
+          >
+            <DashboardIcon name="refresh" size={16} />
+            Check status
+          </Button>
+        </div>
+      ) : null}
       {report.status === "cv_required" ? (
         <Link className="app-button" to="/dashboard/settings">
           Upload CV
         </Link>
       ) : null}
-      {factors ? (
-        <section
-          className="cv-report-section"
-          aria-labelledby="report-factors-title"
-        >
-          <h2 id="report-factors-title">
-            Average match across {CV_REPORT_JOB_COUNT} jobs
-          </h2>
-          <dl className="cv-report-factors">
-            {MATCH_FACTORS.map((factor) => (
-              <div key={factor.key}>
-                <dt>
-                  {factor.label}
-                  <span>{factor.weight}% weight</span>
-                </dt>
-                <dd>
-                  <strong>
-                    {Number(factors[factor.key].score.toFixed(1))}/100
-                  </strong>
-                  <p>{factors[factor.key].reason}</p>
-                </dd>
-              </div>
-            ))}
-          </dl>
-          <p className="app-muted app-small">
-            Each factor is averaged across all 20 jobs, then weighted to produce
-            the overall grade. An advisory comparison, not a hiring prediction.
-          </p>
+
+      <Factors report={report} />
+
+      {summary ? (
+        <section className="cv-report-section" aria-labelledby="summary-title">
+          <h2 id="summary-title">Review</h2>
+          <div className="cv-fit-card">
+            <h3>
+              <DashboardIcon name="user" size={18} />
+              How your CV matches
+            </h3>
+            <Markdown text={summary.candidateFit} />
+          </div>
+          <div className="cv-summary-grid">
+            <SummaryList
+              icon="target"
+              title="What employers want"
+              items={summary.employerRequirements}
+            />
+            <SummaryList
+              icon="gap"
+              title="Common gaps"
+              items={summary.commonGaps}
+            />
+            <SummaryList
+              icon="spark"
+              title="Best-aligned roles"
+              items={summary.suitableRoles}
+            />
+          </div>
         </section>
       ) : null}
-      {summary ? (
-        <div className="cv-report-summary">
-          <section className="cv-report-section">
-            <h2>What employers are looking for</h2>
-            <ul>
-              {summary.employerRequirements.map((item, index) => (
-                <li key={index}>{item}</li>
-              ))}
-            </ul>
-          </section>
-          <section className="cv-report-section">
-            <h2>How your CV matches</h2>
-            <p>{summary.candidateFit}</p>
-          </section>
-          <section className="cv-report-section">
-            <h2>Common gaps</h2>
-            <ul>
-              {summary.commonGaps.map((item, index) => (
-                <li key={index}>{item}</li>
-              ))}
-            </ul>
-          </section>
-          <section className="cv-report-section">
-            <h2>Best-aligned roles</h2>
-            <ul>
-              {summary.suitableRoles.map((item, index) => (
-                <li key={index}>{item}</li>
-              ))}
-            </ul>
-          </section>
-        </div>
-      ) : null}
-      <section
-        className="cv-report-section"
-        aria-labelledby="report-jobs-title"
-      >
-        <h2 id="report-jobs-title">Jobs included in this batch</h2>
+
+      <section className="cv-report-section" aria-labelledby="jobs-title">
+        <h2 id="jobs-title">Jobs in this period</h2>
         <ol className="cv-report-jobs">
           {report.jobs.map((job, index) => (
             <li key={`${job.source}-${index}`}>
+              <span className={`cv-job-grade grade-${job.grade ?? "none"}`}>
+                {job.grade ?? "–"}
+              </span>
               <div>
                 <a href={job.url} rel="noopener noreferrer" target="_blank">
                   {job.title}
+                  <DashboardIcon name="external" size={14} />
                 </a>
                 <p>
                   {job.company} · {job.source}
+                  {report.status === "ready" && !job.grade
+                    ? " · no description to assess"
+                    : ""}
                 </p>
               </div>
-              <span>{job.grade ?? "Not assessed"}</span>
             </li>
           ))}
         </ol>

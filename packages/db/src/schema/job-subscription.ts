@@ -172,17 +172,22 @@ export const cvReports = pgTable(
     grade: text("grade"),
     id: serial("id").primaryKey(),
     jobs: jsonb("jobs").$type<CvReportJobType[]>().notNull(),
+    // Legacy per-subscription batch metadata; new per-user reports leave these null.
     keywords: text("keywords"),
     message: text("message"),
     notifiedAt: timestamp("notified_at", { withTimezone: true }),
-    postings: jsonb("postings").$type<JobPosting[]>().notNull(),
-    source: text("source").notNull(),
+    score: integer("score"),
+    source: text("source"),
     status: text("status").notNull().default("pending"),
-    subscriptionId: integer("subscription_id")
-      .notNull()
-      .references(() => subscriptions.id, { onDelete: "cascade" }),
+    subscriptionId: integer("subscription_id").references(
+      () => subscriptions.id,
+      { onDelete: "set null" }
+    ),
     summary: jsonb("summary").$type<CvReportSummaryType>(),
+    trigger: text("trigger").notNull().default("scheduled"),
     userId: text("user_id").notNull(),
+    windowEnd: timestamp("window_end", { withTimezone: true }).notNull(),
+    windowStart: timestamp("window_start", { withTimezone: true }).notNull(),
   },
   (table) => [
     index("cv_reports_user_created_idx").on(table.userId, table.createdAt),
@@ -190,13 +195,21 @@ export const cvReports = pgTable(
   ]
 );
 
-/** Only successfully delivered personal jobs enter this durable accumulation queue. */
+/**
+ * Durable queue of successfully delivered personal jobs. Each row is assigned
+ * to exactly one report and keeps its own assessment, so generation resumes
+ * per job instead of restarting after a transient failure.
+ */
 export const cvReportDeliveries = pgTable(
   "cv_report_deliveries",
   {
+    // null: not yet assessed; "scored": factors/grade stored; "skipped": no description.
+    assessment: text("assessment"),
     deliveredAt: timestamp("delivered_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
+    factors: jsonb("factors").$type<MatchBreakdownType>(),
+    grade: text("grade"),
     id: serial("id").primaryKey(),
     posting: jsonb("posting").$type<JobPosting>().notNull(),
     reportId: integer("report_id").references(() => cvReports.id, {
@@ -206,12 +219,17 @@ export const cvReportDeliveries = pgTable(
     subscriptionId: integer("subscription_id")
       .notNull()
       .references(() => subscriptions.id, { onDelete: "cascade" }),
+    userId: text("user_id").notNull(),
   },
   (table) => [
     uniqueIndex("cv_report_delivery_seen_uidx").on(table.seenId),
     index("cv_report_delivery_subscription_idx").on(
       table.subscriptionId,
       table.id
+    ),
+    index("cv_report_delivery_user_report_idx").on(
+      table.userId,
+      table.reportId
     ),
   ]
 );

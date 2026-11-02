@@ -215,13 +215,26 @@
 }
 
 @layer components {
+  .cv-report-toolbar {
+    @apply flex flex-wrap items-center justify-between gap-4;
+  }
+  .cv-report-toolbar > p {
+    @apply max-w-[60ch] min-w-0 flex-1;
+  }
+  .cv-report-toolbar .app-button,
+  .cv-report-pending .app-button {
+    @apply inline-flex items-center gap-2;
+  }
+  .cv-report-empty {
+    @apply border-kappa-rule text-kappa-muted rounded-panel flex items-center gap-3 border border-dashed p-5;
+  }
   .cv-report-list {
     @apply m-0 list-none p-0;
   }
   .cv-report-link {
-    @apply border-kappa-rule flex min-w-0 flex-wrap items-center justify-between gap-4 border-0 border-b border-solid py-4 no-underline;
+    @apply border-kappa-rule text-kappa-ink grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 border-0 border-b border-solid py-4 no-underline;
   }
-  .cv-report-link > span:first-child {
+  .cv-report-link-body {
     @apply flex min-w-0 flex-col gap-1;
   }
   .cv-report-link strong {
@@ -230,73 +243,202 @@
   .cv-report-link small {
     @apply text-kappa-muted text-[13px];
   }
+  .cv-report-link-result {
+    @apply flex flex-col items-end gap-1 text-right;
+  }
   .cv-report-result {
-    @apply text-kappa-accent text-[14px] font-semibold;
+    @apply text-kappa-ink-2 text-[14px] font-semibold;
   }
   .cv-reports-disclosure > summary {
     @apply text-kappa-accent cursor-pointer py-3 font-semibold;
   }
-  .cv-report-overview {
-    @apply bg-kappa-accent-soft rounded-panel flex min-w-0 flex-col gap-3 p-6;
+
+  /* Grade tiles: A/B accent, C neutral, D/E error tint. */
+  .cv-grade-tile,
+  .cv-job-grade {
+    @apply bg-kappa-paper-3 text-kappa-ink-2 inline-flex shrink-0 items-center justify-center font-semibold tabular-nums;
   }
-  .cv-report-overview h2,
-  .cv-report-section h2 {
-    @apply text-[20px];
+  .cv-grade-tile {
+    @apply size-11 rounded-[10px] text-[20px];
   }
+  .cv-grade-tile.large {
+    @apply size-24 rounded-[18px] text-[48px] leading-none;
+  }
+  .cv-job-grade {
+    @apply size-8 rounded-[8px] text-[14px];
+  }
+  .grade-A,
+  .grade-B {
+    @apply bg-kappa-accent text-kappa-on-accent;
+  }
+  .grade-C {
+    @apply bg-kappa-accent-soft text-kappa-accent;
+  }
+  .grade-D,
+  .grade-E {
+    @apply bg-kappa-error-soft text-kappa-error;
+  }
+
+  .cv-delta {
+    @apply bg-kappa-paper-3 text-kappa-muted inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[13px] font-semibold tabular-nums;
+  }
+  .cv-delta.up {
+    @apply bg-kappa-accent-soft text-kappa-accent;
+  }
+  .cv-delta.down {
+    @apply bg-kappa-error-soft text-kappa-error;
+  }
+  .cv-delta-suffix {
+    @apply font-normal opacity-80;
+  }
+
+  .cv-report-title {
+    @apply text-kappa-accent flex items-center gap-3;
+  }
+  .cv-report-title h1 {
+    @apply text-kappa-ink m-0 text-[28px];
+  }
+  .cv-report-hero {
+    @apply bg-kappa-surface border-kappa-rule rounded-panel grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-x-6 gap-y-5 border border-solid p-6;
+  }
+  .cv-report-hero-body {
+    @apply flex min-w-0 flex-col gap-1;
+  }
+  .cv-report-eyebrow {
+    @apply text-kappa-muted m-0 text-[12px] font-semibold tracking-wide uppercase;
+  }
+  .cv-report-hero h2 {
+    @apply m-0 text-[26px];
+  }
+  .cv-report-hero-score {
+    @apply text-kappa-muted mt-1 flex flex-wrap items-center gap-3 text-[15px];
+  }
+  .cv-report-hero-score strong {
+    @apply text-kappa-ink text-[20px] tabular-nums;
+  }
+  .cv-report-meta {
+    @apply border-kappa-rule col-span-2 m-0 grid grid-cols-3 gap-4 border-0 border-t border-solid pt-5;
+  }
+  .cv-report-meta dt {
+    @apply text-kappa-muted flex items-center gap-1.5 text-[12px] font-semibold tracking-wide uppercase;
+  }
+  .cv-report-meta dd {
+    @apply m-0 mt-1 text-[14px] wrap-anywhere;
+  }
+  .cv-report-pending {
+    @apply bg-kappa-paper-3 rounded-panel flex flex-wrap items-center gap-3 p-4;
+  }
+  .cv-report-pending > p {
+    @apply min-w-0 flex-1;
+  }
+
   .cv-report-section {
     @apply flex min-w-0 flex-col gap-4;
   }
-  .cv-report-factors {
-    @apply border-kappa-rule m-0 grid grid-cols-3 gap-6 border-0 border-b border-solid pb-6;
+  .cv-report-section h2 {
+    @apply m-0 text-[20px];
   }
-  .cv-report-factors dt {
-    @apply flex flex-col gap-1 text-[14px] font-semibold;
+  .cv-factor-grid {
+    @apply grid grid-cols-3 gap-4;
   }
-  .cv-report-factors dt span {
-    @apply text-kappa-muted text-[12px] font-normal;
+  .cv-factor-card {
+    @apply bg-kappa-surface border-kappa-rule rounded-panel flex min-w-0 flex-col gap-3 border border-solid p-5;
   }
-  .cv-report-factors dd {
-    @apply m-0 mt-3;
+  .cv-factor-head {
+    @apply flex flex-wrap items-baseline justify-between gap-2 text-[14px] font-semibold;
   }
-  .cv-report-factors dd strong {
-    @apply text-[20px] font-semibold tabular-nums;
+  .cv-factor-value {
+    @apply flex flex-wrap items-baseline gap-1;
   }
-  .cv-report-factors dd p {
-    @apply text-kappa-muted mt-2 text-[14px];
+  .cv-factor-value strong {
+    @apply text-[28px] leading-none font-semibold tabular-nums;
   }
-  .cv-report-summary {
-    @apply grid grid-cols-2 gap-x-10 gap-y-8;
+  .cv-factor-value .cv-delta {
+    @apply ml-auto;
   }
-  .cv-report-section ul {
-    @apply m-0 pl-5;
+  .cv-factor-bar {
+    @apply bg-kappa-paper-3 h-1.5 overflow-hidden rounded-full;
   }
-  .cv-report-section li + li {
-    @apply mt-2;
+  .cv-factor-bar > span {
+    @apply bg-kappa-accent block h-full rounded-full;
   }
+
+  .cv-fit-card,
+  .cv-summary-card {
+    @apply rounded-panel flex min-w-0 flex-col gap-3 p-5;
+  }
+  .cv-fit-card {
+    @apply bg-kappa-accent-soft;
+  }
+  .cv-summary-card {
+    @apply bg-kappa-surface border-kappa-rule border border-solid;
+  }
+  .cv-fit-card h3,
+  .cv-summary-card h3 {
+    @apply m-0 flex items-center gap-2 text-[15px] font-semibold;
+  }
+  .cv-fit-card h3 svg,
+  .cv-summary-card h3 svg {
+    @apply text-kappa-accent;
+  }
+  .cv-summary-grid {
+    @apply grid grid-cols-3 gap-4;
+  }
+  .cv-summary-card ul {
+    @apply m-0 flex flex-col gap-2 pl-5 text-[14px];
+  }
+  .app-markdown {
+    @apply flex flex-col gap-2 text-[15px] leading-relaxed;
+  }
+  .app-markdown p,
+  .app-markdown ul {
+    @apply m-0;
+  }
+  .app-markdown ul {
+    @apply pl-5;
+  }
+  .app-markdown code,
+  .cv-summary-card code {
+    @apply bg-kappa-paper-3 rounded px-1 text-[0.9em];
+  }
+
   .cv-report-jobs {
-    @apply m-0 pl-5;
+    @apply m-0 list-none p-0;
   }
   .cv-report-jobs li {
-    @apply border-kappa-rule border-0 border-b border-solid py-3;
+    @apply border-kappa-rule flex min-w-0 items-center gap-3 border-0 border-b border-solid py-3;
+  }
+  .cv-report-jobs li > div {
+    @apply min-w-0;
   }
   .cv-report-jobs a {
-    @apply text-kappa-accent font-semibold;
+    @apply text-kappa-accent inline-flex items-center gap-1 font-semibold wrap-anywhere;
   }
-  .cv-report-jobs p,
-  .cv-report-jobs span {
-    @apply text-kappa-muted text-[14px];
+  .cv-report-jobs p {
+    @apply text-kappa-muted m-0 text-[14px];
   }
+
   @media (width < 60rem) {
-    .cv-report-summary {
+    .cv-summary-grid,
+    .cv-factor-grid {
       @apply grid-cols-1;
     }
   }
   @media (max-width: 40rem) {
-    .cv-report-factors {
-      @apply grid-cols-1;
+    .cv-report-hero {
+      @apply grid-cols-1 p-4;
     }
-    .cv-report-overview {
-      @apply p-4;
+    .cv-grade-tile.large {
+      @apply size-16 text-[32px];
+    }
+    .cv-report-meta {
+      @apply col-span-1 grid-cols-1;
+    }
+    .cv-report-link {
+      @apply grid-cols-[auto_minmax(0,1fr)];
+    }
+    .cv-report-link-result {
+      @apply col-span-2 flex-row items-center justify-start;
     }
   }
 }
