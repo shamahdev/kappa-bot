@@ -43,5 +43,7 @@ test("former creator deleting their account cannot delete server-owned subscript
     "guilds",
     "delivery_messages",
     "cv_profiles",
+    "cv_reports",
+    "job_applications",
   ]);
 });

@@ -1,5 +1,5 @@
 import { SUBSCRIPTION_SOURCES } from "@kappa/contracts";
-import { jobs, seenJobs, subscriptions } from "@kappa/db";
+import { jobApplications, jobs, seenJobs, subscriptions } from "@kappa/db";
 import type { Database } from "@kappa/db";
 import { and, count, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
@@ -159,10 +159,26 @@ export const createJobQueries = (db: Database) => ({
       .innerJoin(subscriptions, eq(seenJobs.subscriptionId, subscriptions.id))
       .where(where);
     const rows = await db
-      .select({ aiSummary: jobs.aiSummary, job: seenJobs })
+      .select({
+        aiSummary: jobs.aiSummary,
+        application: {
+          id: jobApplications.id,
+          status: jobApplications.status,
+        },
+        job: seenJobs,
+      })
       .from(seenJobs)
       .innerJoin(subscriptions, eq(seenJobs.subscriptionId, subscriptions.id))
       .leftJoin(jobs, eq(seenJobs.jobId, jobs.id))
+      // The viewer's own tracking card (unique per user and posting).
+      .leftJoin(
+        jobApplications,
+        and(
+          eq(jobApplications.userId, actor.userId),
+          eq(jobApplications.source, seenJobs.source),
+          eq(jobApplications.externalId, seenJobs.externalId)
+        )
+      )
       .where(where)
       .orderBy(desc(seenJobs.firstSeenAt), desc(seenJobs.id))
       .limit(pageSize)

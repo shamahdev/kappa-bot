@@ -48,31 +48,110 @@
     @apply border-kappa-rule flex flex-wrap items-center justify-between gap-3 border-0 border-t border-solid p-4;
   }
   .summary {
-    @apply wrap-anywhere whitespace-pre-wrap;
+    @apply wrap-anywhere;
+  }
+  .colJob {
+    @apply w-auto;
+  }
+  .tableFrame :global(.app-table) th.colMatch {
+    @apply w-[24%];
+  }
+  .tableFrame :global(.app-table) th.colTrack {
+    @apply w-[22%];
+  }
+  /* Shrink-to-fit summary column only while rows are a real table. */
+  @media (width >= 40rem) {
+    .tableFrame :global(.app-table) th.colSummary,
+    .tableFrame :global(.app-table) td:last-child {
+      @apply w-[1%] whitespace-nowrap;
+    }
+  }
+  .tableFrame :global(.app-table) tbody tr {
+    @apply transition-colors;
+  }
+  .jobCell {
+    @apply flex min-w-0 flex-col gap-1.5;
+  }
+  .jobCompany {
+    @apply text-kappa-ink-2 m-0 text-[14px] wrap-anywhere;
+  }
+  .jobCell .meta {
+    @apply mt-1;
+  }
+  .matchCell,
+  .trackCell {
+    @apply flex min-w-0 flex-col items-start gap-2;
   }
   .matchDetails {
-    @apply min-w-0 text-[14px];
+    @apply w-full min-w-0 text-[14px];
   }
   .matchDetails summary {
-    @apply text-kappa-accent cursor-pointer py-2;
+    @apply text-kappa-accent inline-flex cursor-pointer list-none items-center gap-1 py-1 font-semibold;
+  }
+  .matchDetails summary::-webkit-details-marker {
+    display: none;
+  }
+  .matchDetails[open] summary svg {
+    @apply rotate-180;
   }
   .matchFactors {
-    @apply m-0 flex flex-col gap-3 py-3;
+    @apply border-kappa-rule mt-2 flex flex-col gap-4 rounded-[12px] border border-solid p-4;
   }
-  .matchFactors > div {
-    @apply border-kappa-rule border-0 border-b border-solid pb-3;
+  .trackControl {
+    --status: var(--color-status-archive);
+    @apply border-kappa-rule bg-kappa-surface text-kappa-ink relative inline-flex min-h-9 items-center rounded-full border border-solid;
   }
-  .matchFactors dt {
-    @apply flex flex-wrap items-center justify-between gap-2 font-semibold;
+  .trackControl.untracked {
+    @apply text-kappa-muted border-dashed;
   }
-  .matchFactors dt span {
-    @apply text-kappa-muted text-[12px] font-normal;
+  .trackControl select {
+    @apply min-h-9 cursor-pointer appearance-none border-0 bg-transparent py-1 pr-8 pl-7 text-[13px] font-semibold text-inherit;
+    font-family: inherit;
   }
-  .matchFactors dd {
-    @apply m-0 mt-2;
+  .trackControl select:disabled {
+    @apply cursor-progress opacity-60;
   }
-  .matchFactors dd p {
-    @apply text-kappa-muted mt-1 text-[13px];
+  .trackControl > svg {
+    @apply text-kappa-muted pointer-events-none absolute right-2.5;
+  }
+  .statusDot {
+    @apply pointer-events-none absolute left-3 size-2 rounded-full;
+    background: var(--status);
+  }
+  .untracked .statusDot {
+    @apply border-kappa-muted border border-solid bg-transparent;
+  }
+  .trackControl[data-status="bookmark"] {
+    --status: var(--color-status-bookmark);
+  }
+  .trackControl[data-status="applied"] {
+    --status: var(--color-status-applied);
+  }
+  .trackControl[data-status="interview"] {
+    --status: var(--color-status-interview);
+  }
+  .trackControl[data-status="offer"] {
+    --status: var(--color-status-offer);
+  }
+  .trackControl[data-status="rejected"] {
+    --status: var(--color-status-rejected);
+  }
+  .trackError {
+    @apply text-kappa-error m-0 text-[13px];
+  }
+  @media (pointer: coarse) {
+    .trackControl,
+    .trackControl select {
+      @apply min-h-12;
+    }
+  }
+  :global(.app-table) td :global(.app-button) {
+    @apply whitespace-nowrap;
+  }
+  @media (hover: hover) {
+    .tableFrame :global(.app-table) tbody tr:hover {
+      @apply bg-kappa-paper;
+    }
   }
   .cvStatus,
   .fileField {

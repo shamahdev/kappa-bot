@@ -4,6 +4,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 
 import { apiMessage, useCreateCvReport, useCvReports } from "../lib/queries";
 import { DashboardIcon } from "./dashboard-icon";
+import { GradeBadge } from "./score";
 import { Button, ErrorNote, LoadingNote, QueryError, Text, VStack } from "./ui";
 
 export const cvReportLabel = (report: CvReportType) => {
@@ -79,20 +80,13 @@ export const GradeTile = ({
 }: {
   report: CvReportType;
   large?: boolean;
-}) => {
-  let content = report.grade ?? "–";
-  if (report.status === "pending") {
-    content = "…";
-  }
-  return (
-    <span
-      aria-hidden="true"
-      className={`cv-grade-tile grade-${report.grade ?? "none"} ${large ? "large" : ""}`}
-    >
-      {content}
-    </span>
-  );
-};
+}) => (
+  <GradeBadge
+    grade={report.grade}
+    placeholder={report.status === "pending" ? "…" : "–"}
+    size={large ? "lg" : "md"}
+  />
+);
 
 const CvReportLink = ({ report }: { report: CvReportType }) => (
   <Link

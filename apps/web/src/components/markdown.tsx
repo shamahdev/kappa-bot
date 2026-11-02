@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 
 // Minimal, injection-safe Markdown for model-written report text: only
-// **bold**, *italic*, `code`, paragraphs and bullet/numbered lists. Output is
+// **bold**, *italic*, `code`, #-headings (as bold lines), paragraphs and
+// bullet/numbered lists, including bullets mixed into a paragraph block. Output is
 // React elements, never raw HTML.
 const INLINE =
   /(?<token>\*\*[^*]+\*\*|__[^_]+__|`[^`]+`|\*[^*\s][^*]*\*|_[^_\s][^_]*_)/gu;
@@ -36,35 +37,61 @@ export const InlineMarkdown = ({ text }: { text: string }) => (
   <>{inline(text.replace(BULLET, ""))}</>
 );
 
-export const Markdown = ({ text }: { text: string }) => {
-  const blocks = text
-    .trim()
-    .split(/\n\s*\n/u)
-    .filter((block) => block.trim());
-  return (
-    <div className="app-markdown">
-      {blocks.map((block, index) => {
-        const lines = block.split("\n").filter((line) => line.trim());
-        if (lines.every((line) => BULLET.test(line))) {
-          return (
-            <ul key={index}>
-              {lines.map((line, item) => (
-                <li key={item}>{inline(line.replace(BULLET, ""))}</li>
-              ))}
-            </ul>
-          );
-        }
-        return (
+const HEADING = /^\s*#{1,6}\s+/u;
+
+interface Group {
+  kind: "list" | "text";
+  lines: string[];
+}
+
+/** Consecutive bullet lines form a list; other lines form a paragraph. */
+const groups = (block: string): Group[] => {
+  const result: Group[] = [];
+  for (const line of block.split("\n")) {
+    if (!line.trim()) {
+      continue;
+    }
+    const kind = BULLET.test(line) ? "list" : "text";
+    const last = result.at(-1);
+    if (last?.kind === kind) {
+      last.lines.push(line);
+    } else {
+      result.push({ kind, lines: [line] });
+    }
+  }
+  return result;
+};
+
+const textLine = (line: string) =>
+  HEADING.test(line) ? (
+    <strong>{inline(line.replace(HEADING, ""))}</strong>
+  ) : (
+    inline(line)
+  );
+
+export const Markdown = ({ text }: { text: string }) => (
+  <div className="app-markdown">
+    {text
+      .trim()
+      .split(/\n\s*\n/u)
+      .flatMap(groups)
+      .map((group, index) =>
+        group.kind === "list" ? (
+          <ul key={index}>
+            {group.lines.map((line, item) => (
+              <li key={item}>{inline(line.replace(BULLET, ""))}</li>
+            ))}
+          </ul>
+        ) : (
           <p key={index}>
-            {lines.map((line, item) => (
+            {group.lines.map((line, item) => (
               <span key={item}>
                 {item > 0 ? <br /> : null}
-                {inline(line)}
+                {textLine(line)}
               </span>
             ))}
           </p>
-        );
-      })}
-    </div>
-  );
-};
+        )
+      )}
+  </div>
+);

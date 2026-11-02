@@ -12,6 +12,7 @@ import {
 import { DashboardIcon } from "../../../components/dashboard-icon";
 import type { DashboardIconName } from "../../../components/dashboard-icon";
 import { InlineMarkdown, Markdown } from "../../../components/markdown";
+import { FactorScore, GradeBadge } from "../../../components/score";
 import {
   Button,
   InfoNote,
@@ -57,7 +58,6 @@ const Hero = ({ report }: { report: CvReportType }) => (
   <section className="cv-report-hero" aria-label="Overall result">
     <GradeTile report={report} large />
     <div className="cv-report-hero-body">
-      <p className="cv-report-eyebrow">Overall CV match</p>
       <h2>{cvReportLabel(report)}</h2>
       <div className="cv-report-hero-score">
         {report.score === null ? null : (
@@ -125,24 +125,17 @@ const Factors = ({ report }: { report: CvReportType }) => {
           const { score } = factors[factor.key];
           return (
             <div className="cv-factor-card" key={factor.key}>
-              <div className="cv-factor-head">
-                <span>{factor.label}</span>
-                <span className="app-muted app-small">
-                  {factor.weight}% weight
-                </span>
-              </div>
-              <div className="cv-factor-value">
-                <strong>{Math.round(score)}</strong>
-                <span className="app-muted">/100</span>
-                <DeltaChip
-                  delta={previous ? score - previous[factor.key].score : null}
-                />
-              </div>
-              <div aria-hidden="true" className="cv-factor-bar">
-                <span
-                  style={{ width: `${Math.min(100, Math.max(0, score))}%` }}
-                />
-              </div>
+              <FactorScore
+                large
+                label={factor.label}
+                score={score}
+                weight={factor.weight}
+                delta={
+                  <DeltaChip
+                    delta={previous ? score - previous[factor.key].score : null}
+                  />
+                }
+              />
             </div>
           );
         })}
@@ -239,9 +232,7 @@ const ReportPage = () => {
         <ol className="cv-report-jobs">
           {report.jobs.map((job, index) => (
             <li key={`${job.source}-${index}`}>
-              <span className={`cv-job-grade grade-${job.grade ?? "none"}`}>
-                {job.grade ?? "–"}
-              </span>
+              <GradeBadge grade={job.grade} size="sm" />
               <div>
                 <a href={job.url} rel="noopener noreferrer" target="_blank">
                   {job.title}

@@ -22,7 +22,15 @@ export type DashboardIconName =
   | "refresh"
   | "clock"
   | "alert"
-  | "external";
+  | "external"
+  | "board"
+  | "list"
+  | "bookmark"
+  | "check"
+  | "trash"
+  | "grip"
+  | "archive"
+  | "chevronDown";
 
 const paths: Record<DashboardIconName, ReactNode> = {
   home: (
@@ -120,6 +128,27 @@ const paths: Record<DashboardIconName, ReactNode> = {
       <path d="M12 9v4M12 17h.01" />
     </>
   ),
+  board: (
+    <>
+      <rect x="3" y="4" width="5" height="16" rx="1.5" />
+      <rect x="10" y="4" width="5" height="11" rx="1.5" />
+      <rect x="17" y="4" width="4" height="7" rx="1.5" />
+    </>
+  ),
+  list: <path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01" />,
+  bookmark: <path d="M6 3h12v18l-6-4-6 4z" />,
+  check: <path d="m4 12 5 5L20 6" />,
+  trash: (
+    <path d="M4 7h16M9 7V4h6v3M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13M10 11v6M14 11v6" />
+  ),
+  grip: <path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01" />,
+  archive: (
+    <>
+      <rect x="3" y="4" width="18" height="5" rx="1" />
+      <path d="M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9M10 13h4" />
+    </>
+  ),
+  chevronDown: <path d="m6 9 6 6 6-6" />,
   external: (
     <path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
   ),

@@ -1,11 +1,14 @@
 import { Schema } from "effect";
 
+import { JobApplicationRef } from "./applications";
 import { MatchBreakdown, MatchGrade } from "./matching";
 
 // One delivered job. Percentage history is kept internally for compatibility;
 // public presentation uses an A–E grade and the factor breakdown when available.
 export const JobDto = Schema.Struct({
   aiSummary: Schema.NullOr(Schema.String),
+  // Personal scope only: the viewer's tracking state for this posting.
+  application: Schema.NullOr(JobApplicationRef),
   company: Schema.NullOr(Schema.String),
   externalId: Schema.String,
   // ISO 8601

@@ -16,6 +16,25 @@
   --color-discord: #5865f2;
   --color-discord-hover: #4752c4;
   --color-discord-active: #3c45a5;
+  /* Bold A–E score colors (AA contrast with their ink). */
+  --color-grade-a: #15803d;
+  --color-grade-b: #4d7c0f;
+  --color-grade-c: #f59e0b;
+  --color-grade-d: #c2410c;
+  --color-grade-e: #dc2626;
+  --color-grade-ink: #ffffff;
+  --color-grade-c-ink: #422006;
+  /* Amber is too light as text on paper; C scores use this shade. */
+  --color-grade-c-text: #b45309;
+  /* Pipeline statuses: dots only, deliberately not the grade hues. */
+  --color-status-bookmark: #2563eb;
+  --color-status-applied: #3f6b55;
+  --color-status-interview: #7c3aed;
+  --color-status-offer: #0f766e;
+  --color-status-rejected: #9f1239;
+  --color-status-archive: #607064;
+  --radius-card: 12px;
+  --radius-pill: 999px;
   --color-error: oklch(45% 0.16 26);
   --color-error-soft: oklch(95% 0.017 26);
   --color-error-ink: oklch(99% 0.004 26);

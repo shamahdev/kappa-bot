@@ -6,6 +6,8 @@ import {
 } from "@effect/platform";
 import {
   AccountSummary,
+  ApplicationDto,
+  ApplicationsResponse,
   AuthMeResponse,
   CreateSubscriptionBody,
   CvDto,
@@ -24,6 +26,8 @@ import {
 } from "@kappa/contracts";
 import type {
   AccountSummaryType,
+  ApplicationDtoType,
+  ApplicationStatusType,
   AuthMeResponseType,
   CreateSubscriptionBodyType,
   CvDtoType,
@@ -328,3 +332,40 @@ export const deleteAccount = async (): Promise<void> => {
     request(HttpClientRequest.del(PATHS.account), DeleteAccountResponse)
   );
 };
+
+export const fetchApplications = (): Promise<readonly ApplicationDtoType[]> =>
+  runApi(
+    request(HttpClientRequest.get(PATHS.applications), ApplicationsResponse)
+  ).then((response) => response.applications);
+
+export const trackApplication = (
+  seenJobId: number,
+  status: ApplicationStatusType
+): Promise<ApplicationDtoType> =>
+  runApi(
+    Effect.flatMap(
+      withJsonBody(HttpClientRequest.post(PATHS.applications), {
+        seenJobId,
+        status,
+      }),
+      (req) => request(req, ApplicationDto)
+    )
+  );
+
+export const moveApplication = (
+  id: number,
+  status: ApplicationStatusType
+): Promise<ApplicationDtoType> =>
+  runApi(
+    Effect.flatMap(
+      withJsonBody(HttpClientRequest.patch(PATHS.applicationById(id)), {
+        status,
+      }),
+      (req) => request(req, ApplicationDto)
+    )
+  );
+
+export const removeApplication = (id: number): Promise<boolean> =>
+  runApi(
+    request(HttpClientRequest.del(PATHS.applicationById(id)), OkResponse)
+  ).then((response) => response.ok);

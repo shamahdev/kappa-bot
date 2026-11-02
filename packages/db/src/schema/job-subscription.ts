@@ -145,6 +145,42 @@ export const seenJobs = pgTable(
 );
 
 /**
+ * Personal application tracking (kanban). Keeps its own posting snapshot so a
+ * card survives seen_jobs retention; one card per user per posting.
+ */
+export const jobApplications = pgTable(
+  "job_applications",
+  {
+    company: text("company"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    externalId: text("external_id").notNull(),
+    id: serial("id").primaryKey(),
+    location: text("location"),
+    matchGrade: text("match_grade"),
+    seenJobId: integer("seen_job_id").references(() => seenJobs.id, {
+      onDelete: "set null",
+    }),
+    source: text("source").notNull(),
+    status: text("status").notNull(),
+    title: text("title"),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    url: text("url").notNull(),
+    userId: text("user_id").notNull(),
+  },
+  (t) => [
+    uniqueIndex("job_applications_user_posting_uidx").on(
+      t.userId,
+      t.source,
+      t.externalId
+    ),
+  ]
+);
+
+/**
  * One CV per Discord user for AI match scores. Personal-only: DM-scope
  * deliveries read this, guild-scope deliveries never do. Keyed by Discord
  * user id with NO users FK — Discord-only users have no users row. Deleted

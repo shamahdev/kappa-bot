@@ -65,7 +65,7 @@ const DashboardHome = () => {
             <LoadingNote>Loading your overview…</LoadingNote>
           ) : null}
           <div className="dashboard-home-actions">
-            <Link className="app-button" to="/dashboard/jobs">
+            <Link className="app-button" to="/dashboard/jobs/list">
               View jobs
             </Link>
             <Link className="app-button subtle" to="/dashboard/settings">

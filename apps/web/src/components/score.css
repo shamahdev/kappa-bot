@@ -1,0 +1,128 @@
+@layer components {
+  .score-grade {
+    --grade-bg: var(--color-paper-3);
+    --grade-ink: var(--color-ink-2);
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    background: var(--grade-bg);
+    color: var(--grade-ink);
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    letter-spacing: -0.01em;
+  }
+  .score-a {
+    --grade-bg: var(--color-grade-a);
+    --grade-ink: var(--color-grade-ink);
+  }
+  .score-b {
+    --grade-bg: var(--color-grade-b);
+    --grade-ink: var(--color-grade-ink);
+  }
+  .score-c {
+    --grade-bg: var(--color-grade-c);
+    --grade-ink: var(--color-grade-c-ink);
+  }
+  .score-d {
+    --grade-bg: var(--color-grade-d);
+    --grade-ink: var(--color-grade-ink);
+  }
+  .score-e {
+    --grade-bg: var(--color-grade-e);
+    --grade-ink: var(--color-grade-ink);
+  }
+  .score-grade.size-sm {
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-small);
+    font-size: 14px;
+  }
+  .score-grade.size-md {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-control);
+    font-size: 20px;
+  }
+  .score-grade.size-lg {
+    width: 96px;
+    height: 96px;
+    border-radius: var(--radius-panel);
+    font-size: 52px;
+  }
+  .score-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  .score-chip-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-ink);
+  }
+  .factor-score {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+  }
+  .factor-score-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 4px 8px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .factor-score-head small {
+    color: var(--color-muted);
+    font-size: 12px;
+    font-weight: 400;
+  }
+  .factor-score-value {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px;
+  }
+  .factor-score-value strong {
+    color: var(--grade-bg);
+    font-size: 20px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+  .factor-score.score-c .factor-score-value strong {
+    /* Amber text needs a darker shade to stay legible on paper. */
+    color: var(--color-grade-c-text);
+  }
+  .factor-score-value span {
+    color: var(--color-muted);
+    font-size: 13px;
+  }
+  .factor-score-value .cv-delta {
+    margin-left: auto;
+  }
+  .factor-score-bar {
+    height: 8px;
+    overflow: hidden;
+    border-radius: var(--radius-pill);
+    background: var(--color-paper-3);
+  }
+  .factor-score-bar > span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--grade-bg);
+  }
+  .factor-score p {
+    margin: 0;
+    color: var(--color-muted);
+    font-size: 13px;
+  }
+  .factor-score.large .factor-score-value strong {
+    font-size: 2rem;
+  }
+}

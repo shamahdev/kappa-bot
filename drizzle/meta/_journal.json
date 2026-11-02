@@ -92,6 +92,13 @@
       "when": 1793593065607,
       "tag": "0012_cv_reports_periodic",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1793607977347,
+      "tag": "0013_job_applications",
+      "breakpoints": true
     }
   ]
 }

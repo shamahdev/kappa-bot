@@ -1,3 +1,7 @@
+import type {
+  ApplicationDtoType,
+  ApplicationStatusType,
+} from "@kappa/contracts";
 import {
   mutationOptions,
   useMutation,
@@ -16,6 +20,10 @@ import {
   deleteSubscription,
   fetchAccountSummary,
   createCvReport,
+  fetchApplications,
+  moveApplication,
+  removeApplication,
+  trackApplication,
   fetchCv,
   fetchCvReport,
   fetchCvReports,
@@ -249,5 +257,64 @@ export const useLogout = () => {
     onSettled: () => {
       client.clear();
     },
+  });
+};
+
+const APPLICATIONS_KEY = ["applications"] as const;
+
+export const useApplications = (enabled: boolean) =>
+  useQuery({
+    queryKey: APPLICATIONS_KEY,
+    queryFn: fetchApplications,
+    enabled,
+    retry: false,
+  });
+
+const refreshTracking = (client: QueryClient) =>
+  Promise.all([
+    client.invalidateQueries({ queryKey: APPLICATIONS_KEY }),
+    client.invalidateQueries({ queryKey: queryKeys.jobs }),
+  ]);
+
+export const useTrackApplication = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { seenJobId: number; status: ApplicationStatusType }) =>
+      trackApplication(input.seenJobId, input.status),
+    onSettled: () => refreshTracking(client),
+  });
+};
+
+/** Optimistic so a dropped card stays in its new column while saving. */
+export const useMoveApplication = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { id: number; status: ApplicationStatusType }) =>
+      moveApplication(input.id, input.status),
+    onMutate: async (input) => {
+      await client.cancelQueries({ queryKey: APPLICATIONS_KEY });
+      const previous =
+        client.getQueryData<readonly ApplicationDtoType[]>(APPLICATIONS_KEY);
+      client.setQueryData<readonly ApplicationDtoType[]>(
+        APPLICATIONS_KEY,
+        (rows) =>
+          rows?.map((row) =>
+            row.id === input.id ? { ...row, status: input.status } : row
+          )
+      );
+      return { previous };
+    },
+    onError: (_error, _input, context) => {
+      client.setQueryData(APPLICATIONS_KEY, context?.previous);
+    },
+    onSettled: () => refreshTracking(client),
+  });
+};
+
+export const useRemoveApplication = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: removeApplication,
+    onSettled: () => refreshTracking(client),
   });
 };

@@ -18,6 +18,20 @@ colors:
   surface: "#ffffff"
   rule: "#dae2d8"
   input-edge: "#849680"
+  grade-a: "#15803d"
+  grade-b: "#4d7c0f"
+  grade-c: "#f59e0b"
+  grade-c-ink: "#422006"
+  grade-c-text: "#b45309"
+  grade-d: "#c2410c"
+  grade-e: "#dc2626"
+  grade-ink: "#ffffff"
+  status-bookmark: "#2563eb"
+  status-applied: "#3f6b55"
+  status-interview: "#7c3aed"
+  status-offer: "#0f766e"
+  status-rejected: "#9f1239"
+  status-archive: "#607064"
   chat: "#27272b"
   chat-2: "#232428"
   chat-3: "#34353c"
@@ -85,6 +99,8 @@ rounded:
   small: "6px"
   control: "8px"
   panel: "16px"
+  card: "12px"
+  pill: "999px"
 spacing:
   xs: "8px"
   sm: "12px"
@@ -168,6 +184,11 @@ Exact values are in the frontmatter. The accent matches the supplied logo's back
 - **Accent-soft:** selected tabs and active subscription statuses.
 - **Leaf:** the quiet reply button against dark chat.
 
+### Scores and pipeline
+
+- **Grade A–E (bold, user-requested):** solid green, lime, amber, orange and red fills with white ink (dark ink on amber). Strong color is reserved for scores only: `GradeBadge` everywhere a grade appears, and `FactorScore` bars/numbers colored by the grade band (C uses the darker `grade-c-text` as text).
+- **Pipeline statuses:** shown only as an 8px dot beside ink text, in hues deliberately distinct from the grades (blue, green, violet, teal, rose, muted), so a status never reads as a score.
+
 ### Neutral
 
 - **Ink / ink-2 / muted:** headings, supporting copy and metadata.
@@ -219,7 +240,7 @@ Shared fields retain visible labels, 16px entry text, 48px minimum height, input
 
 ### Navigation and chips
 
-The homepage retains its inline named anchors beside the supplied logo and lowercase wordmark. The dashboard sidebar presents Home, personal Jobs and personal Settings, followed by a labeled managed Discord Server picker. Selecting a server reveals its nested Jobs and Settings links; active selection is URL-based and the last selected server remains available while visiting personal pages. Sidebar Account and Sign out controls remain separate from subscription settings. Home summarizes existing personal subscriptions/CV and links to managed servers; it does not invent activity. Home lists the CV report history (grade tile, period, job count, trigger, result and a +/- change chip versus the previous completed report) with a "Create report now" button. Detail pages lead with a hero (large grade tile, label, score/100 and change), then period/jobs/CV metadata, a factor card grid with bars and per-factor change, the review (fit paragraph rendered as Markdown, then employer requirements, gaps and roles as icon-headed cards), and every included job with its grade. Factor and summary grids stack on narrower screens. Missing CV and unavailable assessments are explicit states, never fabricated scores. Report text never exposes extracted CV passages. Personal Settings contains CV upload/replacement, subscription creation and management; server Settings contains only that server's subscriptions and the existing Discord creation instruction. Personal CVs never appear in server pages. Personal job match cells show an A–E grade and a native disclosure for skills, relevant experience and keyword match scores, with 50%/35%/15% weights and job-focused explanations. The factor breakdown is readable on desktop and mobile. Unassessed jobs show that state explicitly; legacy grades have no invented breakdown. Fine-pointer hover is capability-gated. Noninteractive source badges use tinted paper and muted text; active statuses use accent-soft and accent. No fabricated badge interactions.
+The homepage retains its inline named anchors beside the supplied logo and lowercase wordmark. The dashboard sidebar presents Home, a personal Jobs group (Dashboard kanban board and Job list) and personal Settings, followed by a labeled managed Discord Server picker. Selecting a server reveals its nested Jobs and Settings links; active selection is URL-based and the last selected server remains available while visiting personal pages. Sidebar Account and Sign out controls remain separate from subscription settings. Home summarizes existing personal subscriptions/CV and links to managed servers; it does not invent activity. Home lists the CV report history (grade tile, period, job count, trigger, result and a +/- change chip versus the previous completed report) with a "Create report now" button. Detail pages lead with a hero (large grade tile, label, score/100 and change), then period/jobs/CV metadata, a factor card grid with bars and per-factor change, the review (fit paragraph rendered as Markdown, then employer requirements, gaps and roles as icon-headed cards), and every included job with its grade. Factor and summary grids stack on narrower screens. Missing CV and unavailable assessments are explicit states, never fabricated scores. Report text never exposes extracted CV passages. Personal Settings contains CV upload/replacement, subscription creation and management; server Settings contains only that server's subscriptions and the existing Discord creation instruction. Personal CVs never appear in server pages. Every A–E grade uses the shared bold GradeBadge (A green, B lime, C amber, D orange, E red) and factor scores use the shared FactorScore bar colored by grade band. The personal Job list shows Job, Match, Tracking and Summary columns; Tracking is one pill-shaped native select per row (status dot + label; untracked rows offer only Bookmark/Applied), and the Summary dialog renders Markdown. The Jobs dashboard kanban is flat: paper-2 columns with 1px rules, white 12px cards without shadows, a status dot and count in each column header, a dashed outline as the drop target, inline Remove/Cancel confirmation, and a nameable dismissible error for failed moves. Below 40rem it shows a status tab strip with one column at a time; on coarse pointers drag hints and the archive drop zone are hidden and card controls are 48px. Personal job match cells show an A–E grade and a native disclosure for skills, relevant experience and keyword match scores, with 50%/35%/15% weights and job-focused explanations. The factor breakdown is readable on desktop and mobile. Unassessed jobs show that state explicitly; legacy grades have no invented breakdown. Fine-pointer hover is capability-gated. Noninteractive source badges use tinted paper and muted text; active statuses use accent-soft and accent. No fabricated badge interactions.
 
 ### Pricing plans
 

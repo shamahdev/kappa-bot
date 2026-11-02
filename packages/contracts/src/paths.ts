@@ -6,6 +6,8 @@ export const API_V1 = "/api/v1" as const;
 export const PATHS = {
   account: `${API_V1}/account`,
   accountSummary: `${API_V1}/account/summary`,
+  applicationById: (id: number): string => `${API_V1}/applications/${id}`,
+  applications: `${API_V1}/applications`,
   authCallback: `${API_V1}/auth/discord/callback`,
   authLogin: `${API_V1}/auth/discord/login`,
   authLogout: `${API_V1}/auth/logout`,

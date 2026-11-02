@@ -1,4 +1,5 @@
 import { matchGradeForScore } from "@kappa/contracts";
+import type { ApplicationStatusType } from "@kappa/contracts";
 import { Elysia, t } from "elysia";
 
 import { resolveSession } from "../core/auth";
@@ -44,8 +45,15 @@ export const jobRoutes = (deps: RouteDeps) => {
           query
         );
         return {
-          jobs: result.rows.map(({ job, aiSummary }) => ({
+          jobs: result.rows.map(({ job, aiSummary, application }) => ({
             aiSummary,
+            application:
+              wantDm && application
+                ? {
+                    id: application.id,
+                    status: application.status as ApplicationStatusType,
+                  }
+                : null,
             company: job.snapshot?.company ?? null,
             externalId: job.externalId,
             firstSeenAt: job.firstSeenAt.toISOString(),

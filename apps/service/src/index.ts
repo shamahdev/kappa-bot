@@ -7,6 +7,7 @@ import { err } from "./core/errors";
 import { createLogger } from "./core/logger";
 import { renderMetrics } from "./core/metrics";
 import { accountRoutes } from "./routes/account";
+import { applicationRoutes } from "./routes/applications";
 import { authRoutes } from "./routes/auth";
 import { cvRoutes } from "./routes/cv";
 import { cvReportRoutes } from "./routes/cv-reports";
@@ -47,6 +48,7 @@ const app = new Elysia()
     return renderMetrics();
   })
   .use(authRoutes(deps))
+  .use(applicationRoutes(deps))
   .use(cvRoutes(deps))
   .use(cvReportRoutes(deps))
   .use(guildRoutes(deps))

@@ -4,16 +4,42 @@ import { useEffect, useRef, useState } from "react";
 import { guildIconUrl, userAvatarUrl } from "../lib/api";
 import { useGuilds, useLogout, useRequireAuth } from "../lib/queries";
 import { DashboardIcon } from "./dashboard-icon";
+import type { DashboardIconName } from "./dashboard-icon";
 import { KappaMark } from "./kappa-mark";
 import { Avatar, LoadingNote, QueryError, Select } from "./ui";
 
 import "./dashboard-shell.css";
 
-const PERSONAL_LINKS = [
-  { to: "/dashboard", label: "Home", icon: "home" },
-  { to: "/dashboard/jobs", label: "Jobs", icon: "jobs" },
-  { to: "/dashboard/settings", label: "Settings", icon: "settings" },
+const JOB_LINKS = [
+  { to: "/dashboard/jobs", label: "Dashboard", icon: "board" },
+  { to: "/dashboard/jobs/list", label: "Job list", icon: "list" },
 ] as const;
+
+const NavLink = ({
+  to,
+  label,
+  icon,
+  current,
+  close,
+  nested = false,
+}: {
+  to: string;
+  label: string;
+  icon: DashboardIconName;
+  current: boolean;
+  close: () => void;
+  nested?: boolean;
+}) => (
+  <Link
+    to={to}
+    aria-current={current ? "page" : undefined}
+    className={`dashboard-link ${nested ? "nested" : ""}`}
+    onClick={close}
+  >
+    <DashboardIcon name={icon} />
+    <span>{label}</span>
+  </Link>
+);
 
 const PersonalNavigation = ({
   pathname,
@@ -21,28 +47,44 @@ const PersonalNavigation = ({
 }: {
   pathname: string;
   close: () => void;
-}) => (
-  <div className="dashboard-personal-links">
-    {PERSONAL_LINKS.map(({ to, label, icon }) => (
-      <Link
-        key={to}
-        to={to}
-        activeOptions={{ exact: true }}
-        aria-current={
-          pathname.replace(/\/$/u, "") === to ||
-          (to === "/dashboard" && pathname.startsWith("/dashboard/reports/"))
-            ? "page"
-            : undefined
+}) => {
+  const path = pathname.replace(/\/$/u, "");
+  return (
+    <div className="dashboard-personal-links">
+      <NavLink
+        to="/dashboard"
+        label="Home"
+        icon="home"
+        current={
+          path === "/dashboard" || path.startsWith("/dashboard/reports/")
         }
-        className="dashboard-link"
-        onClick={close}
-      >
-        <DashboardIcon name={icon} />
-        <span>{label}</span>
-      </Link>
-    ))}
-  </div>
-);
+        close={close}
+      />
+      <div className="dashboard-nav-group">
+        <span className="dashboard-nav-group-label">
+          <DashboardIcon name="jobs" />
+          <span>Jobs</span>
+        </span>
+        {JOB_LINKS.map((link) => (
+          <NavLink
+            key={link.to}
+            {...link}
+            current={path === link.to}
+            close={close}
+            nested
+          />
+        ))}
+      </div>
+      <NavLink
+        to="/dashboard/settings"
+        label="Settings"
+        icon="settings"
+        current={path === "/dashboard/settings"}
+        close={close}
+      />
+    </div>
+  );
+};
 
 const ServerNavigation = ({
   guild,

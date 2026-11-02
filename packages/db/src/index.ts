@@ -10,6 +10,7 @@ export {
   deliveryMessages,
   fingerprintSnapshots,
   guilds,
+  jobApplications,
   jobs,
   seenJobs,
   subscriptions,

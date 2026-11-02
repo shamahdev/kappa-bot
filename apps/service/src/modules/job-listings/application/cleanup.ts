@@ -1,8 +1,10 @@
 import {
   channels,
   cvProfiles,
+  cvReports,
   deliveryMessages,
   guilds,
+  jobApplications,
   subscriptions,
 } from "@kappa/db";
 import type { Database } from "@kappa/db";
@@ -44,4 +46,7 @@ export const removeJobListingAccountData = async (
       )
     );
   await db.delete(cvProfiles).where(eq(cvProfiles.discordId, userId));
+  // Reports are per user (no subscription cascade) and hold CV-derived text.
+  await db.delete(cvReports).where(eq(cvReports.userId, userId));
+  await db.delete(jobApplications).where(eq(jobApplications.userId, userId));
 };

@@ -41,6 +41,21 @@
   .dashboard-link:disabled {
     @apply cursor-not-allowed opacity-55;
   }
+  .dashboard-nav-group {
+    @apply flex min-w-0 flex-col gap-1;
+  }
+  .dashboard-nav-group-label {
+    @apply text-kappa-ink-2 flex min-h-10 items-center gap-3 px-3 text-[14px] font-semibold;
+  }
+  .dashboard-nav-group-label svg {
+    @apply text-kappa-muted;
+  }
+  .dashboard-link.nested {
+    @apply min-h-10 py-2 pl-10;
+  }
+  .dashboard-link.nested svg {
+    @apply size-4;
+  }
   .dashboard-server-section {
     @apply border-kappa-rule min-w-0 border-0 border-t border-solid pt-6;
   }
@@ -253,32 +268,6 @@
     @apply text-kappa-accent cursor-pointer py-3 font-semibold;
   }
 
-  /* Grade tiles: A/B accent, C neutral, D/E error tint. */
-  .cv-grade-tile,
-  .cv-job-grade {
-    @apply bg-kappa-paper-3 text-kappa-ink-2 inline-flex shrink-0 items-center justify-center font-semibold tabular-nums;
-  }
-  .cv-grade-tile {
-    @apply size-11 rounded-[10px] text-[20px];
-  }
-  .cv-grade-tile.large {
-    @apply size-24 rounded-[18px] text-[48px] leading-none;
-  }
-  .cv-job-grade {
-    @apply size-8 rounded-[8px] text-[14px];
-  }
-  .grade-A,
-  .grade-B {
-    @apply bg-kappa-accent text-kappa-on-accent;
-  }
-  .grade-C {
-    @apply bg-kappa-accent-soft text-kappa-accent;
-  }
-  .grade-D,
-  .grade-E {
-    @apply bg-kappa-error-soft text-kappa-error;
-  }
-
   .cv-delta {
     @apply bg-kappa-paper-3 text-kappa-muted inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[13px] font-semibold tabular-nums;
   }
@@ -303,9 +292,6 @@
   }
   .cv-report-hero-body {
     @apply flex min-w-0 flex-col gap-1;
-  }
-  .cv-report-eyebrow {
-    @apply text-kappa-muted m-0 text-[12px] font-semibold tracking-wide uppercase;
   }
   .cv-report-hero h2 {
     @apply m-0 text-[26px];
@@ -343,24 +329,6 @@
   }
   .cv-factor-card {
     @apply bg-kappa-surface border-kappa-rule rounded-panel flex min-w-0 flex-col gap-3 border border-solid p-5;
-  }
-  .cv-factor-head {
-    @apply flex flex-wrap items-baseline justify-between gap-2 text-[14px] font-semibold;
-  }
-  .cv-factor-value {
-    @apply flex flex-wrap items-baseline gap-1;
-  }
-  .cv-factor-value strong {
-    @apply text-[28px] leading-none font-semibold tabular-nums;
-  }
-  .cv-factor-value .cv-delta {
-    @apply ml-auto;
-  }
-  .cv-factor-bar {
-    @apply bg-kappa-paper-3 h-1.5 overflow-hidden rounded-full;
-  }
-  .cv-factor-bar > span {
-    @apply bg-kappa-accent block h-full rounded-full;
   }
 
   .cv-fit-card,
@@ -428,7 +396,7 @@
     .cv-report-hero {
       @apply grid-cols-1 p-4;
     }
-    .cv-grade-tile.large {
+    .cv-report-hero .score-grade.size-lg {
       @apply size-16 text-[32px];
     }
     .cv-report-meta {
