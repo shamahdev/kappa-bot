@@ -1,6 +1,9 @@
 import { useId, useState } from "react";
 
 import { KappaMark } from "./kappa-mark";
+import { Badge } from "./shadcn/badge";
+import { Input } from "./shadcn/input";
+import { Label } from "./shadcn/label";
 import {
   DEMO_JOBS,
   DISCORD_DEMO_JOBS,
@@ -113,8 +116,8 @@ export const DashboardPreview = () => {
               content: (
                 <>
                   <div className="app-field preview-search">
-                    <label htmlFor={id}>Search jobs</label>
-                    <input
+                    <Label htmlFor={id}>Search jobs</Label>
+                    <Input
                       autoComplete="off"
                       id={id}
                       name="preview-search"
@@ -130,7 +133,7 @@ export const DashboardPreview = () => {
                           <strong>{job.title}</strong>
                           <p>{job.location}</p>
                         </div>
-                        <span className="app-badge">{job.source}</span>
+                        <Badge>{job.source}</Badge>
                       </li>
                     ))}
                   </ul>
@@ -152,14 +155,18 @@ export const DashboardPreview = () => {
                       <strong>Engineering roles</strong>
                       <small>Kalibrr, Jakarta</small>
                     </span>
-                    <span className="app-status active">Active</span>
+                    <Badge className="app-status" variant="strong">
+                      Active
+                    </Badge>
                   </div>
                   <div>
                     <span>
                       <strong>Design roles</strong>
                       <small>Glints, Remote</small>
                     </span>
-                    <span className="app-status active">Active</span>
+                    <Badge className="app-status" variant="strong">
+                      Active
+                    </Badge>
                   </div>
                 </div>
               ),

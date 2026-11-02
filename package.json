@@ -16,7 +16,8 @@
     "format:check": "oxfmt --check .",
     "lint": "oxlint .",
     "prepare": "lefthook install",
-    "test": "bun --no-env-file test apps packages",
+    "test": "bun --no-env-file test apps packages && bun run test:dom",
+    "test:dom": "bun --no-env-file test --preload ./apps/web/src/test/dom-setup.ts ./apps/web/src/components/interactions.dom.tsx",
     "typecheck": "bun --filter @kappa/db typecheck && bun --filter @kappa/contracts typecheck && bun --filter @kappa/discord typecheck && bun --filter @kappa/service typecheck && bun --filter @kappa/web typecheck"
   },
   "dependencies": {

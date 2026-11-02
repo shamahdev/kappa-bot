@@ -13,6 +13,7 @@ import { DashboardIcon } from "../../../components/dashboard-icon";
 import type { DashboardIconName } from "../../../components/dashboard-icon";
 import { InlineMarkdown, Markdown } from "../../../components/markdown";
 import { FactorScore, GradeBadge } from "../../../components/score";
+import { buttonVariants } from "../../../components/shadcn/button";
 import { TrackControl } from "../../../components/track-control";
 import {
   Button,
@@ -270,7 +271,7 @@ const ReportPage = () => {
         </div>
       ) : null}
       {report.status === "cv_required" ? (
-        <Link className="app-button" to="/dashboard/settings">
+        <Link className={buttonVariants()} to="/dashboard/settings">
           Upload CV
         </Link>
       ) : null}

@@ -6,24 +6,12 @@
     gap: 16px;
     min-width: 0;
   }
-  .board-toolbar,
   .board-alert {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-  }
-  .board-toolbar p,
-  .board-alert p {
-    margin: 0;
-  }
-  .board-toolbar .app-button {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .board-alert {
     padding: 12px 16px;
     border-radius: var(--radius-control);
     background: var(--color-error-soft);
@@ -33,24 +21,26 @@
   .board-alert p {
     flex: 1;
     min-width: 0;
+    margin: 0;
   }
 
-  .board [data-status] {
+  /* Status hues. Menus render in a portal, so these are not board-scoped. */
+  [data-status] {
     --status: var(--color-status-archive);
   }
-  .board [data-status="bookmark"] {
+  [data-status="bookmark"] {
     --status: var(--color-status-bookmark);
   }
-  .board [data-status="applied"] {
+  [data-status="applied"] {
     --status: var(--color-status-applied);
   }
-  .board [data-status="interview"] {
+  [data-status="interview"] {
     --status: var(--color-status-interview);
   }
-  .board [data-status="offer"] {
+  [data-status="offer"] {
     --status: var(--color-status-offer);
   }
-  .board [data-status="rejected"] {
+  [data-status="rejected"] {
     --status: var(--color-status-rejected);
   }
   .board-dot {
@@ -71,12 +61,15 @@
     text-align: center;
     font-variant-numeric: tabular-nums;
   }
+  .board-menu-danger {
+    color: var(--color-error);
+  }
 
-  /* Mobile status strip (hidden on wider screens). */
+  /* Mobile column switcher (shadcn ToggleGroup), hidden on wider screens. */
   .board-tabs {
     display: none;
   }
-  .board-tab {
+  .board-tabs .app-toggle {
     display: inline-flex;
     flex-shrink: 0;
     align-items: center;
@@ -92,12 +85,12 @@
     font-weight: 600;
     cursor: pointer;
   }
-  .board-tab[aria-selected="true"] {
+  .board-tabs .app-toggle[data-state="on"] {
     border-color: var(--color-ink-2);
     background: var(--color-ink);
     color: var(--color-paper);
   }
-  .board-tab[aria-selected="true"] .board-count {
+  .board-tabs .app-toggle[data-state="on"] .board-count {
     background: var(--color-ink-2);
     color: var(--color-paper);
   }
@@ -109,7 +102,7 @@
     gap: 12px;
     min-width: 0;
     overflow-x: auto;
-    padding-bottom: 8px;
+    padding-bottom: 4px;
     overscroll-behavior-x: contain;
   }
   .board-column {
@@ -123,7 +116,8 @@
     border-radius: var(--radius-panel);
     background: var(--color-paper-2);
   }
-  .board-column.over {
+  .board-column.over,
+  .board-archive.over {
     outline: 2px dashed var(--status);
     outline-offset: -2px;
     background: var(--color-paper-3);
@@ -206,29 +200,10 @@
     font-size: 13px;
     font-weight: 600;
   }
-  .board-card-move {
-    flex: 1;
-    min-width: 0;
+  .board-card .app-button.board-card-move {
     min-height: 32px;
-    padding: 2px 8px;
-    border: 1px solid var(--color-rule);
-    border-radius: var(--radius-control);
-    background: transparent;
-    color: var(--color-ink-2);
-    font: inherit;
+    padding: 0 10px;
     font-size: 13px;
-    cursor: pointer;
-  }
-  .board-card-remove {
-    display: inline-grid;
-    width: 32px;
-    height: 32px;
-    place-items: center;
-    border: 1px solid var(--color-rule);
-    border-radius: var(--radius-control);
-    background: transparent;
-    color: var(--color-muted);
-    cursor: pointer;
   }
   .board-card-error {
     flex-basis: 100%;
@@ -236,21 +211,44 @@
     color: var(--color-error);
     font-size: 12px;
   }
-  .board-archive-drop {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 14px;
+
+  /* Archive: drop zone, toggle and archived cards share one section. */
+  .board-archive {
+    display: grid;
+    gap: 12px;
+    padding: 12px 16px;
     border: 1px dashed var(--color-rule);
     border-radius: var(--radius-panel);
-    color: var(--color-muted);
-    font-size: 14px;
   }
-  .board-archive-drop.over {
-    border-color: var(--color-ink-2);
-    background: var(--color-paper-3);
-    color: var(--color-ink);
+  .board-archive-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .board-archive-icon {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    color: var(--color-muted);
+  }
+  .board-archive-copy {
+    flex: 1;
+    min-width: 0;
+  }
+  .board-archive-copy h2 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .board-archive-copy p {
+    margin: 0;
+    color: var(--color-muted);
+    font-size: 13px;
+  }
+  .board-archive-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 8px;
   }
 
   @media (hover: hover) {
@@ -258,26 +256,17 @@
       color: var(--color-accent);
       text-decoration: underline;
     }
-    .board-card-remove:hover {
-      border-color: var(--color-error);
-      color: var(--color-error);
-    }
   }
   /* Touch: no dragging, so no drag affordances; 48px controls. */
   @media (pointer: coarse) {
-    .board-drag-hint,
-    .board-archive-drop {
+    .board-drag-hint {
       display: none;
     }
     .board-card {
       cursor: auto;
     }
-    .board-card-move {
+    .board-card .app-button.board-card-move {
       min-height: 48px;
-    }
-    .board-card-remove {
-      width: 48px;
-      height: 48px;
     }
   }
   @media (width < 40rem) {

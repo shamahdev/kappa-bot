@@ -3,23 +3,24 @@
 
 @layer components {
   .dashboard-shell {
-    @apply bg-kappa-paper-2 grid min-h-dvh grid-cols-[256px_minmax(0,1fr)];
+    @apply bg-kappa-paper-2 grid min-h-dvh grid-cols-[232px_minmax(0,1fr)];
   }
   .dashboard-sidebar {
-    @apply bg-kappa-paper-2 border-kappa-rule sticky top-0 flex h-dvh min-w-0 flex-col overflow-y-auto overscroll-contain border-0 border-r border-solid px-5 py-7;
+    @apply bg-kappa-paper-2 border-kappa-rule sticky top-0 flex h-dvh min-w-0 flex-col overflow-y-auto overscroll-contain border-0 border-r border-solid px-3 py-5;
   }
+  /* Compact sidebar: 36px rows on fine pointers, 48px on touch. */
   .dashboard-brand {
-    @apply mb-10 px-3;
+    @apply mb-6 px-2.5;
   }
   .dashboard-navigation {
-    @apply flex flex-col gap-7;
+    @apply flex flex-col gap-4;
   }
   .dashboard-personal-links,
   .dashboard-server-links {
-    @apply flex min-w-0 flex-col gap-1;
+    @apply flex min-w-0 flex-col gap-0.5;
   }
   .dashboard-link {
-    @apply text-kappa-ink-2 rounded-control flex min-h-12 w-full min-w-0 items-center gap-3 border-0 bg-transparent px-3 py-3 text-left text-[14px] leading-[1.4] no-underline;
+    @apply text-kappa-ink-2 rounded-control flex min-h-9 w-full min-w-0 cursor-pointer items-center gap-2.5 border-0 bg-transparent px-2.5 py-1.5 text-left text-[14px] leading-[1.4] no-underline;
     -webkit-user-select: none;
     user-select: none;
   }
@@ -27,7 +28,7 @@
     @apply min-w-0 wrap-anywhere;
   }
   .dashboard-link svg {
-    @apply text-kappa-muted;
+    @apply text-kappa-muted size-[18px] shrink-0;
   }
   .dashboard-link[aria-current="page"] {
     @apply bg-kappa-accent-soft text-kappa-accent font-semibold;
@@ -42,28 +43,25 @@
     @apply cursor-not-allowed opacity-55;
   }
   .dashboard-nav-group {
-    @apply flex min-w-0 flex-col gap-1;
+    @apply flex min-w-0 flex-col gap-0.5;
   }
-  .dashboard-nav-group-label {
-    @apply text-kappa-ink-2 flex min-h-10 items-center gap-3 px-3 text-[14px] font-semibold;
-  }
-  .dashboard-nav-group-label svg {
-    @apply text-kappa-muted;
+  .dashboard-link.dashboard-nav-group-label {
+    @apply font-semibold;
   }
   .dashboard-link.nested {
-    @apply min-h-10 py-2 pl-10;
+    @apply min-h-8 py-1 pl-[34px] text-[13px];
   }
   .dashboard-link.nested svg {
     @apply size-4;
   }
   .dashboard-server-section {
-    @apply border-kappa-rule min-w-0 border-0 border-t border-solid pt-6;
+    @apply border-kappa-rule min-w-0 border-0 border-t border-solid pt-4;
   }
   .dashboard-server-section > .app-field {
-    @apply px-3;
+    @apply gap-1.5 px-2.5;
   }
-  .dashboard-server-section .app-field select {
-    @apply px-3;
+  .dashboard-server-section .app-select-trigger {
+    @apply min-h-9 px-3 py-1.5 text-[14px];
   }
   .dashboard-server-section .app-field-help {
     @apply text-[13px];
@@ -73,10 +71,10 @@
     @apply mt-3;
   }
   .dashboard-server-links {
-    @apply mt-4;
+    @apply mt-3;
   }
   .dashboard-server-name {
-    @apply text-kappa-muted flex min-w-0 items-center gap-2 px-3 pb-2 text-[13px] leading-[1.4];
+    @apply text-kappa-muted flex min-w-0 items-center gap-2 px-2.5 pb-1 text-[13px] leading-[1.4];
   }
   .dashboard-server-name > span:last-child {
     @apply min-w-0 wrap-anywhere;
@@ -85,20 +83,20 @@
     @apply size-6 text-[12px];
   }
   .dashboard-server-links .dashboard-link {
-    @apply pl-6;
+    @apply pl-[34px];
   }
   .dashboard-sidebar-footer {
-    @apply border-kappa-rule mt-auto flex flex-col gap-1 border-0 border-t border-solid pt-5;
+    @apply border-kappa-rule mt-auto flex flex-col gap-0.5 border-0 border-t border-solid pt-3;
   }
   .dashboard-navigation + .dashboard-sidebar-footer {
-    @apply pt-5;
+    @apply pt-3;
     margin-top: auto;
   }
   .dashboard-user {
-    @apply mb-3 flex min-w-0 items-center gap-3 px-3 pt-3;
+    @apply mb-1.5 flex min-w-0 items-center gap-2.5 px-2.5 pt-1;
   }
   .dashboard-user .app-avatar {
-    @apply size-9 text-[16px];
+    @apply size-8 text-[14px];
   }
   .dashboard-user > div {
     @apply flex min-w-0 flex-col gap-1;
@@ -127,14 +125,8 @@
     @apply bg-kappa-paper-3;
   }
   .dashboard-drawer {
-    @apply bg-kappa-paper-2 text-kappa-ink fixed inset-y-0 left-0 m-0 h-dvh max-h-dvh w-[min(320px,calc(100%_-_24px))] max-w-none overflow-y-auto overscroll-contain border-0 px-5 py-5;
-    padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
-  }
-  .dashboard-drawer[open] {
-    @apply flex flex-col;
-  }
-  .dashboard-drawer::backdrop {
-    @apply bg-kappa-backdrop;
+    @apply text-kappa-ink px-3 py-4;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   }
   .dashboard-drawer-header {
     @apply mb-6 flex items-center justify-between gap-3;
@@ -189,6 +181,15 @@
   }
   .dashboard-scope-heading > span:last-child {
     @apply text-kappa-muted text-[14px] wrap-anywhere;
+  }
+  @media (pointer: coarse) {
+    .dashboard-link,
+    .dashboard-link.nested {
+      @apply min-h-12;
+    }
+    .dashboard-server-section .app-select-trigger {
+      @apply min-h-12;
+    }
   }
   @media (hover: hover) and (pointer: fine) {
     .dashboard-link:hover,

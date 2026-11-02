@@ -6,6 +6,7 @@ import {
   PipelinePanel,
   StrongMatchesPanel,
 } from "../../components/home-panels";
+import { buttonVariants } from "../../components/shadcn/button";
 import {
   Avatar,
   HStack,
@@ -75,10 +76,13 @@ const DashboardHome = () => {
             <LoadingNote>Loading your overview…</LoadingNote>
           ) : null}
           <div className="dashboard-home-actions">
-            <Link className="app-button" to="/dashboard/jobs/list">
+            <Link className={buttonVariants()} to="/dashboard/jobs/list">
               View jobs
             </Link>
-            <Link className="app-button subtle" to="/dashboard/settings">
+            <Link
+              className={buttonVariants({ variant: "subtle" })}
+              to="/dashboard/settings"
+            >
               Manage alerts
             </Link>
           </div>

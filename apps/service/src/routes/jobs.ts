@@ -92,6 +92,7 @@ export const jobRoutes = (deps: RouteDeps) => {
         scope: t.Optional(t.String()),
         source: t.Optional(t.String()),
         subscription: t.Optional(t.String()),
+        tracking: t.Optional(t.String()),
       }),
     }
   );

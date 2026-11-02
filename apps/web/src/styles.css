@@ -157,6 +157,21 @@
   .app-button.compact {
     @apply min-h-11 px-4;
   }
+  .app-button {
+    @apply cursor-pointer gap-2;
+  }
+  .app-button svg {
+    @apply size-4 shrink-0;
+  }
+  .app-button.icon {
+    @apply size-10 min-h-10 px-0;
+  }
+  .app-button.ghost {
+    @apply text-kappa-ink-2 border-transparent bg-transparent;
+  }
+  .app-button.ghost:active {
+    @apply bg-kappa-paper-3;
+  }
   .app-button:active {
     @apply bg-kappa-ink;
   }
@@ -187,24 +202,70 @@
   .app-field {
     @apply flex w-full min-w-0 flex-col gap-2;
   }
+  .app-label,
   .app-field label {
     @apply text-[length:var(--text-small)] font-semibold;
   }
-  .app-field :is(input, select, textarea) {
-    @apply border-kappa-input-edge rounded-control bg-kappa-surface text-kappa-ink min-h-12 w-full min-w-0 border border-solid px-4 py-3 text-[length:var(--text-body)] outline-offset-[-3px];
+  /* shadcn Input / Textarea / SelectTrigger share one field recipe. */
+  .app-input {
+    @apply border-kappa-input-edge rounded-control bg-kappa-surface text-kappa-ink min-h-12 w-full min-w-0 border border-solid px-4 py-3 text-left text-[length:var(--text-body)] outline-offset-[-3px];
+    font: inherit;
   }
-  .app-field textarea {
+  .app-textarea {
     @apply min-h-48 resize-y;
   }
-  .app-field input::placeholder,
-  .app-field textarea::placeholder {
+  .app-input::placeholder {
     @apply text-kappa-muted;
   }
-  .app-field :is(input, select, textarea):disabled {
+  .app-input:disabled {
     @apply cursor-not-allowed opacity-55;
   }
-  .app-field [aria-invalid="true"] {
+  .app-input[aria-invalid="true"] {
     @apply border-kappa-error;
+  }
+  .app-select-trigger {
+    @apply flex cursor-pointer items-center justify-between gap-2;
+  }
+  .app-select-trigger > span {
+    @apply min-w-0 truncate;
+  }
+  .app-select-icon {
+    @apply text-kappa-muted size-4 shrink-0;
+  }
+  .app-select-trigger[data-state="open"] .app-select-icon {
+    @apply rotate-180;
+  }
+
+  /* Popovers: Select content and DropdownMenu content. */
+  .app-popover {
+    @apply bg-kappa-surface text-kappa-ink border-kappa-input-edge rounded-control z-50 max-h-[min(360px,var(--radix-select-content-available-height,360px))] min-w-[var(--radix-select-trigger-width,180px)] overflow-y-auto border border-solid p-1;
+  }
+  .app-menu {
+    @apply min-w-44;
+  }
+  .app-menu-label {
+    @apply text-kappa-muted px-2.5 pt-1.5 pb-1 text-[12px] font-semibold;
+  }
+  .app-menu-item {
+    @apply rounded-small text-kappa-ink relative flex min-h-9 cursor-pointer items-center gap-2 py-1.5 pr-8 pl-2.5 text-[14px] outline-none select-none;
+  }
+  .app-menu-item[data-highlighted] {
+    @apply bg-kappa-paper-2;
+  }
+  .app-menu-item[data-state="checked"] {
+    @apply font-semibold;
+  }
+  .app-menu-item[data-disabled] {
+    @apply pointer-events-none opacity-50;
+  }
+  .app-menu-indicator {
+    @apply text-kappa-accent absolute right-2 inline-flex size-4 items-center justify-center;
+  }
+  .app-menu-indicator svg {
+    @apply size-4;
+  }
+  .app-menu-separator {
+    @apply bg-kappa-rule -mx-1 my-1 h-px;
   }
   .app-field-help {
     @apply text-kappa-muted min-h-[1lh] text-[length:var(--text-small)];
@@ -230,6 +291,7 @@
     @apply border-kappa-rule flex gap-2 overflow-x-auto border-0 border-b border-solid pb-3;
   }
   .app-tabs button {
+    @apply cursor-pointer;
     @apply rounded-control text-kappa-muted min-h-11 border-0 bg-transparent px-4 py-0 text-[length:var(--text-small)] whitespace-nowrap;
   }
   .app-tabs button[aria-selected="true"] {
@@ -281,17 +343,59 @@
   .app-table a {
     @apply text-kappa-accent;
   }
-  .app-modal {
-    @apply rounded-panel bg-kappa-surface text-kappa-ink fixed inset-0 m-auto max-h-[calc(100dvh_-_var(--space-xl))] w-[min(640px,calc(100%_-_var(--space-xl)))] border-0 p-8;
+  /* shadcn Dialog / Sheet */
+  .app-dialog-overlay {
+    @apply bg-kappa-backdrop fixed inset-0 z-40;
   }
-  .app-modal::backdrop {
-    @apply bg-kappa-backdrop;
+  .app-dialog {
+    @apply rounded-panel bg-kappa-surface text-kappa-ink fixed top-1/2 left-1/2 z-50 max-h-[calc(100dvh_-_var(--space-xl))] w-[min(640px,calc(100%_-_var(--space-xl)))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto border-0 p-8 outline-none;
+  }
+  .app-dialog-close {
+    @apply absolute top-6 right-6;
   }
   .app-modal-header {
-    @apply mb-6 flex items-start justify-between gap-6;
+    @apply mb-6 flex items-start justify-between gap-6 pr-12;
   }
-  .app-modal-header h2 {
-    @apply text-[length:var(--text-title)];
+  .app-dialog-title {
+    @apply m-0 text-[length:var(--text-title)];
+  }
+  .app-sheet {
+    @apply bg-kappa-paper-2 fixed inset-y-0 left-0 z-50 flex h-dvh w-[min(320px,calc(100%_-_var(--space-xl)))] flex-col overflow-y-auto overscroll-contain px-5 py-6 outline-none;
+  }
+
+  /* shadcn Accordion */
+  .app-accordion-header {
+    @apply m-0;
+  }
+  .app-accordion-trigger {
+    @apply text-kappa-ink flex w-full cursor-pointer items-center justify-between gap-4 border-0 bg-transparent py-5 text-left text-[length:var(--text-body)] font-semibold;
+    font-family: inherit;
+  }
+  .app-accordion-icon {
+    @apply text-kappa-muted size-5 shrink-0 transition-transform;
+  }
+  .app-accordion-trigger[data-state="open"] .app-accordion-icon {
+    @apply rotate-180;
+  }
+  .app-accordion-content > div {
+    @apply pb-5;
+  }
+  .app-accordion-content[data-state="closed"] {
+    @apply hidden;
+  }
+
+  /* shadcn Toaster (sonner) */
+  .app-toast {
+    @apply bg-kappa-ink text-kappa-paper rounded-control flex w-[min(420px,calc(100vw_-_32px))] items-center gap-3 px-4 py-3 text-[14px];
+  }
+  .app-toast-title {
+    @apply font-semibold;
+  }
+  .app-toast-description {
+    @apply opacity-80;
+  }
+  .app-toast-action {
+    @apply bg-kappa-paper text-kappa-ink rounded-small ml-auto min-h-8 shrink-0 cursor-pointer border-0 px-3 text-[13px] font-semibold;
   }
   .app-account-metadata {
     @apply m-0;
@@ -361,8 +465,11 @@
     .app-auth-error {
       @apply mt-6;
     }
-    .app-modal {
+    .app-dialog {
       @apply p-5;
+    }
+    .app-dialog-close {
+      @apply top-3 right-3;
     }
     .app-scope-grid {
       @apply grid-cols-1;
@@ -394,7 +501,7 @@
   @media (hover: hover) and (pointer: fine) {
     .app-nav-link:hover,
     .app-button.subtle:hover,
-    .app-field :is(input, select, textarea):hover,
+    .app-input:hover,
     .app-tabs button:hover {
       @apply bg-kappa-paper-2;
     }
@@ -417,8 +524,12 @@
   @media (pointer: coarse) {
     .app-button,
     .app-tabs button,
-    .app-nav-link {
+    .app-nav-link,
+    .app-menu-item {
       @apply min-h-12;
+    }
+    .app-button.icon {
+      @apply size-12;
     }
   }
 }

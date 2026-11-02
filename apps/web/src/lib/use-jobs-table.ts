@@ -8,10 +8,13 @@ const PAGE_SIZE = 20;
 export const ALL_SOURCES = "All sources";
 export type JobsBase = { scope: "dm" } | { guild: string };
 
+export type TrackingTab = "all" | "untracked" | "tracked";
+
 export interface JobsFilters {
   q: string;
   source: string;
   subscriptionId: number | null;
+  tracking?: TrackingTab;
 }
 
 export const jobsParams = (
@@ -23,6 +26,10 @@ export const jobsParams = (
   q: filters.q.trim() === "" ? undefined : filters.q.trim(),
   source: filters.source === ALL_SOURCES ? undefined : filters.source,
   subscription: filters.subscriptionId ?? undefined,
+  tracking:
+    filters.tracking && filters.tracking !== "all"
+      ? filters.tracking
+      : undefined,
   page,
   pageSize: PAGE_SIZE,
 });
@@ -41,6 +48,7 @@ export const useJobsTable = (base: JobsBase) => {
   const [q, setQ] = useState("");
   const [source, setSource] = useState(ALL_SOURCES);
   const [subscriptionId, setSubscriptionId] = useState<number | null>(null);
+  const [tracking, setTracking] = useState<TrackingTab>("all");
   const [page, setPage] = useState(1);
   const [expandedSummaryId, setExpandedSummaryId] = useState<number | null>(
     null
@@ -51,19 +59,21 @@ export const useJobsTable = (base: JobsBase) => {
     q: debouncedQ,
     source,
     subscriptionId,
+    tracking,
   });
   if (
     previousFilters.q !== debouncedQ ||
     previousFilters.source !== source ||
-    previousFilters.subscriptionId !== subscriptionId
+    previousFilters.subscriptionId !== subscriptionId ||
+    previousFilters.tracking !== tracking
   ) {
-    setPreviousFilters({ q: debouncedQ, source, subscriptionId });
+    setPreviousFilters({ q: debouncedQ, source, subscriptionId, tracking });
     setPage(1);
   }
 
   const jobs = useJobs(
     true,
-    jobsParams(base, { q: debouncedQ, source, subscriptionId }, page)
+    jobsParams(base, { q: debouncedQ, source, subscriptionId, tracking }, page)
   );
   const total = jobs.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -80,6 +90,8 @@ export const useJobsTable = (base: JobsBase) => {
     source,
     setSource,
     subscriptionId,
+    tracking,
+    setTracking,
     // Select values are option IDs, never the mutable display labels.
     selectSubscription: (value: string) =>
       setSubscriptionId(value === "" ? null : Number(value)),

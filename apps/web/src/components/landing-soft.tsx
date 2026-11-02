@@ -2,6 +2,12 @@ import type { ReactNode } from "react";
 
 import { KappaMark } from "./kappa-mark";
 import { ProductShowcase } from "./product-showcase";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "./shadcn/accordion";
 
 import "./landing-soft.css";
 
@@ -65,27 +71,40 @@ export const LandingSoft = ({
       >
         <div className="landing-container landing-faq-grid">
           <h2 id="faq-title">A few things to know.</h2>
-          <div className="landing-faq">
-            <details open>
-              <summary>How do I start?</summary>
-              <p>Sign in with Discord and choose your keywords.</p>
-            </details>
-            <details>
-              <summary>Do I need to upload my CV?</summary>
-              <p>No. CV matching is optional.</p>
-            </details>
-            <details>
-              <summary>Can I use it in a server?</summary>
-              <p>
-                Yes, if you have manage-server permission. Personal CVs stay out
-                of server matches.
-              </p>
-            </details>
-            <details>
-              <summary>Can I pause a subscription?</summary>
-              <p>Yes. You can pause or remove a subscription.</p>
-            </details>
-          </div>
+          {/* shadcn Accordion; answers stay in the HTML for search engines. */}
+          <Accordion
+            className="landing-faq"
+            defaultValue={["start"]}
+            type="multiple"
+          >
+            <AccordionItem value="start">
+              <AccordionTrigger>How do I start?</AccordionTrigger>
+              <AccordionContent forceMount>
+                <p>Sign in with Discord and choose your keywords.</p>
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="cv">
+              <AccordionTrigger>Do I need to upload my CV?</AccordionTrigger>
+              <AccordionContent forceMount>
+                <p>No. CV matching is optional.</p>
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="server">
+              <AccordionTrigger>Can I use it in a server?</AccordionTrigger>
+              <AccordionContent forceMount>
+                <p>
+                  Yes, if you have manage-server permission. Personal CVs stay
+                  out of server matches.
+                </p>
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="pause">
+              <AccordionTrigger>Can I pause a subscription?</AccordionTrigger>
+              <AccordionContent forceMount>
+                <p>Yes. You can pause or remove a subscription.</p>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </div>
       </section>
       <section

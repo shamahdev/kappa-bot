@@ -220,6 +220,7 @@ export interface JobsParams {
   q?: string;
   page?: number;
   pageSize?: number;
+  tracking?: "tracked" | "untracked";
 }
 
 export const fetchJobs = (params: JobsParams): Promise<JobsResponseType> => {
@@ -244,6 +245,9 @@ export const fetchJobs = (params: JobsParams): Promise<JobsResponseType> => {
   }
   if (params.pageSize !== undefined) {
     search.set("pageSize", String(params.pageSize));
+  }
+  if (params.tracking) {
+    search.set("tracking", params.tracking);
   }
   return runApi(
     request(HttpClientRequest.get(`${PATHS.jobs}?${search}`), JobsResponse)

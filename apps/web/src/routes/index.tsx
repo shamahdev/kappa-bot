@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 
 import { LandingSoft } from "../components/landing-soft";
+import { Button } from "../components/shadcn/button";
 import { DiscordLogin } from "../components/ui";
 import { useMe } from "../lib/queries";
 import { useMounted } from "../lib/use-mounted";
@@ -27,15 +28,14 @@ const LandingAction = () => {
   // use the existing dashboard destination.
   if (mounted && me.data) {
     return (
-      <button
-        className="app-button"
+      <Button
         onClick={() => {
           void navigate({ to: "/dashboard" });
         }}
         type="button"
       >
         Open dashboard
-      </button>
+      </Button>
     );
   }
   return <DiscordLogin />;

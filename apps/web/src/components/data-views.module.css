@@ -51,6 +51,9 @@
     @apply wrap-anywhere;
   }
 
+  .trackingTabs {
+    @apply flex min-w-0 flex-col gap-4;
+  }
   /* Filters: search always visible; secondary filters inline on wide screens. */
   .filterToggle {
     @apply hidden;

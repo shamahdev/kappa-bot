@@ -1,7 +1,17 @@
 import { SUBSCRIPTION_SOURCES } from "@kappa/contracts";
 import { jobApplications, jobs, seenJobs, subscriptions } from "@kappa/db";
 import type { Database } from "@kappa/db";
-import { and, count, desc, eq, inArray, ne, sql } from "drizzle-orm";
+import {
+  and,
+  count,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  isNull,
+  ne,
+  sql,
+} from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 
 import {
@@ -37,7 +47,26 @@ export interface JobListingFilters {
   q?: string;
   page?: string;
   pageSize?: string;
+  /** Personal list tabs: only jobs the viewer tracks, or only untracked ones. */
+  tracking?: string;
 }
+
+/** Personal list tabs; the application join is applied by `list`. */
+const trackingFilter = (tracking: string | undefined): SQL | null => {
+  if (tracking === undefined) {
+    return null;
+  }
+  if (tracking === "tracked") {
+    return isNotNull(jobApplications.id);
+  }
+  if (tracking === "untracked") {
+    return isNull(jobApplications.id);
+  }
+  throw new JobSubscriptionError(
+    "VALIDATION",
+    "tracking filter must be tracked or untracked"
+  );
+};
 
 export const createJobQueries = (db: Database) => ({
   /** Account metadata, not a management grant: historical creation count is intentional. */
@@ -152,11 +181,22 @@ export const createJobQueries = (db: Database) => ({
         sql`(${seenJobs.snapshot}->>'title' ILIKE ${pattern} OR ${seenJobs.snapshot}->>'company' ILIKE ${pattern})`
       );
     }
+    const tracking = trackingFilter(query.tracking);
+    if (tracking) {
+      filters.push(tracking);
+    }
     const where = and(...filters);
+    // The viewer's own tracking card (unique per user and posting).
+    const applicationJoin = and(
+      eq(jobApplications.userId, actor.userId),
+      eq(jobApplications.source, seenJobs.source),
+      eq(jobApplications.externalId, seenJobs.externalId)
+    );
     const [total] = await db
       .select({ total: count() })
       .from(seenJobs)
       .innerJoin(subscriptions, eq(seenJobs.subscriptionId, subscriptions.id))
+      .leftJoin(jobApplications, applicationJoin)
       .where(where);
     const rows = await db
       .select({
@@ -170,15 +210,7 @@ export const createJobQueries = (db: Database) => ({
       .from(seenJobs)
       .innerJoin(subscriptions, eq(seenJobs.subscriptionId, subscriptions.id))
       .leftJoin(jobs, eq(seenJobs.jobId, jobs.id))
-      // The viewer's own tracking card (unique per user and posting).
-      .leftJoin(
-        jobApplications,
-        and(
-          eq(jobApplications.userId, actor.userId),
-          eq(jobApplications.source, seenJobs.source),
-          eq(jobApplications.externalId, seenJobs.externalId)
-        )
-      )
+      .leftJoin(jobApplications, applicationJoin)
       .where(where)
       .orderBy(desc(seenJobs.firstSeenAt), desc(seenJobs.id))
       .limit(pageSize)

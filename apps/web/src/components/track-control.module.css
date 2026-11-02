@@ -6,50 +6,60 @@
     @apply flex min-w-0 flex-col items-start gap-1;
   }
   .trackControl {
-    --status: var(--color-status-archive);
-    @apply border-kappa-rule bg-kappa-surface text-kappa-ink relative inline-flex min-h-9 items-center rounded-full border border-solid;
+    @apply border-kappa-rule bg-kappa-surface text-kappa-ink inline-flex min-h-9 cursor-pointer items-center gap-2 rounded-full border border-solid py-1 pr-2.5 pl-3 text-[13px] font-semibold whitespace-nowrap;
+    font-family: inherit;
+  }
+  .trackControl:disabled {
+    @apply cursor-progress opacity-60;
   }
   .trackControl.untracked {
     @apply text-kappa-muted border-dashed;
   }
-  .trackControl select {
-    @apply min-h-9 cursor-pointer appearance-none border-0 bg-transparent py-1 pr-8 pl-7 text-[13px] font-semibold text-inherit;
-    font-family: inherit;
+  .trackControl[data-state="open"] .chevron {
+    @apply rotate-180;
   }
-  .trackControl select:disabled {
-    @apply cursor-progress opacity-60;
+  .chevron {
+    @apply text-kappa-muted size-3.5 shrink-0;
   }
-  .trackControl > svg {
-    @apply text-kappa-muted pointer-events-none absolute right-2.5;
-  }
+  /* Dots carry the pipeline hue (never the grade hues). */
   .statusDot {
-    @apply pointer-events-none absolute left-3 size-2 rounded-full;
+    --status: var(--color-status-archive);
+    @apply size-2 shrink-0 rounded-full;
     background: var(--status);
   }
   .untracked .statusDot {
     @apply border-kappa-muted border border-solid bg-transparent;
   }
-  .trackControl[data-status="bookmark"] {
+  [data-status="bookmark"] > .statusDot,
+  .statusDot[data-status="bookmark"] {
     --status: var(--color-status-bookmark);
   }
-  .trackControl[data-status="applied"] {
+  [data-status="applied"] > .statusDot,
+  .statusDot[data-status="applied"] {
     --status: var(--color-status-applied);
   }
-  .trackControl[data-status="interview"] {
+  [data-status="interview"] > .statusDot,
+  .statusDot[data-status="interview"] {
     --status: var(--color-status-interview);
   }
-  .trackControl[data-status="offer"] {
+  [data-status="offer"] > .statusDot,
+  .statusDot[data-status="offer"] {
     --status: var(--color-status-offer);
   }
-  .trackControl[data-status="rejected"] {
+  [data-status="rejected"] > .statusDot,
+  .statusDot[data-status="rejected"] {
     --status: var(--color-status-rejected);
   }
   .trackError {
     @apply text-kappa-error m-0 text-[13px];
   }
+  @media (hover: hover) {
+    .trackControl:hover {
+      @apply border-kappa-input-edge;
+    }
+  }
   @media (pointer: coarse) {
-    .trackControl,
-    .trackControl select {
+    .trackControl {
       @apply min-h-12;
     }
   }

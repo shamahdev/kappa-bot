@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import { renderToString } from "react-dom/server";
 
-import { DiscordLogin, Modal, StatusDot, Tabs } from "./ui";
+import { DiscordLogin, StatusDot, Tabs } from "./ui";
 
 describe("shared UI semantics", () => {
   test("Discord authentication actions include the official symbol and destination", () => {
@@ -13,27 +13,6 @@ describe("shared UI semantics", () => {
     expect(html).toContain('alt=""');
     expect(html).toContain("discord-symbol-white.svg");
   });
-  test("dialogs keep Close unless the form already supplies Cancel", () => {
-    const summary = renderToString(
-      <Modal onClose={() => {}} open title="Job summary">
-        Summary text
-      </Modal>
-    );
-    expect(summary).toContain('aria-label="Close dialog"');
-    const form = renderToString(
-      <Modal
-        onClose={() => {}}
-        open
-        showCloseButton={false}
-        title="Edit subscription"
-      >
-        <button type="button">Cancel</button>
-      </Modal>
-    );
-    expect(form).toContain(">Cancel<");
-    expect(form).not.toContain('aria-label="Close dialog"');
-  });
-
   test("status includes visible text, not only an accessible dot label", () => {
     expect(renderToString(<StatusDot label="Paused" on={false} />)).toContain(
       ">Paused<"

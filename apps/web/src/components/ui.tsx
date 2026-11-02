@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { useEffect, useId, useRef } from "react";
+import { useId } from "react";
 import type {
   CSSProperties,
   ChangeEventHandler,
@@ -12,6 +12,30 @@ import type {
 import discordSymbol from "../assets/brands/discord-symbol-white.svg";
 import { loginUrl } from "../lib/api";
 import { ApiError, apiMessage } from "../lib/queries";
+import { Badge as ShadcnBadge } from "./shadcn/badge";
+import { Button as ShadcnButton } from "./shadcn/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "./shadcn/dialog";
+import { Input } from "./shadcn/input";
+import { Label } from "./shadcn/label";
+import {
+  Select as ShadcnSelect,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./shadcn/select";
+import {
+  Tabs as ShadcnTabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "./shadcn/tabs";
+import { Textarea } from "./shadcn/textarea";
 
 type LayoutProps = HTMLAttributes<HTMLElement> & {
   as?: ElementType;
@@ -73,6 +97,7 @@ export const Text = ({
   />
 );
 
+// App-facing primitives keep their props; all are built on shadcn components.
 export const Button = ({
   variant = "primary",
   small = false,
@@ -92,29 +117,36 @@ export const Button = ({
   href?: string;
   children: ReactNode;
 }) => {
-  const className = `app-button ${variant === "brand" ? "primary" : variant} ${small ? "compact" : ""}`;
+  const look = {
+    size: small ? ("sm" as const) : ("default" as const),
+    variant:
+      variant === "primary" || variant === "brand"
+        ? ("default" as const)
+        : variant,
+  };
   if (href) {
     return (
-      <a
-        aria-busy={loading || undefined}
-        aria-disabled={disabled || undefined}
-        className={className}
-        href={disabled ? undefined : href}
-      >
-        {children}
-      </a>
+      <ShadcnButton asChild {...look}>
+        <a
+          aria-busy={loading || undefined}
+          aria-disabled={disabled || undefined}
+          href={disabled ? undefined : href}
+        >
+          {children}
+        </a>
+      </ShadcnButton>
     );
   }
   return (
-    <button
+    <ShadcnButton
       aria-busy={loading || undefined}
-      className={className}
       disabled={disabled || loading}
       onClick={onClick}
       type={type === "submit" ? "submit" : "button"}
+      {...look}
     >
       {children}
-    </button>
+    </ShadcnButton>
   );
 };
 
@@ -125,14 +157,34 @@ export const DiscordLogin = ({
   label?: string;
   small?: boolean;
 }) => (
-  <a
-    className={`app-button discord-login ${small ? "compact" : ""}`}
-    href={loginUrl}
-  >
-    <img alt="" aria-hidden="true" height="19" src={discordSymbol} width="25" />
-    {label}
-  </a>
+  <ShadcnButton asChild size={small ? "sm" : "default"} variant="discord">
+    <a href={loginUrl}>
+      <img
+        alt=""
+        aria-hidden="true"
+        height="19"
+        src={discordSymbol}
+        width="25"
+      />
+      {label}
+    </a>
+  </ShadcnButton>
 );
+
+const FieldHelp = ({
+  id,
+  text,
+  error = false,
+}: {
+  id: string;
+  text?: string;
+  error?: boolean;
+}) =>
+  text ? (
+    <p className={`app-field-help ${error ? "app-error-text" : ""}`} id={id}>
+      {text}
+    </p>
+  ) : null;
 
 export const TextInput = ({
   label,
@@ -156,8 +208,8 @@ export const TextInput = ({
   const id = useId();
   return (
     <div className="app-field">
-      <label htmlFor={id}>{label}</label>
-      <input
+      <Label htmlFor={id}>{label}</Label>
+      <Input
         aria-describedby={description || error ? `${id}-help` : undefined}
         aria-invalid={Boolean(error) || undefined}
         autoComplete={autoComplete}
@@ -168,17 +220,19 @@ export const TextInput = ({
         placeholder={placeholder}
         value={value}
       />
-      {description || error ? (
-        <p
-          className={`app-field-help ${error ? "app-error-text" : ""}`}
-          id={`${id}-help`}
-        >
-          {error || description}
-        </p>
-      ) : null}
+      <FieldHelp
+        error={Boolean(error)}
+        id={`${id}-help`}
+        text={error || description}
+      />
     </div>
   );
 };
+
+// Radix Select reserves "" for "no value"; app options may use "" (e.g. "All").
+const EMPTY_OPTION = "__kappa_empty__";
+const toItem = (value: string) => (value === "" ? EMPTY_OPTION : value);
+const fromItem = (value: string) => (value === EMPTY_OPTION ? "" : value);
 
 export const Select = ({
   label,
@@ -196,34 +250,32 @@ export const Select = ({
   disabled?: boolean;
 }) => {
   const id = useId();
+  const items = options.map((option) =>
+    typeof option === "string" ? { label: option, value: option } : option
+  );
   return (
     <div className="app-field">
-      <label htmlFor={id}>{label}</label>
-      <select
-        aria-describedby={description ? `${id}-help` : undefined}
+      <Label htmlFor={id}>{label}</Label>
+      <ShadcnSelect
         disabled={disabled}
-        id={id}
-        name={label.toLowerCase()}
-        onChange={(event) => onChange(event.target.value)}
-        value={value}
+        onValueChange={(next) => onChange(fromItem(next))}
+        value={toItem(value)}
       >
-        {options.map((option) => {
-          const item =
-            typeof option === "string"
-              ? { value: option, label: option }
-              : option;
-          return (
-            <option key={item.value} value={item.value}>
+        <SelectTrigger
+          aria-describedby={description ? `${id}-help` : undefined}
+          id={id}
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {items.map((item) => (
+            <SelectItem key={item.value} value={toItem(item.value)}>
               {item.label}
-            </option>
-          );
-        })}
-      </select>
-      {description ? (
-        <p className="app-field-help" id={`${id}-help`}>
-          {description}
-        </p>
-      ) : null}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </ShadcnSelect>
+      <FieldHelp id={`${id}-help`} text={description} />
     </div>
   );
 };
@@ -248,8 +300,8 @@ export const TextArea = ({
   const id = useId();
   return (
     <div className="app-field">
-      <label htmlFor={id}>{label}</label>
-      <textarea
+      <Label htmlFor={id}>{label}</Label>
+      <Textarea
         aria-describedby={description || error ? `${id}-help` : undefined}
         aria-invalid={Boolean(error) || undefined}
         disabled={disabled}
@@ -259,14 +311,11 @@ export const TextArea = ({
         placeholder={placeholder}
         value={value}
       />
-      {description || error ? (
-        <p
-          className={`app-field-help ${error ? "app-error-text" : ""}`}
-          id={`${id}-help`}
-        >
-          {error || description}
-        </p>
-      ) : null}
+      <FieldHelp
+        error={Boolean(error)}
+        id={`${id}-help`}
+        text={error || description}
+      />
     </div>
   );
 };
@@ -301,77 +350,41 @@ export const Badge = ({
 }: {
   children: ReactNode;
   strong?: boolean;
-}) => <span className={`app-badge ${strong ? "strong" : ""}`}>{children}</span>;
+}) => (
+  <ShadcnBadge variant={strong ? "strong" : "default"}>{children}</ShadcnBadge>
+);
 export const StatusDot = ({ on, label }: { on: boolean; label: string }) => (
-  <span className={`app-status ${on ? "active" : ""}`}>{label}</span>
+  <ShadcnBadge className="app-status" variant={on ? "strong" : "default"}>
+    {label}
+  </ShadcnBadge>
 );
 
 export const Tabs = ({
   value,
   onChange,
   tabs,
+  label = "Page views",
 }: {
   value: string;
   onChange: (value: string) => void;
   tabs: { value: string; label: string; content: ReactNode }[];
-}) => {
-  const id = useId();
-  const buttons = useRef<(HTMLButtonElement | null)[]>([]);
-  return (
-    <VStack gap={4}>
-      <div aria-label="Page views" className="app-tabs" role="tablist">
-        {tabs.map((tab, index) => (
-          <button
-            aria-controls={`${id}-${tab.value}-panel`}
-            aria-selected={value === tab.value}
-            id={`${id}-${tab.value}-tab`}
-            key={tab.value}
-            onClick={() => onChange(tab.value)}
-            onKeyDown={(event) => {
-              let next: number | undefined;
-              if (event.key === "ArrowRight") {
-                next = (index + 1) % tabs.length;
-              }
-              if (event.key === "ArrowLeft") {
-                next = (index - 1 + tabs.length) % tabs.length;
-              }
-              if (event.key === "Home") {
-                next = 0;
-              }
-              if (event.key === "End") {
-                next = tabs.length - 1;
-              }
-              if (next !== undefined) {
-                event.preventDefault();
-                onChange(tabs[next].value);
-                buttons.current[next]?.focus();
-              }
-            }}
-            ref={(element) => {
-              buttons.current[index] = element;
-            }}
-            role="tab"
-            tabIndex={value === tab.value ? 0 : -1}
-            type="button"
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+  label?: string;
+}) => (
+  <ShadcnTabs className="app-stack" onValueChange={onChange} value={value}>
+    <TabsList aria-label={label}>
       {tabs.map((tab) => (
-        <div
-          aria-labelledby={`${id}-${tab.value}-tab`}
-          hidden={value !== tab.value}
-          id={`${id}-${tab.value}-panel`}
-          key={tab.value}
-          role="tabpanel"
-        >
-          {value === tab.value ? tab.content : null}
-        </div>
+        <TabsTrigger key={tab.value} value={tab.value}>
+          {tab.label}
+        </TabsTrigger>
       ))}
-    </VStack>
-  );
-};
+    </TabsList>
+    {tabs.map((tab) => (
+      <TabsContent key={tab.value} value={tab.value}>
+        {tab.content}
+      </TabsContent>
+    ))}
+  </ShadcnTabs>
+);
 
 export const PageHeader = ({
   title,
@@ -449,61 +462,23 @@ export const Modal = ({
   title: string;
   children: ReactNode;
   showCloseButton?: boolean;
-}) => {
-  const dialog = useRef<HTMLDialogElement>(null);
-  const id = useId();
-  useEffect(() => {
-    const element = dialog.current;
-    if (!element) {
-      return;
-    }
-    if (open && !element.open) {
-      element.showModal();
-    }
-    if (!open && element.open) {
-      element.close();
-    }
-    const closeOnBackdrop = (event: MouseEvent) => {
-      if (event.target !== element) {
-        return;
-      }
-      const bounds = element.getBoundingClientRect();
-      if (
-        event.clientX < bounds.left ||
-        event.clientX > bounds.right ||
-        event.clientY < bounds.top ||
-        event.clientY > bounds.bottom
-      ) {
+}) => (
+  <Dialog
+    onOpenChange={(next) => {
+      if (!next) {
         onClose();
       }
-    };
-    element.addEventListener("click", closeOnBackdrop);
-    return () => element.removeEventListener("click", closeOnBackdrop);
-  }, [open, onClose]);
-  return (
-    <dialog
-      aria-labelledby={id}
-      className="app-modal"
-      onCancel={(event) => {
-        event.preventDefault();
-        onClose();
-      }}
-      ref={dialog}
-    >
+    }}
+    open={open}
+  >
+    <DialogContent showCloseButton={showCloseButton}>
       <header className="app-modal-header">
-        <h2 id={id}>{title}</h2>
-        {showCloseButton ? (
-          <button
-            aria-label="Close dialog"
-            className="app-button subtle compact"
-            onClick={onClose}
-            type="button"
-          >
-            Close
-          </button>
-        ) : null}
+        <DialogTitle>{title}</DialogTitle>
       </header>
-      {open ? children : null}
-    </dialog>
-  );
-};
+      {/* Radix requires a description slot; the body itself describes. */}
+      <DialogDescription asChild>
+        <div>{children}</div>
+      </DialogDescription>
+    </DialogContent>
+  </Dialog>
+);

@@ -1,11 +1,12 @@
 import { Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { guildIconUrl, userAvatarUrl } from "../lib/api";
 import { useGuilds, useLogout, useRequireAuth } from "../lib/queries";
 import { DashboardIcon } from "./dashboard-icon";
 import type { DashboardIconName } from "./dashboard-icon";
 import { KappaMark } from "./kappa-mark";
+import { Sheet, SheetClose, SheetContent, SheetTitle } from "./shadcn/sheet";
 import { Avatar, LoadingNote, QueryError, Select } from "./ui";
 
 import "./dashboard-shell.css";
@@ -51,6 +52,7 @@ const PersonalNavigation = ({
   close: () => void;
 }) => {
   const path = pathname.replace(/\/$/u, "");
+  const navigate = useNavigate();
   return (
     <div className="dashboard-personal-links">
       <NavLink
@@ -63,10 +65,24 @@ const PersonalNavigation = ({
         close={close}
       />
       <div className="dashboard-nav-group">
-        <span className="dashboard-nav-group-label">
+        {/* The group heading links to the Jobs dashboard. A plain anchor with
+            client navigation: the router would mark it current alongside the
+            nested Dashboard item. */}
+        <a
+          className="dashboard-link dashboard-nav-group-label"
+          href="/dashboard/jobs"
+          onClick={(event) => {
+            if (event.metaKey || event.ctrlKey || event.shiftKey) {
+              return;
+            }
+            event.preventDefault();
+            close();
+            void navigate({ to: "/dashboard/jobs" });
+          }}
+        >
           <DashboardIcon name="jobs" />
           <span>Jobs</span>
-        </span>
+        </a>
         {JOB_LINKS.map((link) => (
           <NavLink
             key={link.to}
@@ -258,8 +274,6 @@ export const DashboardShell = () => {
     ? pathname.split("/")[3]
     : undefined;
   const selectedGuildId = routeGuildId ?? pickedGuildId;
-  const drawer = useRef<HTMLDialogElement>(null);
-  const menuButton = useRef<HTMLButtonElement>(null);
   const close = () => setMobileOpen(false);
 
   const [previousPathname, setPreviousPathname] = useState(pathname);
@@ -270,24 +284,11 @@ export const DashboardShell = () => {
       setPickedGuildId(routeGuildId);
     }
   }
-  useEffect(() => {
-    const element = drawer.current;
-    if (!element) {
-      return;
-    }
-    if (mobileOpen && !element.open) {
-      element.showModal();
-    }
-    if (!mobileOpen && element.open) {
-      element.close();
-    }
-  }, [mobileOpen]);
+  // The drawer is mobile-only: close it if the viewport grows to desktop.
   useEffect(() => {
     if (!mobileOpen) {
       return;
     }
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
     const desktop = window.matchMedia("(min-width: 60rem)");
     const closeOnDesktop = () => {
       if (desktop.matches) {
@@ -295,34 +296,8 @@ export const DashboardShell = () => {
       }
     };
     desktop.addEventListener("change", closeOnDesktop);
-    return () => {
-      document.body.style.overflow = previous;
-      desktop.removeEventListener("change", closeOnDesktop);
-    };
+    return () => desktop.removeEventListener("change", closeOnDesktop);
   }, [mobileOpen]);
-
-  useEffect(() => {
-    const element = drawer.current;
-    if (!element) {
-      return;
-    }
-    const closeOnBackdrop = (event: MouseEvent) => {
-      if (event.target !== element) {
-        return;
-      }
-      const bounds = element.getBoundingClientRect();
-      if (
-        event.clientX > bounds.right ||
-        event.clientX < bounds.left ||
-        event.clientY < bounds.top ||
-        event.clientY > bounds.bottom
-      ) {
-        setMobileOpen(false);
-      }
-    };
-    element.addEventListener("click", closeOnBackdrop);
-    return () => element.removeEventListener("click", closeOnBackdrop);
-  }, []);
   let content = <LoadingNote>Loading dashboard…</LoadingNote>;
   if (me.isError) {
     content = <QueryError error={me.error} />;
@@ -357,12 +332,10 @@ export const DashboardShell = () => {
             kappa
           </Link>
           <button
-            ref={menuButton}
             type="button"
             className="dashboard-menu-button"
             aria-label="Open navigation"
             aria-expanded={mobileOpen}
-            aria-controls="dashboard-mobile-navigation"
             onClick={() => setMobileOpen(true)}
           >
             <DashboardIcon name="menu" />
@@ -372,44 +345,29 @@ export const DashboardShell = () => {
           {content}
         </main>
       </div>
-      <dialog
-        ref={drawer}
-        id="dashboard-mobile-navigation"
-        className="dashboard-drawer"
-        aria-label="Dashboard navigation"
-        onCancel={(event) => {
-          event.preventDefault();
-          close();
-        }}
-        onClose={() => {
-          setMobileOpen(false);
-          menuButton.current?.focus();
-        }}
-      >
-        {mobileOpen ? (
-          <>
-            <div className="dashboard-drawer-header">
-              <Link aria-label="Kappa home" className="app-wordmark" to="/">
-                <KappaMark />
-                kappa
-              </Link>
-              <button
-                type="button"
-                className="dashboard-menu-button"
-                aria-label="Close navigation"
-                onClick={close}
-              >
-                <DashboardIcon name="close" />
-              </button>
-            </div>
-            <SidebarContent
-              close={close}
-              selectedGuildId={selectedGuildId}
-              selectGuild={setPickedGuildId}
-            />
-          </>
-        ) : null}
-      </dialog>
+      {/* shadcn Sheet: focus-trapped, Escape/overlay close, scroll lock. */}
+      <Sheet onOpenChange={setMobileOpen} open={mobileOpen}>
+        <SheetContent aria-describedby={undefined} className="dashboard-drawer">
+          <SheetTitle className="sr-only">Dashboard navigation</SheetTitle>
+          <div className="dashboard-drawer-header">
+            <Link aria-label="Kappa home" className="app-wordmark" to="/">
+              <KappaMark />
+              kappa
+            </Link>
+            <SheetClose
+              aria-label="Close navigation"
+              className="dashboard-menu-button"
+            >
+              <DashboardIcon name="close" />
+            </SheetClose>
+          </div>
+          <SidebarContent
+            close={close}
+            selectedGuildId={selectedGuildId}
+            selectGuild={setPickedGuildId}
+          />
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };

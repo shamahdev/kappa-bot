@@ -13,6 +13,7 @@ import type { ReactNode } from "react";
 
 import "../styles.css";
 import { KappaMark } from "../components/kappa-mark";
+import { Toaster } from "../components/shadcn/sonner";
 import { Button, DiscordLogin } from "../components/ui";
 import { useLogout, useMe } from "../lib/queries";
 import { useMounted } from "../lib/use-mounted";
@@ -113,6 +114,7 @@ const RootComponent = () => {
               </main>
             </div>
           )}
+          <Toaster />
         </QueryClientProvider>
         <Scripts />
       </body>

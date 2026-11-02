@@ -5,10 +5,12 @@ import { useId, useState } from "react";
 import type { SubscriptionDtoType } from "../lib/api";
 import { fullDate, relativeDay } from "../lib/format";
 import { ALL_SOURCES, useJobsTable } from "../lib/use-jobs-table";
-import type { JobsBase } from "../lib/use-jobs-table";
+import type { JobsBase, TrackingTab } from "../lib/use-jobs-table";
 import { DashboardIcon } from "./dashboard-icon";
 import { Markdown } from "./markdown";
 import { FactorScore, GradeChip } from "./score";
+import { Button as ShadcnButton } from "./shadcn/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./shadcn/tabs";
 import { TrackControl } from "./track-control";
 import {
   Button,
@@ -32,6 +34,11 @@ const CONCRETE_SOURCES = SUBSCRIPTION_SOURCES.filter(
 const subLabel = (sub: SubscriptionDtoType): string =>
   `#${sub.id}, ${sub.source}, ${sub.keywords ?? "—"}`;
 const titleOf = (job: JobDtoType) => job.title ?? "Untitled posting";
+const TRACKING_TABS: { value: TrackingTab; label: string }[] = [
+  { label: "All", value: "all" },
+  { label: "Not tracked", value: "untracked" },
+  { label: "Tracked", value: "tracked" },
+];
 
 export const MatchBreakdownPanel = ({
   breakdown,
@@ -233,86 +240,44 @@ const Pager = ({
   </div>
 );
 
-export const JobsTable = ({
-  base,
-  subscriptions,
+const EMPTY_MESSAGES: Record<TrackingTab, { title: string; body: string }> = {
+  all: { body: "New deliveries appear here.", title: "No jobs delivered yet" },
+  tracked: {
+    body: "Set a status on a job to track it on your board.",
+    title: "No tracked jobs yet",
+  },
+  untracked: {
+    body: "Every delivered job is already on your board.",
+    title: "Nothing left to triage",
+  },
+};
+const FILTERED_MESSAGE = {
+  body: "Try widening the search.",
+  title: "No jobs match these filters",
+};
+
+type JobsTableState = ReturnType<typeof useJobsTable>;
+
+const JobsResults = ({
+  table,
+  personal,
 }: {
-  base: JobsBase;
-  subscriptions: readonly SubscriptionDtoType[];
+  table: JobsTableState;
+  personal: boolean;
 }) => {
   const {
-    q,
-    setQ,
-    source,
-    setSource,
-    subscriptionId,
-    selectSubscription,
-    page,
-    previousPage,
-    nextPage,
-    expandedSummaryId,
-    toggleSummary,
     jobs,
-    total,
-    totalPages,
     filtered,
     clearFilters,
-  } = useJobsTable(base);
-  const [showFilters, setShowFilters] = useState(false);
-  const personal = "scope" in base;
-  const activeFilters =
-    (source === ALL_SOURCES ? 0 : 1) + (subscriptionId === null ? 0 : 1);
-  const closeSummary = () => {
-    if (expandedSummaryId !== null) {
-      toggleSummary(expandedSummaryId);
-    }
-  };
-  const expandedJob = jobs.data?.jobs.find(
-    (job) => job.id === expandedSummaryId
-  );
-  const emptyMessage = filtered
-    ? { title: "No jobs match these filters", body: "Try widening the search." }
-    : { title: "No jobs delivered yet", body: "New deliveries appear here." };
+    toggleSummary,
+    nextPage,
+    previousPage,
+  } = table;
+  const empty = filtered
+    ? FILTERED_MESSAGE
+    : EMPTY_MESSAGES[personal ? table.tracking : "all"];
   return (
     <VStack gap={4}>
-      <div className={styles.filters}>
-        <TextInput
-          label="Search"
-          onChange={(event) => setQ(event.target.value)}
-          placeholder="Title or company"
-          value={q}
-        />
-        {/* Phones collapse the secondary filters behind one toggle. */}
-        <button
-          aria-expanded={showFilters}
-          className={`app-button subtle ${styles.filterToggle}`}
-          onClick={() => setShowFilters((value) => !value)}
-          type="button"
-        >
-          <DashboardIcon name="settings" size={16} />
-          Filters{activeFilters > 0 ? ` (${activeFilters})` : ""}
-        </button>
-        <div className={styles.moreFilters} data-open={showFilters}>
-          <Select
-            label="Source"
-            onChange={setSource}
-            options={[ALL_SOURCES, ...CONCRETE_SOURCES]}
-            value={source}
-          />
-          <Select
-            label="Subscription"
-            onChange={selectSubscription}
-            options={[
-              { value: "", label: ALL_SUBSCRIPTIONS },
-              ...subscriptions.map((sub) => ({
-                value: String(sub.id),
-                label: subLabel(sub),
-              })),
-            ]}
-            value={subscriptionId === null ? "" : String(subscriptionId)}
-          />
-        </div>
-      </div>
       {jobs.isPending ? <LoadingNote /> : null}
       {jobs.isFetching && !jobs.isPending ? (
         <LoadingNote>Updating jobs…</LoadingNote>
@@ -327,8 +292,8 @@ export const JobsTable = ({
               </Button>
             ) : undefined
           }
-          body={emptyMessage.body}
-          title={emptyMessage.title}
+          body={empty.body}
+          title={empty.title}
         />
       ) : null}
       {jobs.isSuccess && jobs.data.jobs.length > 0 ? (
@@ -353,14 +318,117 @@ export const JobsTable = ({
             busy={jobs.isFetching}
             onNext={nextPage}
             onPrevious={previousPage}
-            page={page}
-            total={total}
-            totalPages={totalPages}
+            page={table.page}
+            total={table.total}
+            totalPages={table.totalPages}
           />
         </div>
       ) : null}
+    </VStack>
+  );
+};
+
+const FilterBar = ({
+  table,
+  subscriptions,
+}: {
+  table: JobsTableState;
+  subscriptions: readonly SubscriptionDtoType[];
+}) => {
+  const [showFilters, setShowFilters] = useState(false);
+  const { setSource, selectSubscription } = table;
+  const activeFilters =
+    (table.source === ALL_SOURCES ? 0 : 1) +
+    (table.subscriptionId === null ? 0 : 1);
+  return (
+    <div className={styles.filters}>
+      <TextInput
+        label="Search"
+        onChange={(event) => table.setQ(event.target.value)}
+        placeholder="Title or company"
+        value={table.q}
+      />
+      {/* Phones collapse the secondary filters behind one toggle. */}
+      <ShadcnButton
+        aria-expanded={showFilters}
+        className={styles.filterToggle}
+        onClick={() => setShowFilters((value) => !value)}
+        variant="subtle"
+      >
+        <DashboardIcon name="settings" size={16} />
+        Filters{activeFilters > 0 ? ` (${activeFilters})` : ""}
+      </ShadcnButton>
+      <div className={styles.moreFilters} data-open={showFilters}>
+        <Select
+          label="Source"
+          onChange={setSource}
+          options={[ALL_SOURCES, ...CONCRETE_SOURCES]}
+          value={table.source}
+        />
+        <Select
+          label="Subscription"
+          onChange={selectSubscription}
+          options={[
+            { value: "", label: ALL_SUBSCRIPTIONS },
+            ...subscriptions.map((sub) => ({
+              value: String(sub.id),
+              label: subLabel(sub),
+            })),
+          ]}
+          value={
+            table.subscriptionId === null ? "" : String(table.subscriptionId)
+          }
+        />
+      </div>
+    </div>
+  );
+};
+
+export const JobsTable = ({
+  base,
+  subscriptions,
+}: {
+  base: JobsBase;
+  subscriptions: readonly SubscriptionDtoType[];
+}) => {
+  const table = useJobsTable(base);
+  const personal = "scope" in base;
+  const { expandedSummaryId, toggleSummary, jobs } = table;
+  const expandedJob = jobs.data?.jobs.find(
+    (job) => job.id === expandedSummaryId
+  );
+  const results = <JobsResults personal={personal} table={table} />;
+  return (
+    <VStack gap={4}>
+      <FilterBar subscriptions={subscriptions} table={table} />
+      {personal ? (
+        <Tabs
+          className={styles.trackingTabs}
+          onValueChange={(value) => table.setTracking(value as TrackingTab)}
+          value={table.tracking}
+        >
+          <TabsList aria-label="Filter by tracking">
+            {TRACKING_TABS.map((tab) => (
+              <TabsTrigger key={tab.value} value={tab.value}>
+                {tab.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+          {TRACKING_TABS.map((tab) => (
+            <TabsContent key={tab.value} value={tab.value}>
+              {results}
+            </TabsContent>
+          ))}
+        </Tabs>
+      ) : (
+        results
+      )}
       <Modal
-        onClose={closeSummary}
+        onClose={() => {
+          if (expandedSummaryId !== null) {
+            toggleSummary(expandedSummaryId);
+          }
+        }}
         open={Boolean(expandedJob?.aiSummary)}
         title={expandedJob ? titleOf(expandedJob) : "Job summary"}
       >
