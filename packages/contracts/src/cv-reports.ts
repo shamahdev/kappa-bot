@@ -52,6 +52,9 @@ export const CvReportJob = Schema.Struct({
   company: Schema.String,
   // null: the posting had no description to assess.
   grade: Schema.NullOr(MatchGrade),
+  // The delivered job it came from, so the dashboard can track it. Reports
+  // created before this field existed omit it.
+  seenJobId: Schema.optional(Schema.NullOr(Schema.Number)),
   source: Schema.String,
   title: Schema.String,
   url: Schema.String,

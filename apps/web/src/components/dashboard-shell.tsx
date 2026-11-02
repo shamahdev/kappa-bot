@@ -32,6 +32,8 @@ const NavLink = ({
 }) => (
   <Link
     to={to}
+    // Exact: otherwise the router marks parents (/dashboard) active on every child.
+    activeOptions={{ exact: true }}
     aria-current={current ? "page" : undefined}
     className={`dashboard-link ${nested ? "nested" : ""}`}
     onClick={close}

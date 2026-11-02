@@ -11,6 +11,7 @@ import { Link } from "@tanstack/react-router";
 import { useId, useState } from "react";
 import type { DragEvent } from "react";
 
+import { fullDate, relativeDay } from "../lib/format";
 import {
   apiMessage,
   useApplications,
@@ -19,7 +20,6 @@ import {
 } from "../lib/queries";
 import { DashboardIcon } from "./dashboard-icon";
 import { GradeBadge } from "./score";
-import { formatDate } from "./subscriptions";
 import { Button, EmptyList, LoadingNote, QueryError } from "./ui";
 
 import "./application-board.css";
@@ -59,20 +59,23 @@ const CardActions = ({ application }: { application: ApplicationDtoType }) => {
   }
   return (
     <div className="board-card-actions">
-      {/* Keyboard/touch alternative to dragging. */}
+      {/* Keyboard/touch alternative to dragging: lists only the other statuses. */}
       <select
-        aria-label={`Status for ${title}`}
-        className="board-card-status"
-        value={application.status}
+        aria-label={`Move ${title} to another status`}
+        className="board-card-move"
+        value=""
         disabled={move.isPending}
-        onChange={(event) =>
-          move.mutate({
-            id: application.id,
-            status: event.target.value as ApplicationStatusType,
-          })
-        }
+        onChange={(event) => {
+          const status = event.target.value as ApplicationStatusType;
+          if (status) {
+            move.mutate({ id: application.id, status });
+          }
+        }}
       >
-        {APPLICATION_STATUSES.map((status) => (
+        <option value="">Move to…</option>
+        {APPLICATION_STATUSES.filter(
+          (status) => status !== application.status
+        ).map((status) => (
           <option key={status} value={status}>
             {APPLICATION_STATUS_LABELS[status]}
           </option>
@@ -122,16 +125,19 @@ const ApplicationCard = ({
             .filter(Boolean)
             .join(" · ") || "—"}
         </p>
+        <p className="board-card-date">
+          {application.source} · updated{" "}
+          <time
+            dateTime={application.updatedAt}
+            title={fullDate(application.updatedAt)}
+          >
+            {relativeDay(application.updatedAt)}
+          </time>
+        </p>
       </div>
       {application.matchGrade ? (
         <GradeBadge grade={application.matchGrade} size="sm" />
       ) : null}
-    </div>
-    <div className="board-card-foot">
-      <span className="app-badge">{application.source}</span>
-      <span className="board-card-date">
-        Updated {formatDate(application.updatedAt)}
-      </span>
     </div>
     <CardActions application={application} />
   </div>

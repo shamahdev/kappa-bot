@@ -13,6 +13,7 @@ import { DashboardIcon } from "../../../components/dashboard-icon";
 import type { DashboardIconName } from "../../../components/dashboard-icon";
 import { InlineMarkdown, Markdown } from "../../../components/markdown";
 import { FactorScore, GradeBadge } from "../../../components/score";
+import { TrackControl } from "../../../components/track-control";
 import {
   Button,
   InfoNote,
@@ -21,10 +22,12 @@ import {
   Text,
   VStack,
 } from "../../../components/ui";
-import { useCvReport } from "../../../lib/queries";
-
-const fullDate = (iso: string) =>
-  new Date(iso).toLocaleDateString(undefined, { dateStyle: "medium" });
+import { fullDate } from "../../../lib/format";
+import {
+  useApplications,
+  useCvReport,
+  useCvReports,
+} from "../../../lib/queries";
 
 const SummaryList = ({
   icon,
@@ -67,7 +70,7 @@ const Hero = ({ report }: { report: CvReportType }) => (
         )}
         <DeltaChip
           delta={scoreDelta(report)}
-          suffix={report.previous ? `vs #${report.previous.id}` : undefined}
+          suffix={report.previous ? "vs previous" : undefined}
         />
         {report.status === "ready" && !report.previous ? (
           <span className="app-muted app-small">
@@ -80,9 +83,9 @@ const Hero = ({ report }: { report: CvReportType }) => (
       <div>
         <dt>
           <DashboardIcon name="calendar" size={16} />
-          Period
+          Created
         </dt>
-        <dd>{reportWindow(report)}</dd>
+        <dd>{fullDate(report.createdAt)}</dd>
       </div>
       <div>
         <dt>
@@ -148,6 +151,78 @@ const Factors = ({ report }: { report: CvReportType }) => {
   );
 };
 
+/** Older/newer neighbours in the same history the Home list shows. */
+const ReportNav = ({ report }: { report: CvReportType }) => {
+  const reports = useCvReports(true);
+  const list = reports.data ?? [];
+  const index = list.findIndex((item) => item.id === report.id);
+  if (index === -1) {
+    return null;
+  }
+  const newer = list[index - 1];
+  const older = list[index + 1];
+  return (
+    <nav aria-label="Report history" className="cv-report-nav">
+      {older ? (
+        <Link
+          params={{ reportId: String(older.id) }}
+          to="/dashboard/reports/$reportId"
+        >
+          <span aria-hidden="true">←</span> {reportWindow(older)}
+        </Link>
+      ) : (
+        <span />
+      )}
+      {newer ? (
+        <Link
+          params={{ reportId: String(newer.id) }}
+          to="/dashboard/reports/$reportId"
+        >
+          {reportWindow(newer)} <span aria-hidden="true">→</span>
+        </Link>
+      ) : null}
+    </nav>
+  );
+};
+
+const ReportJobs = ({ report }: { report: CvReportType }) => {
+  const applications = useApplications(true);
+  const statusFor = (url: string, source: string) =>
+    applications.data?.find((row) => row.url === url && row.source === source)
+      ?.status ?? null;
+  return (
+    <section className="cv-report-section" aria-labelledby="jobs-title">
+      <h2 id="jobs-title">Jobs in this period</h2>
+      <ol className="cv-report-jobs">
+        {report.jobs.map((job, index) => (
+          <li key={`${job.source}-${index}`}>
+            <GradeBadge grade={job.grade} size="sm" />
+            <div className="cv-report-job-body">
+              <a href={job.url} rel="noopener noreferrer" target="_blank">
+                {job.title}
+                <DashboardIcon name="external" size={14} />
+              </a>
+              <p>
+                {job.company} · {job.source}
+                {report.status === "ready" && !job.grade
+                  ? " · no description to assess"
+                  : ""}
+              </p>
+            </div>
+            {typeof job.seenJobId === "number" && applications.isSuccess ? (
+              <TrackControl
+                seenJobId={job.seenJobId}
+                status={statusFor(job.url, job.source)}
+                title={job.title}
+              />
+            ) : null}
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+};
+
 const ReportPage = () => {
   const { reportId } = Route.useParams();
   const query = useCvReport(Number(reportId), true);
@@ -161,12 +236,17 @@ const ReportPage = () => {
   const { summary } = report;
   return (
     <VStack gap={8}>
-      <Link className="app-back" to="/dashboard">
-        Back to Home
-      </Link>
+      <div className="cv-report-top">
+        <nav aria-label="Breadcrumb" className="cv-breadcrumb">
+          <Link to="/dashboard">Home</Link>
+          <span aria-hidden="true">/</span>
+          <span aria-current="page">CV report #{report.id}</span>
+        </nav>
+        <ReportNav report={report} />
+      </div>
       <header className="cv-report-title">
         <DashboardIcon name="report" size={24} />
-        <h1>CV report #{report.id}</h1>
+        <h1>{reportWindow(report)}</h1>
       </header>
 
       <Hero report={report} />
@@ -227,28 +307,7 @@ const ReportPage = () => {
         </section>
       ) : null}
 
-      <section className="cv-report-section" aria-labelledby="jobs-title">
-        <h2 id="jobs-title">Jobs in this period</h2>
-        <ol className="cv-report-jobs">
-          {report.jobs.map((job, index) => (
-            <li key={`${job.source}-${index}`}>
-              <GradeBadge grade={job.grade} size="sm" />
-              <div>
-                <a href={job.url} rel="noopener noreferrer" target="_blank">
-                  {job.title}
-                  <DashboardIcon name="external" size={14} />
-                </a>
-                <p>
-                  {job.company} · {job.source}
-                  {report.status === "ready" && !job.grade
-                    ? " · no description to assess"
-                    : ""}
-                </p>
-              </div>
-            </li>
-          ))}
-        </ol>
-      </section>
+      <ReportJobs report={report} />
     </VStack>
   );
 };

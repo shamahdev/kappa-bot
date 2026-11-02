@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { CvReportList } from "../../../components/cv-reports";
 import { JobsTable } from "../../../components/jobs";
 import { PageHeader, QueryError, VStack } from "../../../components/ui";
 import { useRequireAuth, useSubscriptions } from "../../../lib/queries";
@@ -13,12 +12,8 @@ const PersonalJobListPage = () => {
     <VStack gap={6}>
       <PageHeader
         title="Job list"
-        description="Every job delivered to your Discord DMs. Bookmark or mark jobs as applied to track them on your board."
+        description="Every job delivered to your Discord DMs. Click a grade for its breakdown; set a status to track a job on your board."
       />
-      <details className="cv-reports-disclosure">
-        <summary>CV reports</summary>
-        <CvReportList />
-      </details>
       {subs.isError ? <QueryError error={subs.error} /> : null}
       <JobsTable base={{ scope: "dm" }} subscriptions={personalSubs} />
     </VStack>

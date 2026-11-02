@@ -4,8 +4,8 @@ import type { JobDtoType } from "@kappa/contracts";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderToString } from "react-dom/server";
 
-import { TrackCell } from "./jobs";
 import { GradeChip } from "./score";
+import { TrackControl } from "./track-control";
 
 const job = (application: JobDtoType["application"]): JobDtoType => ({
   aiSummary: null,
@@ -27,7 +27,11 @@ const job = (application: JobDtoType["application"]): JobDtoType => ({
 const render = (value: JobDtoType) =>
   renderToString(
     <QueryClientProvider client={new QueryClient()}>
-      <TrackCell job={value} />
+      <TrackControl
+        seenJobId={value.id}
+        status={value.application?.status ?? null}
+        title={value.title ?? "this job"}
+      />
     </QueryClientProvider>
   );
 const options = (html: string) =>

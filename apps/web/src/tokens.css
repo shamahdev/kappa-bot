@@ -105,6 +105,8 @@
   --color-kappa-backdrop: var(--color-backdrop);
   --radius-control: 8px;
   --radius-panel: 16px;
+  --radius-card: 12px;
+  --radius-pill: 9999px;
   --radius-small: 6px;
   --font-kappa-body: var(--font-body);
   --font-kappa-display: var(--font-display);

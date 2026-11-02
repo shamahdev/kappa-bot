@@ -2,6 +2,11 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 
 import { CvReportList } from "../../components/cv-reports";
 import {
+  LatestReportPanel,
+  PipelinePanel,
+  StrongMatchesPanel,
+} from "../../components/home-panels";
+import {
   Avatar,
   HStack,
   LoadingNote,
@@ -34,9 +39,14 @@ const DashboardHome = () => {
     <VStack gap={6}>
       <PageHeader
         title="Home"
-        description={`Welcome back${me.data ? `, @${me.data.username}` : ""}. Your job search starts here.`}
+        description={`Welcome back${me.data ? `, @${me.data.username}` : ""}. Here's where your job search stands.`}
       />
-      <SectionCard title="CV reports">
+      <div className="home-grid">
+        <LatestReportPanel />
+        <PipelinePanel />
+      </div>
+      <StrongMatchesPanel />
+      <SectionCard title="CV report history">
         <CvReportList />
       </SectionCard>
       <div className="dashboard-home-overview">

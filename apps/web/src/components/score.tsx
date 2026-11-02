@@ -44,7 +44,14 @@ export const GradeChip = ({
   <span className="score-chip">
     <GradeBadge decorative grade={grade} size={size} />
     <span className="score-chip-label">
-      {grade ? `${grade} · ${MATCH_GRADE_LABELS[grade]}` : "Not assessed"}
+      {grade ? (
+        <>
+          <span className="sr-only">Grade {grade}, </span>
+          {MATCH_GRADE_LABELS[grade]}
+        </>
+      ) : (
+        "Not assessed"
+      )}
     </span>
   </span>
 );

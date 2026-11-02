@@ -58,6 +58,7 @@
     min-width: 0;
   }
   .score-chip-label {
+    white-space: nowrap;
     font-size: 14px;
     font-weight: 600;
     color: var(--color-ink);

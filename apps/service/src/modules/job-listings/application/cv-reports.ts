@@ -22,10 +22,12 @@ import type { createJobEnrichment } from "./enrichment";
 
 const reportJob = (
   posting: JobPosting,
+  seenJobId: number,
   grade: MatchGradeType | null = null
 ): CvReportJobType => ({
   company: posting.company,
   grade,
+  seenJobId,
   source: posting.source,
   title: posting.position,
   url: posting.url,
@@ -134,6 +136,7 @@ export const createCvReports = ({
           deliveredAt: cvReportDeliveries.deliveredAt,
           id: cvReportDeliveries.id,
           posting: cvReportDeliveries.posting,
+          seenId: cvReportDeliveries.seenId,
         })
         .from(cvReportDeliveries)
         .where(
@@ -157,7 +160,7 @@ export const createCvReports = ({
       const [report] = await tx
         .insert(cvReports)
         .values({
-          jobs: queued.map((row) => reportJob(row.posting)),
+          jobs: queued.map((row) => reportJob(row.posting, row.seenId)),
           trigger,
           userId,
           windowEnd: now,
@@ -265,7 +268,11 @@ export const createCvReports = ({
       return;
     }
     const jobs = rows.map((row) =>
-      reportJob(row.posting, (row.grade as MatchGradeType | null) ?? null)
+      reportJob(
+        row.posting,
+        row.seenId,
+        (row.grade as MatchGradeType | null) ?? null
+      )
     );
     const scored = rows.flatMap((row) =>
       row.assessment === "scored" && row.factors && row.grade

@@ -45,112 +45,105 @@
     @apply min-w-0 wrap-anywhere;
   }
   .pager {
-    @apply border-kappa-rule flex flex-wrap items-center justify-between gap-3 border-0 border-t border-solid p-4;
+    @apply border-kappa-rule flex flex-wrap items-center justify-between gap-3 border-0 border-t border-solid px-6 py-4;
   }
   .summary {
     @apply wrap-anywhere;
   }
-  .colJob {
-    @apply w-auto;
+
+  /* Filters: search always visible; secondary filters inline on wide screens. */
+  .filterToggle {
+    @apply hidden;
   }
-  .tableFrame :global(.app-table) th.colMatch {
-    @apply w-[24%];
+  .moreFilters {
+    display: contents;
   }
-  .tableFrame :global(.app-table) th.colTrack {
-    @apply w-[22%];
+  .moreFilters > * {
+    @apply min-w-0 flex-[1_1_180px];
   }
-  /* Shrink-to-fit summary column only while rows are a real table. */
-  @media (width >= 40rem) {
-    .tableFrame :global(.app-table) th.colSummary,
-    .tableFrame :global(.app-table) td:last-child {
-      @apply w-[1%] whitespace-nowrap;
-    }
+
+  /* Compact job rows: grade · job (two lines) · tracking · summary icon. */
+  .jobsTable th.colMatch {
+    @apply w-[190px];
   }
-  .tableFrame :global(.app-table) tbody tr {
+  .jobsTable th.colTrack {
+    @apply w-[170px];
+  }
+  .jobsTable th.colSummary {
+    @apply w-[64px];
+  }
+  .tableFrame .jobsTable td {
+    @apply px-4 py-3.5 align-middle;
+  }
+  .tableFrame .jobsTable th {
+    @apply px-4 py-3;
+  }
+  .tableFrame .jobsTable td:first-child,
+  .tableFrame .jobsTable th:first-child {
+    @apply pl-6;
+  }
+  .tableFrame .jobsTable td:last-child,
+  .tableFrame .jobsTable th:last-child {
+    @apply w-auto pr-6 text-right;
+  }
+  .jobsTable tbody tr {
     @apply transition-colors;
   }
+  .jobsTable tr.rowOpen,
+  .jobsTable tr.breakdownRow {
+    @apply bg-kappa-paper;
+  }
+  .tableFrame .jobsTable tbody tr.breakdownRow {
+    @apply border-t-0;
+  }
+  .tableFrame .jobsTable tr.breakdownRow td {
+    @apply px-6 pt-0 pb-5 text-left;
+  }
   .jobCell {
-    @apply flex min-w-0 flex-col gap-1.5;
+    @apply flex min-w-0 flex-col gap-0.5;
   }
-  .jobCompany {
-    @apply text-kappa-ink-2 m-0 text-[14px] wrap-anywhere;
+  .jobMeta {
+    @apply text-kappa-muted m-0 text-[13px] wrap-anywhere;
   }
-  .jobCell .meta {
-    @apply mt-1;
-  }
-  .matchCell,
-  .trackCell {
-    @apply flex min-w-0 flex-col items-start gap-2;
-  }
-  .matchDetails {
-    @apply w-full min-w-0 text-[14px];
-  }
-  .matchDetails summary {
-    @apply text-kappa-accent inline-flex cursor-pointer list-none items-center gap-1 py-1 font-semibold;
-  }
-  .matchDetails summary::-webkit-details-marker {
-    display: none;
-  }
-  .matchDetails[open] summary svg {
-    @apply rotate-180;
-  }
-  .matchFactors {
-    @apply border-kappa-rule mt-2 flex flex-col gap-4 rounded-[12px] border border-solid p-4;
-  }
-  .trackControl {
-    --status: var(--color-status-archive);
-    @apply border-kappa-rule bg-kappa-surface text-kappa-ink relative inline-flex min-h-9 items-center rounded-full border border-solid;
-  }
-  .trackControl.untracked {
-    @apply text-kappa-muted border-dashed;
-  }
-  .trackControl select {
-    @apply min-h-9 cursor-pointer appearance-none border-0 bg-transparent py-1 pr-8 pl-7 text-[13px] font-semibold text-inherit;
-    font-family: inherit;
-  }
-  .trackControl select:disabled {
-    @apply cursor-progress opacity-60;
-  }
-  .trackControl > svg {
-    @apply text-kappa-muted pointer-events-none absolute right-2.5;
-  }
-  .statusDot {
-    @apply pointer-events-none absolute left-3 size-2 rounded-full;
-    background: var(--status);
-  }
-  .untracked .statusDot {
-    @apply border-kappa-muted border border-solid bg-transparent;
-  }
-  .trackControl[data-status="bookmark"] {
-    --status: var(--color-status-bookmark);
-  }
-  .trackControl[data-status="applied"] {
-    --status: var(--color-status-applied);
-  }
-  .trackControl[data-status="interview"] {
-    --status: var(--color-status-interview);
-  }
-  .trackControl[data-status="offer"] {
-    --status: var(--color-status-offer);
-  }
-  .trackControl[data-status="rejected"] {
-    --status: var(--color-status-rejected);
-  }
-  .trackError {
-    @apply text-kappa-error m-0 text-[13px];
-  }
-  @media (pointer: coarse) {
-    .trackControl,
-    .trackControl select {
-      @apply min-h-12;
-    }
-  }
-  :global(.app-table) td :global(.app-button) {
+  .jobMeta time {
     @apply whitespace-nowrap;
   }
+  .matchButton {
+    @apply rounded-control -m-1.5 inline-flex cursor-pointer items-center gap-1.5 border-0 bg-transparent p-1.5 text-left;
+    font: inherit;
+  }
+  .matchButton > svg {
+    @apply text-kappa-muted transition-transform;
+  }
+  .matchButton[aria-expanded="true"] > svg {
+    @apply rotate-180;
+  }
+  .notAssessed {
+    @apply text-kappa-muted text-[13px];
+  }
+  .iconButton {
+    @apply rounded-control border-kappa-rule text-kappa-ink-2 inline-grid size-10 cursor-pointer place-items-center border border-solid bg-transparent;
+  }
+  .breakdown {
+    @apply border-kappa-rule bg-kappa-surface rounded-card flex flex-col gap-3 border border-solid p-5;
+  }
+  .breakdownGrid {
+    @apply grid grid-cols-3 gap-6;
+  }
   @media (hover: hover) {
-    .tableFrame :global(.app-table) tbody tr:hover {
+    .jobsTable tbody tr:hover {
       @apply bg-kappa-paper;
+    }
+    .matchButton:hover {
+      @apply bg-kappa-paper-3;
+    }
+    .iconButton:hover {
+      @apply bg-kappa-paper-3 text-kappa-ink;
+    }
+  }
+  @media (pointer: coarse) {
+    .iconButton {
+      @apply size-12;
     }
   }
   .cvStatus,
@@ -203,6 +196,61 @@
     }
     .tableFrame :global(.app-table) td {
       @apply grid w-full min-w-0 grid-cols-1 gap-2 px-4 py-3;
+    }
+    .filters {
+      @apply flex-row flex-wrap items-end;
+    }
+    .filters > :first-child {
+      @apply min-w-0 flex-1 basis-0;
+    }
+    .filterToggle {
+      @apply inline-flex flex-none items-center gap-2 px-4;
+    }
+    .moreFilters {
+      @apply hidden w-full basis-full flex-col gap-4;
+    }
+    .moreFilters[data-open="true"] {
+      @apply flex;
+    }
+    /* Jobs render as compact cards: job first, then grade, tracking, summary. */
+    /* Phone card: title + summary icon, then grade and tracking. */
+    .tableFrame .jobsTable tbody tr {
+      @apply grid grid-cols-[auto_auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2.5 px-4 py-4;
+    }
+    .tableFrame .jobsTable tbody tr + tr {
+      @apply border-kappa-rule border-0 border-t border-solid;
+    }
+    .tableFrame .jobsTable td,
+    .tableFrame .jobsTable td:first-child,
+    .tableFrame .jobsTable td:last-child {
+      @apply block w-auto p-0 text-left;
+    }
+    .tableFrame .jobsTable td::before {
+      content: none;
+    }
+    .tableFrame .jobsTable td.jobTd {
+      @apply col-span-3 row-start-1;
+    }
+    .tableFrame .jobsTable td.summaryTd {
+      @apply col-start-4 row-start-1 self-start;
+    }
+    .tableFrame .jobsTable td.matchTd {
+      @apply col-start-1 row-start-2;
+    }
+    .tableFrame .jobsTable td.trackTd {
+      @apply col-span-2 col-start-2 row-start-2;
+    }
+    .tableFrame .jobsTable tr.breakdownRow {
+      @apply pt-0;
+    }
+    .tableFrame .jobsTable tr.breakdownRow {
+      @apply block;
+    }
+    .tableFrame .jobsTable tr.breakdownRow td {
+      @apply p-0;
+    }
+    .breakdownGrid {
+      @apply grid-cols-1 gap-4;
     }
     .tableFrame :global(.app-table) td::before {
       content: attr(data-label);

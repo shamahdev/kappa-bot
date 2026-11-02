@@ -1,0 +1,56 @@
+@layer theme, base, components, utilities;
+@reference "../styles.css";
+
+@layer components {
+  .trackCell {
+    @apply flex min-w-0 flex-col items-start gap-1;
+  }
+  .trackControl {
+    --status: var(--color-status-archive);
+    @apply border-kappa-rule bg-kappa-surface text-kappa-ink relative inline-flex min-h-9 items-center rounded-full border border-solid;
+  }
+  .trackControl.untracked {
+    @apply text-kappa-muted border-dashed;
+  }
+  .trackControl select {
+    @apply min-h-9 cursor-pointer appearance-none border-0 bg-transparent py-1 pr-8 pl-7 text-[13px] font-semibold text-inherit;
+    font-family: inherit;
+  }
+  .trackControl select:disabled {
+    @apply cursor-progress opacity-60;
+  }
+  .trackControl > svg {
+    @apply text-kappa-muted pointer-events-none absolute right-2.5;
+  }
+  .statusDot {
+    @apply pointer-events-none absolute left-3 size-2 rounded-full;
+    background: var(--status);
+  }
+  .untracked .statusDot {
+    @apply border-kappa-muted border border-solid bg-transparent;
+  }
+  .trackControl[data-status="bookmark"] {
+    --status: var(--color-status-bookmark);
+  }
+  .trackControl[data-status="applied"] {
+    --status: var(--color-status-applied);
+  }
+  .trackControl[data-status="interview"] {
+    --status: var(--color-status-interview);
+  }
+  .trackControl[data-status="offer"] {
+    --status: var(--color-status-offer);
+  }
+  .trackControl[data-status="rejected"] {
+    --status: var(--color-status-rejected);
+  }
+  .trackError {
+    @apply text-kappa-error m-0 text-[13px];
+  }
+  @media (pointer: coarse) {
+    .trackControl,
+    .trackControl select {
+      @apply min-h-12;
+    }
+  }
+}

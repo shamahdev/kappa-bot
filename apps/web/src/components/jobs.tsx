@@ -1,21 +1,16 @@
-import {
-  APPLICATION_STATUS_LABELS,
-  APPLICATION_STATUSES,
-  MATCH_FACTORS,
-  SUBSCRIPTION_SOURCES,
-} from "@kappa/contracts";
-import type { ApplicationStatusType, JobDtoType } from "@kappa/contracts";
+import { MATCH_FACTORS, SUBSCRIPTION_SOURCES } from "@kappa/contracts";
+import type { JobDtoType, MatchBreakdownType } from "@kappa/contracts";
+import { useId, useState } from "react";
 
 import type { SubscriptionDtoType } from "../lib/api";
-import { apiMessage, useTrackApplication } from "../lib/queries";
+import { fullDate, relativeDay } from "../lib/format";
 import { ALL_SOURCES, useJobsTable } from "../lib/use-jobs-table";
 import type { JobsBase } from "../lib/use-jobs-table";
 import { DashboardIcon } from "./dashboard-icon";
 import { Markdown } from "./markdown";
 import { FactorScore, GradeChip } from "./score";
-import { formatDate } from "./subscriptions";
+import { TrackControl } from "./track-control";
 import {
-  Badge,
   Button,
   EmptyList,
   HStack,
@@ -36,90 +31,61 @@ const CONCRETE_SOURCES = SUBSCRIPTION_SOURCES.filter(
 );
 const subLabel = (sub: SubscriptionDtoType): string =>
   `#${sub.id}, ${sub.source}, ${sub.keywords ?? "—"}`;
+const titleOf = (job: JobDtoType) => job.title ?? "Untitled posting";
 
-const MatchCell = ({ job }: { job: JobDtoType }) => {
-  const breakdown = job.matchBreakdown;
+export const MatchBreakdownPanel = ({
+  breakdown,
+}: {
+  breakdown: MatchBreakdownType;
+}) => (
+  <div className={styles.breakdown}>
+    <div className={styles.breakdownGrid}>
+      {MATCH_FACTORS.map((factor) => (
+        <FactorScore
+          key={factor.key}
+          label={factor.label}
+          reason={breakdown[factor.key].reason}
+          score={breakdown[factor.key].score}
+          weight={factor.weight}
+        />
+      ))}
+    </div>
+    <p className="app-muted app-small">
+      Advisory CV match, not a hiring prediction.
+    </p>
+  </div>
+);
+
+/** The grade itself is the disclosure for its breakdown. */
+const MatchToggle = ({
+  job,
+  open,
+  controls,
+  onToggle,
+}: {
+  job: JobDtoType;
+  open: boolean;
+  controls: string;
+  onToggle: () => void;
+}) => {
   if (!job.matchGrade) {
-    return (
-      <Text color="secondary" type="supporting">
-        Not assessed
-      </Text>
-    );
+    return <span className={styles.notAssessed}>Not assessed</span>;
+  }
+  if (!job.matchBreakdown) {
+    return <GradeChip grade={job.matchGrade} />;
   }
   return (
-    <div className={styles.matchCell}>
+    <button
+      aria-controls={controls}
+      aria-expanded={open}
+      aria-label={`${open ? "Hide" : "Show"} match breakdown for ${titleOf(job)}`}
+      className={styles.matchButton}
+      onClick={onToggle}
+      type="button"
+    >
       <GradeChip grade={job.matchGrade} />
-      {breakdown ? (
-        <details className={styles.matchDetails}>
-          <summary>
-            Breakdown
-            <DashboardIcon name="chevronDown" size={14} />
-          </summary>
-          <div className={styles.matchFactors}>
-            {MATCH_FACTORS.map((factor) => (
-              <FactorScore
-                key={factor.key}
-                label={factor.label}
-                reason={breakdown[factor.key].reason}
-                score={breakdown[factor.key].score}
-                weight={factor.weight}
-              />
-            ))}
-            <p className="app-muted app-small">
-              Advisory CV match, not a hiring prediction.
-            </p>
-          </div>
-        </details>
-      ) : (
-        <Text color="secondary" type="supporting">
-          Historical grade; no breakdown.
-        </Text>
-      )}
-    </div>
-  );
-};
-
-const TRACK_FIRST: readonly ApplicationStatusType[] = ["bookmark", "applied"];
-
-/** One control per row: untracked rows offer Bookmark/Applied; tracked rows any status. */
-export const TrackCell = ({ job }: { job: JobDtoType }) => {
-  const track = useTrackApplication();
-  const { application } = job;
-  const current = application?.status ?? null;
-  const options = current ? APPLICATION_STATUSES : TRACK_FIRST;
-  return (
-    <div className={styles.trackCell}>
-      <div
-        className={`${styles.trackControl} ${current ? "" : styles.untracked}`}
-        data-status={current ?? "none"}
-      >
-        <span aria-hidden="true" className={styles.statusDot} />
-        <select
-          aria-label={`Tracking status for ${job.title ?? "this job"}`}
-          disabled={track.isPending}
-          onChange={(event) => {
-            const status = event.target.value as ApplicationStatusType;
-            if (status && status !== current) {
-              track.mutate({ seenJobId: job.id, status });
-            }
-          }}
-          value={current ?? ""}
-        >
-          {current ? null : <option value="">Track job</option>}
-          {options.map((status) => (
-            <option key={status} value={status}>
-              {APPLICATION_STATUS_LABELS[status]}
-            </option>
-          ))}
-        </select>
-        <DashboardIcon name="chevronDown" size={14} />
-      </div>
-      {track.isError ? (
-        <p className={styles.trackError} role="alert">
-          {apiMessage(track.error)}
-        </p>
-      ) : null}
-    </div>
+      <DashboardIcon name="chevronDown" size={14} />
+    </button>
   );
 };
 
@@ -131,35 +97,33 @@ const JobCell = ({ job }: { job: JobDtoType }) => (
       rel="noopener noreferrer"
       target="_blank"
     >
-      {job.title ?? "Untitled posting"}
+      {titleOf(job)}
     </a>
-    <p className={styles.jobCompany}>
+    <p className={styles.jobMeta}>
       {[job.company, job.location].filter(Boolean).join(" · ") || "—"}
+      <span aria-hidden="true"> · </span>
+      {job.source}
+      <span aria-hidden="true"> · </span>
+      <time dateTime={job.firstSeenAt} title={fullDate(job.firstSeenAt)}>
+        {relativeDay(job.firstSeenAt)}
+      </time>
     </p>
-    <div className={styles.meta}>
-      <Badge>{job.source}</Badge>
-      <Text color="secondary" type="supporting">
-        Delivered {formatDate(job.firstSeenAt)}
-      </Text>
-    </div>
   </div>
 );
 
 const JobsHead = ({ personal }: { personal: boolean }) => (
   <thead>
     <tr>
-      <th className={styles.colJob} scope="col">
-        Job
-      </th>
       {personal ? (
-        <>
-          <th className={styles.colMatch} scope="col">
-            Match
-          </th>
-          <th className={styles.colTrack} scope="col">
-            Tracking
-          </th>
-        </>
+        <th className={styles.colMatch} scope="col">
+          Match
+        </th>
+      ) : null}
+      <th scope="col">Job</th>
+      {personal ? (
+        <th className={styles.colTrack} scope="col">
+          Tracking
+        </th>
       ) : null}
       <th className={styles.colSummary} scope="col">
         <span className="sr-only">Summary</span>
@@ -176,35 +140,58 @@ const JobRow = ({
   job: JobDtoType;
   personal: boolean;
   onSummary: (id: number) => void;
-}) => (
-  <tr>
-    <td data-label="Job">
-      <JobCell job={job} />
-    </td>
-    {personal ? (
-      <>
-        <td data-label="Match">
-          <MatchCell job={job} />
+}) => {
+  const [open, setOpen] = useState(false);
+  const breakdownId = useId();
+  return (
+    <>
+      <tr className={open ? styles.rowOpen : undefined}>
+        {personal ? (
+          <td className={styles.matchTd}>
+            <MatchToggle
+              controls={breakdownId}
+              job={job}
+              onToggle={() => setOpen((value) => !value)}
+              open={open}
+            />
+          </td>
+        ) : null}
+        <td className={styles.jobTd}>
+          <JobCell job={job} />
         </td>
-        <td data-label="Tracking">
-          <TrackCell job={job} />
+        {personal ? (
+          <td className={styles.trackTd}>
+            <TrackControl
+              seenJobId={job.id}
+              status={job.application?.status ?? null}
+              title={titleOf(job)}
+            />
+          </td>
+        ) : null}
+        <td className={styles.summaryTd}>
+          {job.aiSummary ? (
+            <button
+              aria-label={`Read summary of ${titleOf(job)}`}
+              className={styles.iconButton}
+              onClick={() => onSummary(job.id)}
+              title="Read summary"
+              type="button"
+            >
+              <DashboardIcon name="file" size={18} />
+            </button>
+          ) : null}
         </td>
-      </>
-    ) : null}
-    <td data-label="Summary">
-      {job.aiSummary ? (
-        <Button onClick={() => onSummary(job.id)} small variant="subtle">
-          <DashboardIcon name="file" size={14} />
-          Summary
-        </Button>
-      ) : (
-        <Text color="secondary" type="supporting">
-          No summary
-        </Text>
-      )}
-    </td>
-  </tr>
-);
+      </tr>
+      {open && job.matchBreakdown ? (
+        <tr className={styles.breakdownRow} id={breakdownId}>
+          <td colSpan={personal ? 4 : 2}>
+            <MatchBreakdownPanel breakdown={job.matchBreakdown} />
+          </td>
+        </tr>
+      ) : null}
+    </>
+  );
+};
 
 const Pager = ({
   page,
@@ -222,14 +209,9 @@ const Pager = ({
   onNext: () => void;
 }) => (
   <div className={styles.pager}>
-    <div className={styles.meta}>
-      <Text as="span" color="secondary" type="supporting">
-        Page {page} of {totalPages}
-      </Text>
-      <Text as="span" color="secondary" type="supporting">
-        {total} job{total === 1 ? "" : "s"}
-      </Text>
-    </div>
+    <Text as="span" color="secondary" type="supporting">
+      {total} job{total === 1 ? "" : "s"} · page {page} of {totalPages}
+    </Text>
     <HStack gap={2} wrap="wrap">
       <Button
         disabled={page <= 1 || busy}
@@ -276,7 +258,10 @@ export const JobsTable = ({
     filtered,
     clearFilters,
   } = useJobsTable(base);
+  const [showFilters, setShowFilters] = useState(false);
   const personal = "scope" in base;
+  const activeFilters =
+    (source === ALL_SOURCES ? 0 : 1) + (subscriptionId === null ? 0 : 1);
   const closeSummary = () => {
     if (expandedSummaryId !== null) {
       toggleSummary(expandedSummaryId);
@@ -297,24 +282,36 @@ export const JobsTable = ({
           placeholder="Title or company"
           value={q}
         />
-        <Select
-          label="Source"
-          onChange={setSource}
-          options={[ALL_SOURCES, ...CONCRETE_SOURCES]}
-          value={source}
-        />
-        <Select
-          label="Subscription"
-          onChange={selectSubscription}
-          options={[
-            { value: "", label: ALL_SUBSCRIPTIONS },
-            ...subscriptions.map((sub) => ({
-              value: String(sub.id),
-              label: subLabel(sub),
-            })),
-          ]}
-          value={subscriptionId === null ? "" : String(subscriptionId)}
-        />
+        {/* Phones collapse the secondary filters behind one toggle. */}
+        <button
+          aria-expanded={showFilters}
+          className={`app-button subtle ${styles.filterToggle}`}
+          onClick={() => setShowFilters((value) => !value)}
+          type="button"
+        >
+          <DashboardIcon name="settings" size={16} />
+          Filters{activeFilters > 0 ? ` (${activeFilters})` : ""}
+        </button>
+        <div className={styles.moreFilters} data-open={showFilters}>
+          <Select
+            label="Source"
+            onChange={setSource}
+            options={[ALL_SOURCES, ...CONCRETE_SOURCES]}
+            value={source}
+          />
+          <Select
+            label="Subscription"
+            onChange={selectSubscription}
+            options={[
+              { value: "", label: ALL_SUBSCRIPTIONS },
+              ...subscriptions.map((sub) => ({
+                value: String(sub.id),
+                label: subLabel(sub),
+              })),
+            ]}
+            value={subscriptionId === null ? "" : String(subscriptionId)}
+          />
+        </div>
       </div>
       {jobs.isPending ? <LoadingNote /> : null}
       {jobs.isFetching && !jobs.isPending ? (
@@ -336,7 +333,10 @@ export const JobsTable = ({
       ) : null}
       {jobs.isSuccess && jobs.data.jobs.length > 0 ? (
         <div className={styles.tableFrame}>
-          <table aria-label="Delivered jobs" className="app-table">
+          <table
+            aria-label="Delivered jobs"
+            className={`app-table ${styles.jobsTable}`}
+          >
             <JobsHead personal={personal} />
             <tbody>
               {jobs.data.jobs.map((job) => (
@@ -362,7 +362,7 @@ export const JobsTable = ({
       <Modal
         onClose={closeSummary}
         open={Boolean(expandedJob?.aiSummary)}
-        title={expandedJob?.title ?? "Job summary"}
+        title={expandedJob ? titleOf(expandedJob) : "Job summary"}
       >
         <div className={styles.summary}>
           <Markdown text={expandedJob?.aiSummary ?? ""} />

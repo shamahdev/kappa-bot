@@ -234,7 +234,7 @@
     @apply flex flex-wrap items-center justify-between gap-4;
   }
   .cv-report-toolbar > p {
-    @apply max-w-[60ch] min-w-0 flex-1;
+    @apply max-w-[60ch] min-w-0 flex-[1_1_280px];
   }
   .cv-report-toolbar .app-button,
   .cv-report-pending .app-button {
@@ -281,11 +281,31 @@
     @apply font-normal opacity-80;
   }
 
+  .cv-report-top {
+    @apply flex flex-wrap items-center justify-between gap-x-6 gap-y-2;
+  }
+  .cv-breadcrumb {
+    @apply text-kappa-muted flex min-w-0 items-center gap-2 text-[14px];
+  }
+  .cv-breadcrumb a {
+    @apply text-kappa-accent font-semibold no-underline;
+  }
+  .cv-report-nav {
+    @apply flex flex-wrap items-center gap-2;
+  }
+  .cv-report-nav a {
+    @apply border-kappa-rule text-kappa-ink-2 rounded-control inline-flex min-h-9 items-center gap-1.5 border border-solid px-3 text-[13px] font-semibold no-underline;
+  }
+  @media (hover: hover) {
+    .cv-report-nav a:hover {
+      @apply bg-kappa-paper-3 text-kappa-ink;
+    }
+  }
   .cv-report-title {
     @apply text-kappa-accent flex items-center gap-3;
   }
   .cv-report-title h1 {
-    @apply text-kappa-ink m-0 text-[28px];
+    @apply text-kappa-ink m-0 text-[2rem];
   }
   .cv-report-hero {
     @apply bg-kappa-surface border-kappa-rule rounded-panel grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-x-6 gap-y-5 border border-solid p-6;
@@ -294,7 +314,7 @@
     @apply flex min-w-0 flex-col gap-1;
   }
   .cv-report-hero h2 {
-    @apply m-0 text-[26px];
+    @apply m-0 text-[20px] font-bold;
   }
   .cv-report-hero-score {
     @apply text-kappa-muted mt-1 flex flex-wrap items-center gap-3 text-[15px];
@@ -374,10 +394,10 @@
     @apply m-0 list-none p-0;
   }
   .cv-report-jobs li {
-    @apply border-kappa-rule flex min-w-0 items-center gap-3 border-0 border-b border-solid py-3;
+    @apply border-kappa-rule flex min-w-0 flex-wrap items-center gap-3 border-0 border-b border-solid py-3;
   }
-  .cv-report-jobs li > div {
-    @apply min-w-0;
+  .cv-report-jobs li > .cv-report-job-body {
+    @apply min-w-0 flex-[1_1_220px];
   }
   .cv-report-jobs a {
     @apply text-kappa-accent inline-flex items-center gap-1 font-semibold wrap-anywhere;
