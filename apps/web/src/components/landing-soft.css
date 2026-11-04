@@ -60,8 +60,51 @@
   .landing-hero-heading {
     @apply flex items-center justify-between gap-10;
   }
+  .landing-mascot-stage {
+    @apply relative block shrink-0 rounded-full;
+    perspective: 600px;
+  }
+  .landing-mascot-tilt {
+    @apply relative block rounded-full;
+    transform: rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg));
+    transform-style: preserve-3d;
+    box-shadow: calc(var(--tilt-y, 0deg) / 1deg * -0.6px)
+      calc(14px + var(--tilt-x, 0deg) / 1deg * 0.6px) 28px -10px
+      rgb(0 0 0 / 0.35);
+    will-change: transform;
+  }
   .landing-mascot {
-    @apply rounded-panel aspect-square h-auto w-[clamp(120px,12vw,168px)] shrink-0 origin-[50%_80%] object-contain;
+    @apply block aspect-square h-auto w-[clamp(120px,12vw,168px)] origin-[50%_80%] rounded-full object-cover;
+  }
+  /* Parallax depth per layer, in SVG user units at full tilt. */
+  .mascot-layer {
+    transform: translate(
+      calc(var(--mx, 0) * var(--depth) * 1px),
+      calc(var(--my, 0) * var(--depth) * 1px)
+    );
+  }
+  .mascot-bg {
+    --depth: -14;
+  }
+  .mascot-beak {
+    --depth: 22;
+  }
+  .mascot-eyes {
+    --depth: 38;
+  }
+  .mascot-eye,
+  .mascot-mouth {
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+  .landing-mascot-glare {
+    @apply pointer-events-none absolute inset-0 rounded-full;
+    background: radial-gradient(
+      circle at var(--glare-x, 35%) var(--glare-y, 30%),
+      rgb(255 255 255 / 0.28),
+      transparent 55%
+    );
+    transform: translateZ(1px);
   }
   .landing-hero h1 {
     @apply max-w-[18ch] text-[clamp(3.25rem,6.2vw,5.25rem)] leading-[1.02] font-bold;
@@ -451,9 +494,36 @@
     transform: translateY(-2%) rotate(5deg);
   }
 }
+/* A quick blink every few seconds. */
+@keyframes kappa-blink {
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  95% {
+    transform: scaleY(0.1);
+  }
+}
+/* Subtle beak "breath" so the face feels alive at rest. */
+@keyframes kappa-breathe {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(1.25);
+  }
+}
 @media (prefers-reduced-motion: no-preference) {
   .landing-mascot {
     animation: kappa-greeting var(--dur-greeting) var(--ease-out) 1;
+  }
+  .mascot-eye {
+    animation: kappa-blink 4.5s ease-in-out infinite;
+  }
+  .mascot-mouth {
+    animation: kappa-breathe 3.2s ease-in-out infinite;
   }
 }
 @media (prefers-reduced-motion: reduce) {
