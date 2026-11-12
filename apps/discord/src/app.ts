@@ -1,4 +1,9 @@
-import { closeDb, createDb, runMigrations } from "@kappa/db";
+import {
+  closeDb,
+  createDb,
+  createPostgresGenerationLock,
+  runMigrations,
+} from "@kappa/db";
 import {
   createJobListings,
   createJobPollingSchedule,
@@ -42,7 +47,7 @@ export const createApp = async (): Promise<Gateway> => {
     log.warn("DATABASE_URL_UNPOOLED blank — skipping boot migrations");
   }
 
-  const { db } = createDb(config.databaseUrl);
+  const { db, pool } = createDb(config.databaseUrl);
   const registry = new FeatureRegistry();
   for (const feature of await loadFeatures()) {
     registry.add(feature);
@@ -52,6 +57,7 @@ export const createApp = async (): Promise<Gateway> => {
   const client = createClient();
   const jobListings = createJobListings({
     db,
+    lock: createPostgresGenerationLock(pool),
     log,
     notifications: createDiscordNotifications(gatewayDeliverer(client)),
   });

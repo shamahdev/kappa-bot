@@ -1,10 +1,15 @@
-import { MATCH_FACTORS } from "@kappa/contracts";
+import {
+  MATCH_FACTORS,
+  cvSnapshotChanged,
+  safeHttpUrl,
+} from "@kappa/contracts";
 import type { CvReportType } from "@kappa/contracts";
 import { createFileRoute, Link } from "@tanstack/react-router";
 
 import {
   cvReportLabel,
   DeltaChip,
+  deltaLabel,
   GradeTile,
   reportWindow,
   scoreDelta,
@@ -17,6 +22,8 @@ import { buttonVariants } from "../../../components/shadcn/button";
 import { TrackControl } from "../../../components/track-control";
 import {
   Button,
+  ErrorNote,
+  HStack,
   InfoNote,
   LoadingNote,
   QueryError,
@@ -25,9 +32,11 @@ import {
 } from "../../../components/ui";
 import { fullDate } from "../../../lib/format";
 import {
+  apiMessage,
   useApplications,
   useCvReport,
   useCvReports,
+  useRetryCvReport,
 } from "../../../lib/queries";
 
 const SummaryList = ({
@@ -58,61 +67,67 @@ const SummaryList = ({
   </section>
 );
 
-const Hero = ({ report }: { report: CvReportType }) => (
-  <section className="cv-report-hero" aria-label="Overall result">
-    <GradeTile report={report} large />
-    <div className="cv-report-hero-body">
-      <h2>{cvReportLabel(report)}</h2>
-      <div className="cv-report-hero-score">
-        {report.score === null ? null : (
-          <span>
-            <strong>{report.score}</strong>/100
-          </span>
-        )}
-        <DeltaChip
-          delta={scoreDelta(report)}
-          suffix={report.previous ? "vs previous" : undefined}
-        />
-        {report.status === "ready" && !report.previous ? (
-          <span className="app-muted app-small">
-            First report, no comparison yet
-          </span>
-        ) : null}
+const Hero = ({ report }: { report: CvReportType }) => {
+  const changed = report.status === "ready" && cvSnapshotChanged(report);
+  return (
+    <section className="cv-report-hero" aria-label="Overall result">
+      <GradeTile report={report} large />
+      <div className="cv-report-hero-body">
+        <h2>{cvReportLabel(report)}</h2>
+        <div className="cv-report-hero-score">
+          {report.score === null ? null : (
+            <span>
+              <strong>{report.score}</strong>/100
+            </span>
+          )}
+          <DeltaChip delta={scoreDelta(report)} suffix={deltaLabel(report)} />
+          {report.status === "ready" && !report.previous ? (
+            <span className="app-muted app-small">
+              First report, no comparison yet
+            </span>
+          ) : null}
+          {changed ? (
+            <span className="app-muted app-small">
+              CV changed since the previous report; deltas compare different
+              CVs.
+            </span>
+          ) : null}
+        </div>
       </div>
-    </div>
-    <dl className="cv-report-meta">
-      <div>
-        <dt>
-          <DashboardIcon name="calendar" size={16} />
-          Created
-        </dt>
-        <dd>{fullDate(report.createdAt)}</dd>
-      </div>
-      <div>
-        <dt>
-          <DashboardIcon name="jobs" size={16} />
-          Jobs
-        </dt>
-        <dd>
-          {report.jobs.length} ·{" "}
-          {report.trigger === "manual" ? "Manual" : "Scheduled"}
-        </dd>
-      </div>
-      {report.cvFilename ? (
+      <dl className="cv-report-meta">
         <div>
           <dt>
-            <DashboardIcon name="file" size={16} />
-            CV
+            <DashboardIcon name="calendar" size={16} />
+            Created
+          </dt>
+          <dd>{fullDate(report.createdAt)}</dd>
+        </div>
+        <div>
+          <dt>
+            <DashboardIcon name="jobs" size={16} />
+            Jobs
           </dt>
           <dd>
-            {report.cvFilename}
-            {report.cvUploadedAt ? ` · ${fullDate(report.cvUploadedAt)}` : ""}
+            {report.jobs.length} ·{" "}
+            {report.trigger === "manual" ? "Manual" : "Scheduled"}
           </dd>
         </div>
-      ) : null}
-    </dl>
-  </section>
-);
+        {report.cvFilename ? (
+          <div>
+            <dt>
+              <DashboardIcon name="file" size={16} />
+              CV
+            </dt>
+            <dd>
+              {report.cvFilename}
+              {report.cvUploadedAt ? ` · ${fullDate(report.cvUploadedAt)}` : ""}
+            </dd>
+          </div>
+        ) : null}
+      </dl>
+    </section>
+  );
+};
 
 const Factors = ({ report }: { report: CvReportType }) => {
   const { factors } = report;
@@ -120,6 +135,7 @@ const Factors = ({ report }: { report: CvReportType }) => {
     return null;
   }
   const previous = report.previous?.factors ?? null;
+  const changed = report.status === "ready" && cvSnapshotChanged(report);
   const assessed = report.jobs.filter((job) => job.grade).length;
   return (
     <section className="cv-report-section" aria-labelledby="factors-title">
@@ -136,7 +152,11 @@ const Factors = ({ report }: { report: CvReportType }) => {
                 weight={factor.weight}
                 delta={
                   <DeltaChip
-                    delta={previous ? score - previous[factor.key].score : null}
+                    delta={
+                      changed || !previous
+                        ? null
+                        : score - previous[factor.key].score
+                    }
                   />
                 }
               />
@@ -147,6 +167,9 @@ const Factors = ({ report }: { report: CvReportType }) => {
       <p className="app-muted app-small">
         Averaged across {assessed} assessed job{assessed === 1 ? "" : "s"}, then
         weighted into the overall grade. Advisory only, not a hiring prediction.
+        {changed
+          ? " Factor deltas are hidden because the CV changed since the previous report."
+          : ""}
       </p>
     </section>
   );
@@ -154,8 +177,8 @@ const Factors = ({ report }: { report: CvReportType }) => {
 
 /** Older/newer neighbours in the same history the Home list shows. */
 const ReportNav = ({ report }: { report: CvReportType }) => {
-  const reports = useCvReports(true);
-  const list = reports.data ?? [];
+  const reports = useCvReports(true, 1, 100);
+  const list = reports.data?.reports ?? [];
   const index = list.findIndex((item) => item.id === report.id);
   if (index === -1) {
     return null;
@@ -186,6 +209,18 @@ const ReportNav = ({ report }: { report: CvReportType }) => {
   );
 };
 
+const jobAssessmentNote = (
+  report: CvReportType,
+  job: CvReportType["jobs"][number]
+): string => {
+  if (report.status !== "ready" || job.grade) {
+    return "";
+  }
+  return job.assessment === "failed"
+    ? " · could not be assessed"
+    : " · no description to assess";
+};
+
 const ReportJobs = ({ report }: { report: CvReportType }) => {
   const applications = useApplications(true);
   const statusFor = (url: string, source: string) =>
@@ -195,30 +230,37 @@ const ReportJobs = ({ report }: { report: CvReportType }) => {
     <section className="cv-report-section" aria-labelledby="jobs-title">
       <h2 id="jobs-title">Jobs in this period</h2>
       <ol className="cv-report-jobs">
-        {report.jobs.map((job, index) => (
-          <li key={`${job.source}-${index}`}>
-            <GradeBadge grade={job.grade} size="sm" />
-            <div className="cv-report-job-body">
-              <a href={job.url} rel="noopener noreferrer" target="_blank">
-                {job.title}
-                <DashboardIcon name="external" size={14} />
-              </a>
-              <p>
-                {job.company} · {job.source}
-                {report.status === "ready" && !job.grade
-                  ? " · no description to assess"
-                  : ""}
-              </p>
-            </div>
-            {typeof job.seenJobId === "number" && applications.isSuccess ? (
-              <TrackControl
-                seenJobId={job.seenJobId}
-                status={statusFor(job.url, job.source)}
-                title={job.title}
-              />
-            ) : null}
-          </li>
-        ))}
+        {report.jobs.map((job, index) => {
+          const href = safeHttpUrl(job.url);
+          return (
+            <li key={`${job.source}-${index}`}>
+              <GradeBadge grade={job.grade} size="sm" />
+              <div className="cv-report-job-body">
+                {href ? (
+                  <a href={href} rel="noopener noreferrer" target="_blank">
+                    {job.title}
+                    <DashboardIcon name="external" size={14} />
+                  </a>
+                ) : (
+                  <span>{job.title}</span>
+                )}
+                <p>
+                  {job.company} · {job.source}
+                  {jobAssessmentNote(report, job)}
+                </p>
+              </div>
+              {typeof job.seenJobId === "number" &&
+              job.trackable !== false &&
+              applications.isSuccess ? (
+                <TrackControl
+                  seenJobId={job.seenJobId}
+                  status={statusFor(job.url, job.source)}
+                  title={job.title}
+                />
+              ) : null}
+            </li>
+          );
+        })}
       </ol>
     </section>
   );
@@ -227,6 +269,7 @@ const ReportJobs = ({ report }: { report: CvReportType }) => {
 const ReportPage = () => {
   const { reportId } = Route.useParams();
   const query = useCvReport(Number(reportId), true);
+  const retry = useRetryCvReport();
   if (query.isPending) {
     return <LoadingNote>Loading CV report…</LoadingNote>;
   }
@@ -270,11 +313,25 @@ const ReportPage = () => {
           </Button>
         </div>
       ) : null}
-      {report.status === "cv_required" ? (
-        <Link className={buttonVariants()} to="/dashboard/settings">
-          Upload CV
-        </Link>
+      {report.status === "cv_required" || report.status === "unavailable" ? (
+        <HStack gap={2} wrap="wrap">
+          {report.status === "cv_required" ? (
+            <Link className={buttonVariants()} to="/dashboard/settings">
+              Upload CV
+            </Link>
+          ) : null}
+          <Button
+            small
+            loading={retry.isPending}
+            variant="subtle"
+            onClick={() => retry.mutate(report.id)}
+          >
+            <DashboardIcon name="refresh" size={16} />
+            Retry assessment
+          </Button>
+        </HStack>
       ) : null}
+      {retry.isError ? <ErrorNote>{apiMessage(retry.error)}</ErrorNote> : null}
 
       <Factors report={report} />
 

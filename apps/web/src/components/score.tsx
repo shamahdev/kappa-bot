@@ -7,18 +7,31 @@ import "./score.css";
 const tone = (grade: MatchGradeType | null | undefined) =>
   grade ? `score-${grade.toLowerCase()}` : "score-none";
 
+const screenReaderLabel = (
+  grade: MatchGradeType | null | undefined,
+  pending: boolean
+): string => {
+  if (grade) {
+    return `Grade ${grade}, ${MATCH_GRADE_LABELS[grade]}`;
+  }
+  return pending ? "Assessment pending" : "No grade";
+};
+
 /** The one A–E score badge used everywhere a grade is shown. */
 export const GradeBadge = ({
   grade,
   size = "md",
   placeholder = "–",
   decorative = false,
+  pending = false,
 }: {
   grade: MatchGradeType | null | undefined;
   size?: "sm" | "md" | "lg";
   placeholder?: string;
   /** Set when adjacent visible text already names the grade. */
   decorative?: boolean;
+  /** The placeholder means assessment is still running, not that it is absent. */
+  pending?: boolean;
 }) => (
   <span
     aria-hidden={decorative || undefined}
@@ -26,9 +39,7 @@ export const GradeBadge = ({
   >
     <span aria-hidden="true">{grade ?? placeholder}</span>
     {decorative ? null : (
-      <span className="sr-only">
-        {grade ? `Grade ${grade}, ${MATCH_GRADE_LABELS[grade]}` : "No grade"}
-      </span>
+      <span className="sr-only">{screenReaderLabel(grade, pending)}</span>
     )}
   </span>
 );

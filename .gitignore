@@ -8,5 +8,8 @@ logs/
 .DS_Store
 .neon
 .agents/
+.claude/
+.commandcode/
+.impeccable/
 skills-lock.json
 .output/

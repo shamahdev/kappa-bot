@@ -1,13 +1,31 @@
-import { CV_REPORT_PERIOD_DAYS, MATCH_GRADE_LABELS } from "@kappa/contracts";
-import type { CvReportType } from "@kappa/contracts";
+import {
+  CV_REPORT_PERIOD_DAYS,
+  MATCH_GRADE_LABELS,
+  cvSnapshotChanged,
+} from "@kappa/contracts";
+import type { CvReportListItemType } from "@kappa/contracts";
 import { Link, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 
 import { apiMessage, useCreateCvReport, useCvReports } from "../lib/queries";
 import { DashboardIcon } from "./dashboard-icon";
 import { GradeBadge } from "./score";
-import { Button, ErrorNote, LoadingNote, QueryError, Text, VStack } from "./ui";
+import {
+  Button,
+  ErrorNote,
+  HStack,
+  LoadingNote,
+  QueryError,
+  Text,
+  VStack,
+} from "./ui";
 
-export const cvReportLabel = (report: CvReportType) => {
+type ReportLabel = Pick<CvReportListItemType, "grade" | "status">;
+type ReportWindow = Pick<CvReportListItemType, "windowStart" | "windowEnd">;
+type ReportScore = Pick<CvReportListItemType, "score" | "previous">;
+type ReportDelta = ReportScore & Pick<CvReportListItemType, "cvUploadedAt">;
+
+export const cvReportLabel = (report: ReportLabel) => {
   if (report.grade) {
     return MATCH_GRADE_LABELS[report.grade];
   }
@@ -24,16 +42,24 @@ const shortDate = (iso: string) =>
   new Date(iso).toLocaleDateString(undefined, {
     day: "numeric",
     month: "short",
+    year: "numeric",
   });
 
-export const reportWindow = (report: CvReportType) =>
+export const reportWindow = (report: ReportWindow) =>
   `${shortDate(report.windowStart)} – ${shortDate(report.windowEnd)}`;
 
 /** Change versus the previous ready report, or null when there is none. */
-export const scoreDelta = (report: CvReportType): number | null =>
+export const scoreDelta = (report: ReportScore): number | null =>
   report.score !== null && report.previous
     ? report.score - report.previous.score
     : null;
+
+export const deltaLabel = (report: ReportDelta): string | undefined => {
+  if (!report.previous) {
+    return undefined;
+  }
+  return cvSnapshotChanged(report) ? "vs previous CV" : "vs previous";
+};
 
 export const formatDelta = (delta: number) => {
   const rounded = Math.round(delta * 10) / 10;
@@ -78,17 +104,18 @@ export const GradeTile = ({
   report,
   large = false,
 }: {
-  report: CvReportType;
+  report: Pick<CvReportListItemType, "grade" | "status">;
   large?: boolean;
 }) => (
   <GradeBadge
     grade={report.grade}
+    pending={report.status === "pending"}
     placeholder={report.status === "pending" ? "…" : "–"}
     size={large ? "lg" : "md"}
   />
 );
 
-const CvReportLink = ({ report }: { report: CvReportType }) => (
+const CvReportLink = ({ report }: { report: CvReportListItemType }) => (
   <Link
     className="cv-report-link"
     to="/dashboard/reports/$reportId"
@@ -98,8 +125,11 @@ const CvReportLink = ({ report }: { report: CvReportType }) => (
     <span className="cv-report-link-body">
       <strong>{reportWindow(report)}</strong>
       <small>
-        {report.jobs.length} job{report.jobs.length === 1 ? "" : "s"} ·{" "}
+        {report.jobCount} job{report.jobCount === 1 ? "" : "s"} ·{" "}
         {report.trigger === "manual" ? "Manual" : "Scheduled"} · #{report.id}
+        {report.status === "ready" && cvSnapshotChanged(report)
+          ? " · CV changed"
+          : ""}
       </small>
     </span>
     <span className="cv-report-link-result">
@@ -110,9 +140,15 @@ const CvReportLink = ({ report }: { report: CvReportType }) => (
 );
 
 export const CvReportList = () => {
-  const reports = useCvReports(true);
+  const [page, setPage] = useState(1);
+  const reports = useCvReports(true, page);
   const create = useCreateCvReport();
   const navigate = useNavigate();
+  const { data } = reports;
+  const items = data?.reports ?? [];
+  const totalPages = data
+    ? Math.max(1, Math.ceil(data.total / data.pageSize))
+    : 1;
   return (
     <VStack gap={4}>
       <div className="cv-report-toolbar">
@@ -145,7 +181,7 @@ export const CvReportList = () => {
         <LoadingNote>Loading CV reports…</LoadingNote>
       ) : null}
       {reports.isError ? <QueryError error={reports.error} /> : null}
-      {reports.isSuccess && reports.data.length === 0 ? (
+      {reports.isSuccess && data?.total === 0 ? (
         <div className="cv-report-empty">
           <DashboardIcon name="report" size={24} />
           <Text as="p" color="secondary">
@@ -155,12 +191,35 @@ export const CvReportList = () => {
         </div>
       ) : null}
       <ul className="cv-report-list">
-        {(reports.data ?? []).map((report) => (
+        {items.map((report) => (
           <li key={report.id}>
             <CvReportLink report={report} />
           </li>
         ))}
       </ul>
+      {data && data.total > data.pageSize ? (
+        <HStack gap={2}>
+          <Button
+            small
+            disabled={page <= 1}
+            variant="subtle"
+            onClick={() => setPage((current) => Math.max(1, current - 1))}
+          >
+            Previous
+          </Button>
+          <Text as="p" color="secondary" type="supporting">
+            Page {data.page} of {totalPages}
+          </Text>
+          <Button
+            small
+            disabled={page >= totalPages}
+            variant="subtle"
+            onClick={() => setPage((current) => current + 1)}
+          >
+            Next
+          </Button>
+        </HStack>
+      ) : null}
     </VStack>
   );
 };

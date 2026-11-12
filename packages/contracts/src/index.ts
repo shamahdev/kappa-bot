@@ -19,21 +19,30 @@ export { AccountSummary, DeleteAccountResponse } from "./account";
 export type { AuthMeResponseType, UserDtoType } from "./auth";
 export { AuthMeResponse, UserDto } from "./auth";
 export type {
+  CvReportAssessmentType,
   CvReportBaselineType,
+  CvReportListItemType,
   CvReportType,
   CvReportJobType,
   CvReportSummaryType,
+  CvReportsResponseType,
 } from "./cv-reports";
 export {
   CV_REPORT_FIT_MAX_WORDS,
   CV_REPORT_ITEM_MAX_WORDS,
+  CV_REPORT_MAX_ATTEMPTS,
+  CV_REPORT_NOTIFICATION_LEASE_MS,
   CV_REPORT_PERIOD_DAYS,
   CV_REPORT_PERIOD_MS,
   clampCvReportSummary,
   clampWords,
+  cvSnapshotChanged,
   CvReport,
+  CvReportAssessment,
+  CvReportListItem,
   CvReportsResponse,
   CvReportSummary,
+  decodeCvReportListItem,
   decodeCvReportSummary,
   decodeCvReport,
 } from "./cv-reports";
@@ -80,6 +89,7 @@ export {
   decodeMatchBreakdown,
 } from "./matching";
 export { API_V1, PATHS, SESSION_COOKIE } from "./paths";
+export { safeHttpUrl } from "./url";
 export type {
   CreateSubscriptionBodyType,
   DeleteSubscriptionResponseType,

@@ -92,6 +92,22 @@ describe("shared CV validation and persistence", () => {
     expect(await profiles.get("alice")).toEqual(profile);
     expect(await profiles.get("bob")).toBeNull();
     expect(await profiles.remove("alice")).toBe(true);
+    expect(fake.writes).toContainEqual(
+      expect.objectContaining({
+        table: "seen_jobs",
+        values: {
+          matchBreakdown: null,
+          matchReason: null,
+          matchScore: null,
+        },
+      })
+    );
+    expect(fake.writes).toContainEqual(
+      expect.objectContaining({
+        table: "job_applications",
+        values: { matchGrade: null },
+      })
+    );
     expect(await createCvProfiles(testDatabase().db).remove("alice")).toBe(
       false
     );

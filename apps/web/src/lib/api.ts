@@ -32,6 +32,7 @@ import type {
   CreateSubscriptionBodyType,
   CvDtoType,
   CvReportType,
+  CvReportsResponseType,
   GuildsResponseType,
   JobsResponseType,
   SaveCvBodyType,
@@ -45,6 +46,8 @@ export type {
   AccountSummaryType,
   CreateSubscriptionBodyType,
   CvDtoType,
+  CvReportListItemType,
+  CvReportsResponseType,
   GuildDtoType,
   JobDtoType,
   JobsResponseType,
@@ -287,10 +290,18 @@ export const deleteSubscription = (id: number): Promise<string> =>
     )
   ).then((res) => res.summary);
 
-export const fetchCvReports = (): Promise<readonly CvReportType[]> =>
+export const fetchCvReports = (
+  page = 1,
+  pageSize = 50
+): Promise<CvReportsResponseType> =>
   runApi(
-    request(HttpClientRequest.get(PATHS.cvReports), CvReportsResponse)
-  ).then((response) => response.reports);
+    request(
+      HttpClientRequest.get(
+        `${PATHS.cvReports}?page=${page}&pageSize=${pageSize}`
+      ),
+      CvReportsResponse
+    )
+  );
 
 export const fetchCvReport = (id: number): Promise<CvReportType> =>
   runApi(request(HttpClientRequest.get(PATHS.cvReportById(id)), CvReport));
@@ -298,6 +309,10 @@ export const fetchCvReport = (id: number): Promise<CvReportType> =>
 /** Manually close the current report window; generation continues server-side. */
 export const createCvReport = (): Promise<CvReportType> =>
   runApi(request(HttpClientRequest.post(PATHS.cvReports), CvReport));
+
+/** Requeue a cv_required/unavailable report after the CV changes. */
+export const retryCvReport = (id: number): Promise<CvReportType> =>
+  runApi(request(HttpClientRequest.post(PATHS.cvReportRetry(id)), CvReport));
 
 export const fetchCv = (): Promise<CvDtoType> =>
   runApi(request(HttpClientRequest.get(PATHS.cv), CvDto));

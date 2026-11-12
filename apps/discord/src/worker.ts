@@ -1,4 +1,4 @@
-import { closeDb, createDb } from "@kappa/db";
+import { closeDb, createDb, createPostgresGenerationLock } from "@kappa/db";
 import { createJobListings } from "@kappa/service/job-listings";
 import { REST, Routes } from "discord.js";
 
@@ -11,7 +11,7 @@ import { createDiscordNotifications } from "./features/job-listings/notification
 export const startWorker = async (): Promise<void> => {
   const config = loadConfig();
   const log = createLogger(config);
-  const { db } = createDb(config.databaseUrl);
+  const { db, pool } = createDb(config.databaseUrl);
   const rest = new REST({ version: "10" }).setToken(config.discordToken);
   const deliverMessage: DeliverMessage = async (channelId, payload) => {
     const sent = (await rest.post(Routes.channelMessages(channelId), {
@@ -22,6 +22,7 @@ export const startWorker = async (): Promise<void> => {
   try {
     const jobs = createJobListings({
       db,
+      lock: createPostgresGenerationLock(pool),
       log,
       notifications: createDiscordNotifications(deliverMessage),
     });

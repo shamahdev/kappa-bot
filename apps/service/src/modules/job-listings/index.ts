@@ -1,4 +1,4 @@
-import type { Database } from "@kappa/db";
+import type { Database, GenerationLock } from "@kappa/db";
 
 import type { Logger } from "../../core/logger";
 import { createCvProfiles } from "./application/cv";
@@ -39,6 +39,7 @@ const timestamp = (value: string | null) =>
 /** No listeners or connections are created by importing this module. */
 export const createJobListings = (deps: {
   db: Database;
+  lock?: GenerationLock;
   log: Logger;
   notifications: JobNotifications;
 }) => {

@@ -1,12 +1,13 @@
 import {
   clampCvReportSummary,
   decodeCvReport,
+  decodeCvReportListItem,
   weightedMatchScore,
 } from "@kappa/contracts";
 import type { CvReportBaselineType, MatchGradeType } from "@kappa/contracts";
-import { cvReports } from "@kappa/db";
+import { cvReports, seenJobs } from "@kappa/db";
 import type { Database } from "@kappa/db";
-import { and, desc, eq, lt } from "drizzle-orm";
+import { and, count, desc, eq, inArray, lt } from "drizzle-orm";
 
 type ReportRow = typeof cvReports.$inferSelect;
 
@@ -26,6 +27,7 @@ const baselineOf = (
   const score = row ? scoreOf(row) : null;
   return row?.grade && score !== null
     ? {
+        cvUploadedAt: row.cvUploadedAt?.toISOString() ?? null,
         factors: row.factors,
         grade: row.grade as MatchGradeType,
         id: row.id,
@@ -35,7 +37,11 @@ const baselineOf = (
 };
 
 /** Serialize only owner-facing report content, never raw postings or CV text. */
-export const reportDto = (row: ReportRow, previous?: ReportRow) =>
+export const reportDto = (
+  row: ReportRow,
+  previous?: ReportRow,
+  liveSeenIds?: Set<number>
+) =>
   decodeCvReport({
     createdAt: row.createdAt.toISOString(),
     cvFilename: row.cvFilename,
@@ -43,7 +49,13 @@ export const reportDto = (row: ReportRow, previous?: ReportRow) =>
     factors: row.factors,
     grade: row.grade,
     id: row.id,
-    jobs: row.jobs,
+    jobs: row.jobs.map((job) => ({
+      ...job,
+      trackable:
+        typeof job.seenJobId === "number"
+          ? (liveSeenIds?.has(job.seenJobId) ?? job.trackable)
+          : undefined,
+    })),
     message: row.message,
     previous: baselineOf(previous),
     score: scoreOf(row),
@@ -54,14 +66,42 @@ export const reportDto = (row: ReportRow, previous?: ReportRow) =>
     windowStart: row.windowStart.toISOString(),
   });
 
-/** Newest first; each report is compared with the closest older ready report. */
-export const reportDtos = (rows: ReportRow[]) =>
-  rows.map((row, index) =>
-    reportDto(
-      row,
-      rows.slice(index + 1).find((older) => older.status === "ready")
-    )
-  );
+export const reportListItem = (row: ReportRow, previous?: ReportRow) =>
+  decodeCvReportListItem({
+    createdAt: row.createdAt.toISOString(),
+    cvUploadedAt: row.cvUploadedAt?.toISOString() ?? null,
+    grade: row.grade,
+    id: row.id,
+    jobCount: row.jobs.length,
+    message: row.message,
+    previous: baselineOf(previous),
+    score: scoreOf(row),
+    status: row.status,
+    trigger: row.trigger,
+    windowEnd: row.windowEnd.toISOString(),
+    windowStart: row.windowStart.toISOString(),
+  });
+
+/**
+ * Newest-first rows; each row compares with the closest older ready report.
+ * The optional baseline is the closest ready report older than the page, so
+ * the oldest row on a page still gets a correct comparison.
+ */
+export const reportListDtos = (rows: ReportRow[], baseline?: ReportRow) => {
+  const previousById = new Map<number, ReportRow | undefined>();
+  let lastReady = baseline;
+  for (let index = rows.length - 1; index >= 0; index -= 1) {
+    const row = rows[index];
+    if (!row) {
+      continue;
+    }
+    previousById.set(row.id, lastReady);
+    if (row.status === "ready") {
+      lastReady = row;
+    }
+  }
+  return rows.map((row) => reportListItem(row, previousById.get(row.id)));
+};
 
 export const createCvReportQueries = (db: Database) => ({
   async get(userId: string, reportId: number) {
@@ -84,14 +124,54 @@ export const createCvReportQueries = (db: Database) => ({
       )
       .orderBy(desc(cvReports.windowEnd), desc(cvReports.id))
       .limit(1);
-    return reportDto(row, previous);
+    // Retention and subscription deletion can remove the seen_jobs row while
+    // the report snapshot remains; tell the client which handles are live.
+    const seenIds = row.jobs.flatMap((job) =>
+      typeof job.seenJobId === "number" ? [job.seenJobId] : []
+    );
+    let liveSeenIds = new Set<number>();
+    if (seenIds.length > 0) {
+      const liveRows = await db
+        .select({ id: seenJobs.id })
+        .from(seenJobs)
+        .where(inArray(seenJobs.id, seenIds));
+      liveSeenIds = new Set(liveRows.map((seen) => seen.id));
+    }
+    return reportDto(row, previous, liveSeenIds);
   },
-  async list(userId: string) {
+  async list(userId: string, page = 1, pageSize = 50) {
+    const [totalRow] = await db
+      .select({ total: count() })
+      .from(cvReports)
+      .where(eq(cvReports.userId, userId));
     const rows = await db
       .select()
       .from(cvReports)
       .where(eq(cvReports.userId, userId))
-      .orderBy(desc(cvReports.windowEnd), desc(cvReports.id));
-    return reportDtos(rows);
+      .orderBy(desc(cvReports.windowEnd), desc(cvReports.id))
+      .limit(pageSize)
+      .offset((page - 1) * pageSize);
+    const oldest = rows.at(-1);
+    let baseline: ReportRow | undefined;
+    if (oldest) {
+      [baseline] = await db
+        .select()
+        .from(cvReports)
+        .where(
+          and(
+            eq(cvReports.userId, userId),
+            eq(cvReports.status, "ready"),
+            lt(cvReports.windowEnd, oldest.windowEnd)
+          )
+        )
+        .orderBy(desc(cvReports.windowEnd), desc(cvReports.id))
+        .limit(1);
+    }
+    return {
+      page,
+      pageSize,
+      reports: reportListDtos(rows, baseline),
+      total: totalRow?.total ?? 0,
+    };
   },
 });

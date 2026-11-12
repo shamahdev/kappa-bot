@@ -211,6 +211,9 @@ export const cvReports = pgTable(
     // Legacy per-subscription batch metadata; new per-user reports leave these null.
     keywords: text("keywords"),
     message: text("message"),
+    notificationClaimedAt: timestamp("notification_claimed_at", {
+      withTimezone: true,
+    }),
     notifiedAt: timestamp("notified_at", { withTimezone: true }),
     score: integer("score"),
     source: text("source"),
@@ -220,6 +223,7 @@ export const cvReports = pgTable(
       { onDelete: "set null" }
     ),
     summary: jsonb("summary").$type<CvReportSummaryType>(),
+    summaryAttempts: integer("summary_attempts").notNull().default(0),
     trigger: text("trigger").notNull().default("scheduled"),
     userId: text("user_id").notNull(),
     windowEnd: timestamp("window_end", { withTimezone: true }).notNull(),
@@ -239,12 +243,15 @@ export const cvReports = pgTable(
 export const cvReportDeliveries = pgTable(
   "cv_report_deliveries",
   {
-    // null: not yet assessed; "scored": factors/grade stored; "skipped": no description.
+    // null: not yet assessed; "scored": factors/grade stored; "skipped": no
+    // description; "failed": terminal after permanent/bounded retries.
     assessment: text("assessment"),
+    attempts: integer("attempts").notNull().default(0),
     deliveredAt: timestamp("delivered_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
     factors: jsonb("factors").$type<MatchBreakdownType>(),
+    failureReason: text("failure_reason"),
     grade: text("grade"),
     id: serial("id").primaryKey(),
     posting: jsonb("posting").$type<JobPosting>().notNull(),

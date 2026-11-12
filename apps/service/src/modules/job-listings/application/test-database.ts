@@ -59,6 +59,10 @@ export const testDatabase = (
       readCount += 1;
       return chain(reads.shift() ?? []);
     },
+    selectDistinct() {
+      readCount += 1;
+      return chain(reads.shift() ?? []);
+    },
     transaction<T>(run: (db: Database) => Promise<T>): Promise<T> {
       transactionCount += 1;
       try {

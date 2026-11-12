@@ -15,6 +15,7 @@ export const PATHS = {
   cv: `${API_V1}/cv`,
   cvFile: `${API_V1}/cv/file`,
   cvReportById: (id: number): string => `${API_V1}/cv/reports/${id}`,
+  cvReportRetry: (id: number): string => `${API_V1}/cv/reports/${id}/retry`,
   cvReports: `${API_V1}/cv/reports`,
   guilds: `${API_V1}/guilds`,
   health: "/health",

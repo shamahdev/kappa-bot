@@ -1,5 +1,10 @@
 import "dotenv/config";
-import { closeDb, createDb, runMigrations } from "@kappa/db";
+import {
+  closeDb,
+  createDb,
+  createPostgresGenerationLock,
+  runMigrations,
+} from "@kappa/db";
 import { Elysia } from "elysia";
 
 import { loadServiceConfig } from "./core/config";
@@ -26,8 +31,13 @@ if (config.databaseUrlUnpooled) {
   log.warn("DATABASE_URL_UNPOOLED blank — skipping boot migrations");
 }
 
-const { db } = createDb(config.databaseUrl);
-const deps: RouteDeps = { config, db, log };
+const { db, pool } = createDb(config.databaseUrl);
+const deps: RouteDeps = {
+  config,
+  db,
+  lock: createPostgresGenerationLock(pool),
+  log,
+};
 
 const app = new Elysia()
   .onError(({ code, set }) => {

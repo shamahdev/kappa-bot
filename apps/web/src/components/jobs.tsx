@@ -1,4 +1,8 @@
-import { MATCH_FACTORS, SUBSCRIPTION_SOURCES } from "@kappa/contracts";
+import {
+  MATCH_FACTORS,
+  SUBSCRIPTION_SOURCES,
+  safeHttpUrl,
+} from "@kappa/contracts";
 import type { JobDtoType, MatchBreakdownType } from "@kappa/contracts";
 import { useId, useState } from "react";
 
@@ -96,27 +100,34 @@ const MatchToggle = ({
   );
 };
 
-const JobCell = ({ job }: { job: JobDtoType }) => (
-  <div className={styles.jobCell}>
-    <a
-      className={styles.jobLink}
-      href={job.url}
-      rel="noopener noreferrer"
-      target="_blank"
-    >
-      {titleOf(job)}
-    </a>
-    <p className={styles.jobMeta}>
-      {[job.company, job.location].filter(Boolean).join(" · ") || "—"}
-      <span aria-hidden="true"> · </span>
-      {job.source}
-      <span aria-hidden="true"> · </span>
-      <time dateTime={job.firstSeenAt} title={fullDate(job.firstSeenAt)}>
-        {relativeDay(job.firstSeenAt)}
-      </time>
-    </p>
-  </div>
-);
+const JobCell = ({ job }: { job: JobDtoType }) => {
+  const href = safeHttpUrl(job.url);
+  return (
+    <div className={styles.jobCell}>
+      {href ? (
+        <a
+          className={styles.jobLink}
+          href={href}
+          rel="noopener noreferrer"
+          target="_blank"
+        >
+          {titleOf(job)}
+        </a>
+      ) : (
+        <span className={styles.jobLink}>{titleOf(job)}</span>
+      )}
+      <p className={styles.jobMeta}>
+        {[job.company, job.location].filter(Boolean).join(" · ") || "—"}
+        <span aria-hidden="true"> · </span>
+        {job.source}
+        <span aria-hidden="true"> · </span>
+        <time dateTime={job.firstSeenAt} title={fullDate(job.firstSeenAt)}>
+          {relativeDay(job.firstSeenAt)}
+        </time>
+      </p>
+    </div>
+  );
+};
 
 const JobsHead = ({ personal }: { personal: boolean }) => (
   <thead>

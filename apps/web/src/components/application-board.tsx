@@ -2,6 +2,7 @@ import {
   APPLICATION_STATUS_LABELS,
   APPLICATION_STATUSES,
   BOARD_STATUSES,
+  safeHttpUrl,
 } from "@kappa/contracts";
 import type {
   ApplicationDtoType,
@@ -171,9 +172,17 @@ const ApplicationCard = ({
   >
     <div className="board-card-head">
       <div className="board-card-title">
-        <a href={application.url} rel="noopener noreferrer" target="_blank">
-          {titleOf(application)}
-        </a>
+        {safeHttpUrl(application.url) ? (
+          <a
+            href={safeHttpUrl(application.url) ?? undefined}
+            rel="noopener noreferrer"
+            target="_blank"
+          >
+            {titleOf(application)}
+          </a>
+        ) : (
+          <span>{titleOf(application)}</span>
+        )}
         <p>
           {[application.company, application.location]
             .filter(Boolean)

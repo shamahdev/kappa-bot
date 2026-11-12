@@ -1,3 +1,4 @@
+import { CV_MAX_TEXT_BYTES } from "@kappa/contracts";
 import { CV_MAX_UPLOAD_BYTES } from "@kappa/service/job-listings";
 import { EmbedBuilder } from "discord.js";
 import type { ChatInputCommandInteraction } from "discord.js";
@@ -21,8 +22,13 @@ const requireDM = async (
   return false;
 };
 
-const uploadSizeError = (bytes: number): string =>
-  `That file is too big (${Math.round(bytes / 1024)}KB) — max ${CV_MAX_UPLOAD_BYTES / 1024 / 1024}MB.`;
+const sizeLabel = (bytes: number): string =>
+  bytes >= 1_000_000
+    ? `${Math.round(bytes / 1_000_000)}MB`
+    : `${Math.round(bytes / 1024)}KB`;
+
+const uploadSizeError = (bytes: number, maxBytes: number): string =>
+  `That file is too big (${Math.round(bytes / 1024)}KB) — max ${sizeLabel(maxBytes)}.`;
 
 export const executeCvUpload = async (
   interaction: ChatInputCommandInteraction,
@@ -33,9 +39,11 @@ export const executeCvUpload = async (
   }
   await interaction.deferReply({ ephemeral: true });
   const file = interaction.options.getAttachment("file", true);
-  if (file.size > CV_MAX_UPLOAD_BYTES) {
+  const isPdf = file.name.trim().toLowerCase().endsWith(".pdf");
+  const maxBytes = isPdf ? CV_MAX_UPLOAD_BYTES : CV_MAX_TEXT_BYTES;
+  if (file.size > maxBytes) {
     await interaction.editReply({
-      embeds: [errorEmbed(uploadSizeError(file.size))],
+      embeds: [errorEmbed(uploadSizeError(file.size, maxBytes))],
     });
     return;
   }
@@ -55,9 +63,9 @@ export const executeCvUpload = async (
     return;
   }
   // Attachment metadata is not trusted: validate the bytes actually received as well.
-  if (bytes.byteLength > CV_MAX_UPLOAD_BYTES) {
+  if (bytes.byteLength > maxBytes) {
     await interaction.editReply({
-      embeds: [errorEmbed(uploadSizeError(bytes.byteLength))],
+      embeds: [errorEmbed(uploadSizeError(bytes.byteLength, maxBytes))],
     });
     return;
   }
@@ -136,7 +144,7 @@ export const executeCvRemove = async (
         .setColor(0x3f_6b_55)
         .setDescription(
           removed
-            ? "Your CV was removed — DM job cards will no longer show match scores."
+            ? "Your CV was removed — job cards and tracked applications will no longer show match scores. Existing CV reports remain in your dashboard."
             : "You have no CV saved."
         ),
     ],

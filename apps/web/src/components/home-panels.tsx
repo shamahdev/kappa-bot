@@ -3,12 +3,14 @@ import {
   BOARD_STATUSES,
   CV_REPORT_PERIOD_DAYS,
   MATCH_GRADE_LABELS,
+  safeHttpUrl,
 } from "@kappa/contracts";
+import type { CvReportListItemType } from "@kappa/contracts";
 import { Link } from "@tanstack/react-router";
 
 import { fullDate, relativeDay } from "../lib/format";
 import { useApplications, useCvReports, useJobs } from "../lib/queries";
-import { DeltaChip, reportWindow, scoreDelta } from "./cv-reports";
+import { DeltaChip, deltaLabel, reportWindow, scoreDelta } from "./cv-reports";
 import { DashboardIcon } from "./dashboard-icon";
 import { GradeBadge } from "./score";
 import { TrackControl } from "./track-control";
@@ -19,16 +21,43 @@ import "./home-panels.css";
 // The existing Jobs page size: Home looks at the same first page of deliveries.
 const LATEST_DELIVERIES = { page: 1, pageSize: 20, scope: "dm" } as const;
 
+const latestStatusNote = (
+  report: CvReportListItemType | undefined
+): string | null => {
+  if (!report) {
+    return null;
+  }
+  if (report.status === "pending") {
+    return `${reportWindow(report)} is being assessed.`;
+  }
+  if (report.status === "cv_required") {
+    return "Upload a CV to assess your latest report.";
+  }
+  if (
+    report.status === "unavailable" ||
+    (report.status === "ready" && !report.grade)
+  ) {
+    return "Your latest report could not be assessed.";
+  }
+  return null;
+};
+
 export const LatestReportPanel = () => {
-  const reports = useCvReports(true);
+  const reports = useCvReports(true, 1, 5);
   if (reports.isPending) {
     return <LoadingNote>Loading your latest report…</LoadingNote>;
   }
   if (reports.isError) {
     return <QueryError error={reports.error} />;
   }
-  const latest = reports.data.find((report) => report.status === "ready");
-  const processing = reports.data.find((report) => report.status === "pending");
+  const list = reports.data?.reports ?? [];
+  const [latest] = list;
+  const latestReady = list.find(
+    (report) => report.status === "ready" && report.grade
+  );
+  const shown =
+    latest?.status === "ready" && latest.grade ? latest : latestReady;
+  const statusNote = latestStatusNote(latest);
   return (
     <section className="home-panel" aria-labelledby="home-report-title">
       <header className="home-panel-head">
@@ -43,24 +72,21 @@ export const LatestReportPanel = () => {
           </Link>
         ) : null}
       </header>
-      {latest?.grade ? (
+      {shown?.grade ? (
         <div className="home-report">
-          <GradeBadge grade={latest.grade} size="md" />
+          <GradeBadge grade={shown.grade} size="md" />
           <div>
             <p className="home-report-label">
-              {MATCH_GRADE_LABELS[latest.grade]}
-              {latest.score === null ? null : (
-                <span className="home-report-score"> · {latest.score}/100</span>
+              {MATCH_GRADE_LABELS[shown.grade]}
+              {shown.score === null ? null : (
+                <span className="home-report-score"> · {shown.score}/100</span>
               )}
             </p>
             <p className="home-report-period">
-              {reportWindow(latest)} · {latest.jobs.length} jobs
+              {reportWindow(shown)} · {shown.jobCount} jobs
             </p>
           </div>
-          <DeltaChip
-            delta={scoreDelta(latest)}
-            suffix={latest.previous ? "vs previous" : undefined}
-          />
+          <DeltaChip delta={scoreDelta(shown)} suffix={deltaLabel(shown)} />
         </div>
       ) : (
         <p className="app-muted">
@@ -68,10 +94,10 @@ export const LatestReportPanel = () => {
           days from the jobs delivered to your DMs.
         </p>
       )}
-      {processing ? (
+      {statusNote ? (
         <p className="home-note">
           <DashboardIcon name="clock" size={16} />
-          {reportWindow(processing)} is being assessed.
+          {statusNote}
         </p>
       ) : null}
     </section>
@@ -139,31 +165,38 @@ export const StrongMatchesPanel = () => {
       ) : null}
       {strong.length > 0 ? (
         <ul className="home-matches">
-          {strong.map((job) => (
-            <li key={job.id}>
-              <GradeBadge grade={job.matchGrade} size="sm" />
-              <div className="home-match-body">
-                <a href={job.url} rel="noopener noreferrer" target="_blank">
-                  {job.title ?? "Untitled posting"}
-                </a>
-                <p>
-                  {[job.company, job.location].filter(Boolean).join(" · ")}
-                  {" · "}
-                  <time
-                    dateTime={job.firstSeenAt}
-                    title={fullDate(job.firstSeenAt)}
-                  >
-                    {relativeDay(job.firstSeenAt)}
-                  </time>
-                </p>
-              </div>
-              <TrackControl
-                seenJobId={job.id}
-                status={job.application?.status ?? null}
-                title={job.title ?? "this job"}
-              />
-            </li>
-          ))}
+          {strong.map((job) => {
+            const href = safeHttpUrl(job.url);
+            return (
+              <li key={job.id}>
+                <GradeBadge grade={job.matchGrade} size="sm" />
+                <div className="home-match-body">
+                  {href ? (
+                    <a href={href} rel="noopener noreferrer" target="_blank">
+                      {job.title ?? "Untitled posting"}
+                    </a>
+                  ) : (
+                    <span>{job.title ?? "Untitled posting"}</span>
+                  )}
+                  <p>
+                    {[job.company, job.location].filter(Boolean).join(" · ")}
+                    {" · "}
+                    <time
+                      dateTime={job.firstSeenAt}
+                      title={fullDate(job.firstSeenAt)}
+                    >
+                      {relativeDay(job.firstSeenAt)}
+                    </time>
+                  </p>
+                </div>
+                <TrackControl
+                  seenJobId={job.id}
+                  status={job.application?.status ?? null}
+                  title={job.title ?? "this job"}
+                />
+              </li>
+            );
+          })}
         </ul>
       ) : null}
     </section>

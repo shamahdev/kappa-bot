@@ -23,6 +23,7 @@ import {
   fetchApplications,
   moveApplication,
   removeApplication,
+  retryCvReport,
   trackApplication,
   fetchCv,
   fetchCvReport,
@@ -179,10 +180,10 @@ export const useCreateCvReport = () => {
   });
 };
 
-export const useCvReports = (enabled: boolean) =>
+export const useCvReports = (enabled: boolean, page = 1, pageSize = 50) =>
   useQuery({
-    queryKey: ["cv-reports"],
-    queryFn: fetchCvReports,
+    queryKey: ["cv-reports", page, pageSize],
+    queryFn: () => fetchCvReports(page, pageSize),
     enabled,
     retry: false,
   });
@@ -193,6 +194,16 @@ export const useCvReport = (id: number, enabled: boolean) =>
     enabled,
     retry: false,
   });
+export const useRetryCvReport = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: retryCvReport,
+    onSuccess: (report) => {
+      client.setQueryData(["cv-report", report.id], report);
+      void client.invalidateQueries({ queryKey: ["cv-reports"] });
+    },
+  });
+};
 
 export const useCv = (enabled: boolean) =>
   useQuery({
@@ -202,12 +213,21 @@ export const useCv = (enabled: boolean) =>
     retry: false,
   });
 
+const refreshCvDerived = (client: QueryClient) =>
+  Promise.all([
+    client.invalidateQueries({ queryKey: ["cv-reports"] }),
+    client.invalidateQueries({ queryKey: ["cv-report"] }),
+    client.invalidateQueries({ queryKey: queryKeys.jobs }),
+    client.invalidateQueries({ queryKey: ["applications"] }),
+  ]);
+
 export const useSaveCv = () => {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (input: SaveCvBodyType) => saveCv(input),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: queryKeys.cv });
+      void refreshCvDerived(client);
     },
   });
 };
@@ -218,6 +238,7 @@ export const useSaveCvFile = () => {
     mutationFn: (file: File) => saveCvFile(file),
     onSuccess: (cv) => {
       client.setQueryData(queryKeys.cv, cv);
+      void refreshCvDerived(client);
     },
   });
 };
@@ -228,6 +249,7 @@ export const useDeleteCv = () => {
     mutationFn: deleteCv,
     onSuccess: (cv) => {
       client.setQueryData(queryKeys.cv, cv);
+      void refreshCvDerived(client);
     },
   });
 };

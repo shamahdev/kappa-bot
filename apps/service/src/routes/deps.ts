@@ -1,4 +1,4 @@
-import type { Database } from "@kappa/db";
+import type { Database, GenerationLock } from "@kappa/db";
 
 import type { ServiceConfig } from "../core/config";
 import type { Logger } from "../core/logger";
@@ -7,5 +7,6 @@ import type { Logger } from "../core/logger";
 export interface RouteDeps {
   config: ServiceConfig;
   db: Database;
+  lock?: GenerationLock;
   log: Logger;
 }

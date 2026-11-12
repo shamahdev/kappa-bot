@@ -19,7 +19,7 @@ import type {
   MatchBreakdownType,
   MatchGradeType,
 } from "@kappa/contracts";
-import { generateText } from "ai";
+import { APICallError, generateText } from "ai";
 
 import type { JobMatch } from "../domain/posting";
 
@@ -29,7 +29,56 @@ export type { JobMatch } from "../domain/posting";
 const MAX_INPUT = 6000;
 // Chars kept for the summary.
 const MAX_SUMMARY = 1500;
+// Postings can be arbitrarily long; the CV is already capped at upload.
+const MAX_MATCH_POSTING = 12_000;
+const MAX_REASON_CHARS = 500;
+const MATCH_MAX_OUTPUT_TOKENS = 1500;
+const REPORT_MAX_OUTPUT_TOKENS = 1500;
 const MODEL = process.env.GROQ_MODEL ?? "qwen/qwen3.8-27b";
+
+export interface MatchFailure {
+  kind: "failed";
+  reason: string;
+  transient: boolean;
+}
+export type MatchOutcome = { kind: "scored"; match: JobMatch } | MatchFailure;
+
+export interface ReportSummaryFailure {
+  kind: "failed";
+  reason: string;
+  transient: boolean;
+}
+export type CvReportSummaryOutcome =
+  | { kind: "summary"; summary: CvReportSummaryType }
+  | ReportSummaryFailure;
+
+/** Keep provider errors short and free of request/CV content. */
+const failureReason = (error: unknown): string => {
+  if (error instanceof APICallError) {
+    return error.statusCode ? `provider ${error.statusCode}` : "provider error";
+  }
+  if (error instanceof Error) {
+    return error.name;
+  }
+  return "unknown error";
+};
+
+/** Provider retryability plus timeouts; parse failures are retried by the caller. */
+const isTransient = (error: unknown): boolean => {
+  if (error instanceof APICallError) {
+    return error.isRetryable;
+  }
+  if (
+    error instanceof Error &&
+    (error.name === "AbortError" || error.name === "TimeoutError")
+  ) {
+    return true;
+  }
+  return true;
+};
+
+const truncate = (value: string, max: number): string =>
+  value.length > max ? `${value.slice(0, max).trimEnd()}\n[truncated]` : value;
 
 const SYSTEM =
   "You summarize job postings for job seekers. Reply in the same language as the posting. " +
@@ -94,7 +143,8 @@ export const summarizeJob = async (
   title: string,
   company: string,
   description: string,
-  meta?: { salary?: string | null; location?: string | null }
+  meta?: { salary?: string | null; location?: string | null },
+  onError?: (error: unknown) => void
 ): Promise<string | null> => {
   const apiKey = process.env.GROQ_API_KEY;
   if (!(apiKey && description.trim())) {
@@ -122,7 +172,8 @@ export const summarizeJob = async (
     return summary.length > MAX_SUMMARY
       ? `${summary.slice(0, MAX_SUMMARY).trimEnd()}…`
       : summary;
-  } catch {
+  } catch (error) {
+    onError?.(error);
     return null;
   }
 };
@@ -226,33 +277,49 @@ export const parseCvReportSummary = (
 };
 
 /**
- * The full extracted CV and full source posting are supplied without slicing.
- * Provider rejection/failure yields no grade, never a silently partial grade.
+ * The full extracted CV is supplied; the posting is capped with an explicit
+ * marker so an oversized source cannot exceed the model context. Provider
+ * rejection/failure yields no grade, never a silently partial grade.
  */
 export const scoreJobMatch = async (
   cvText: string,
   title: string,
   company: string,
   description: string
-): Promise<JobMatch | null> => {
+): Promise<MatchOutcome> => {
   const apiKey = process.env.GROQ_API_KEY;
   const cv = cvText.trim();
   const job = description.trim();
-  if (!(apiKey && cv && job)) {
-    return null;
+  if (!apiKey) {
+    return {
+      kind: "failed",
+      reason: "GROQ_API_KEY is not configured",
+      transient: false,
+    };
+  }
+  if (!(cv && job)) {
+    return { kind: "failed", reason: "empty input", transient: false };
   }
   try {
     const groq = createGroq({ apiKey });
     const { text } = await generateText({
       abortSignal: AbortSignal.timeout(30_000),
+      maxOutputTokens: MATCH_MAX_OUTPUT_TOKENS,
       model: groq(MODEL),
-      prompt: `Job: ${title} @ ${company}\n\nPosting:\n${job}\n\nCandidate CV:\n${cv}`,
+      prompt: `Job: ${title} @ ${company}\n\nPosting:\n${truncate(job, MAX_MATCH_POSTING)}\n\nCandidate CV:\n${cv}`,
       system: MATCH_SYSTEM,
       temperature: 0.1,
     });
-    return parseMatchJson(text);
-  } catch {
-    return null;
+    const match = parseMatchJson(text);
+    return match
+      ? { kind: "scored", match }
+      : { kind: "failed", reason: "invalid model reply", transient: true };
+  } catch (error) {
+    return {
+      kind: "failed",
+      reason: failureReason(error),
+      transient: isTransient(error),
+    };
   }
 };
 
@@ -282,15 +349,20 @@ export const summarizeCvReport = async (
   cvText: string,
   jobs: CvReportEvidence[],
   factors: MatchBreakdownType
-): Promise<CvReportSummaryType | null> => {
+): Promise<CvReportSummaryOutcome> => {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
-    return null;
+    return {
+      kind: "failed",
+      reason: "GROQ_API_KEY is not configured",
+      transient: false,
+    };
   }
   try {
     const groq = createGroq({ apiKey });
     const { text } = await generateText({
       abortSignal: AbortSignal.timeout(30_000),
+      maxOutputTokens: REPORT_MAX_OUTPUT_TOKENS,
       model: groq(MODEL),
       prompt: JSON.stringify({
         candidateCv: cvText,
@@ -298,17 +370,30 @@ export const summarizeCvReport = async (
         jobs: jobs.map((job) => ({
           company: job.company,
           grade: job.grade,
-          keywordMatch: job.factors.keywordMatch.reason,
-          relevantExperience: job.factors.relevantExperience.reason,
-          skills: job.factors.skills.reason,
+          keywordMatch: truncate(
+            job.factors.keywordMatch.reason,
+            MAX_REASON_CHARS
+          ),
+          relevantExperience: truncate(
+            job.factors.relevantExperience.reason,
+            MAX_REASON_CHARS
+          ),
+          skills: truncate(job.factors.skills.reason, MAX_REASON_CHARS),
           title: job.title,
         })),
       }),
       system: REPORT_SYSTEM,
       temperature: 0.1,
     });
-    return parseCvReportSummary(text);
-  } catch {
-    return null;
+    const summary = parseCvReportSummary(text);
+    return summary
+      ? { kind: "summary", summary }
+      : { kind: "failed", reason: "invalid model reply", transient: true };
+  } catch (error) {
+    return {
+      kind: "failed",
+      reason: failureReason(error),
+      transient: isTransient(error),
+    };
   }
 };

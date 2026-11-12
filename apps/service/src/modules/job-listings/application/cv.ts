@@ -5,11 +5,20 @@ import {
   CV_MAX_TEXT_BYTES,
   CV_MIN_CHARS,
 } from "@kappa/contracts";
-import { cvProfiles } from "@kappa/db";
+import {
+  cvProfiles,
+  jobApplications,
+  seenJobs,
+  subscriptions,
+} from "@kappa/db";
 import type { Database } from "@kappa/db";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
-import { dmUserIdForScope, JobSubscriptionError } from "../domain/subscription";
+import {
+  dmScopeKey,
+  dmUserIdForScope,
+  JobSubscriptionError,
+} from "../domain/subscription";
 
 export const CV_MAX_UPLOAD_BYTES = CV_MAX_PDF_BYTES;
 
@@ -94,11 +103,30 @@ export const createCvProfiles = (db: Database) => {
   return {
     get,
     async remove(userId: string): Promise<boolean> {
-      const rows = await db
-        .delete(cvProfiles)
-        .where(eq(cvProfiles.discordId, userId))
-        .returning({ id: cvProfiles.discordId });
-      return rows.length > 0;
+      return await db.transaction(async (tx) => {
+        const rows = await tx
+          .delete(cvProfiles)
+          .where(eq(cvProfiles.discordId, userId))
+          .returning({ id: cvProfiles.discordId });
+        // Scores are CV-derived; removing the CV removes the personal match
+        // history from job cards and tracked applications. Reports remain as
+        // explicit historical documents.
+        await tx
+          .update(seenJobs)
+          .set({
+            matchBreakdown: null,
+            matchReason: null,
+            matchScore: null,
+          })
+          .where(
+            sql`${seenJobs.subscriptionId} in (select ${subscriptions.id} from ${subscriptions} where ${subscriptions.guildId} = ${dmScopeKey(userId)})`
+          );
+        await tx
+          .update(jobApplications)
+          .set({ matchGrade: null })
+          .where(eq(jobApplications.userId, userId));
+        return rows.length > 0;
+      });
     },
     save,
     async saveFile(

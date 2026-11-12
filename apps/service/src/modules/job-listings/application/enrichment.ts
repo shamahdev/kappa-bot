@@ -16,8 +16,8 @@ import { fetchJobPostingDetail } from "../infrastructure/sources";
 
 export type ReportAssessment =
   | { kind: "scored"; match: JobMatch }
-  | { kind: "skipped" }
-  | { kind: "failed" };
+  | { kind: "skipped"; reason: string }
+  | { kind: "failed"; reason: string; transient: boolean };
 
 /** Source detail, shared summary caching, and optional personal CV matching. */
 export const createJobEnrichment = ({
@@ -67,7 +67,12 @@ export const createJobEnrichment = ({
       {
         location: job.location ?? null,
         salary: input.salary ?? job.salary ?? null,
-      }
+      },
+      (error) =>
+        log.warn(
+          { err: error, job: job.id, module: "job-listings" },
+          "job summary failed"
+        )
     );
     if (!summary) {
       return input;
@@ -88,15 +93,26 @@ export const createJobEnrichment = ({
       const source = await sourceDetail(job);
       const description = (source?.description ?? job.description ?? "").trim();
       if (!description) {
-        return { kind: "skipped" };
+        return { kind: "skipped", reason: "no description" };
       }
-      const match = await scoreJobMatch(
+      const outcome = await scoreJobMatch(
         cvText,
         job.position,
         job.company,
         description
       );
-      return match ? { kind: "scored", match } : { kind: "failed" };
+      if (outcome.kind === "failed") {
+        log.warn(
+          {
+            job: job.id,
+            module: "job-listings",
+            reason: outcome.reason,
+            transient: outcome.transient,
+          },
+          "CV assessment failed"
+        );
+      }
+      return outcome;
     },
     async enrich(
       job: JobPosting,
@@ -109,7 +125,24 @@ export const createJobEnrichment = ({
       const cv = cvText?.trim();
       const description = source?.description ?? job.description ?? null;
       if (cv && description) {
-        match = await scoreJobMatch(cv, job.position, job.company, description);
+        const outcome = await scoreJobMatch(
+          cv,
+          job.position,
+          job.company,
+          description
+        );
+        if (outcome.kind === "failed") {
+          log.warn(
+            {
+              job: job.id,
+              module: "job-listings",
+              reason: outcome.reason,
+              transient: outcome.transient,
+            },
+            "CV assessment failed"
+          );
+        }
+        match = outcome.kind === "scored" ? outcome.match : null;
       }
       return { detail, job, match };
     },

@@ -4,6 +4,7 @@ import { SESSION_COOKIE } from "@kappa/contracts";
 
 import { testDatabase } from "../modules/job-listings/application/test-database";
 import { cvRoutes } from "./cv";
+import { cvReportRoutes } from "./cv-reports";
 import type { RouteDeps } from "./deps";
 import { subscriptionRoutes } from "./subscriptions";
 
@@ -107,4 +108,50 @@ test("HTTP CV controller serializes the shared personal profile result", async (
     hasCv: true,
     updatedAt: updatedAt.toISOString(),
   });
+});
+
+test("HTTP CV report list paginates and omits job snapshots", async () => {
+  const createdAt = new Date("2026-01-04T00:00:00Z");
+  const report = {
+    createdAt,
+    cvFilename: null,
+    cvUploadedAt: null,
+    factors: null,
+    grade: "C",
+    id: 7,
+    jobs: [],
+    keywords: null,
+    message: null,
+    notificationClaimedAt: null,
+    notifiedAt: null,
+    score: 60,
+    source: null,
+    status: "ready",
+    subscriptionId: null,
+    summary: null,
+    summaryAttempts: 0,
+    trigger: "scheduled",
+    userId: user.discordId,
+    windowEnd: new Date("2026-01-04T00:00:00Z"),
+    windowStart: new Date("2026-01-01T00:00:00Z"),
+  };
+  const store = testDatabase([[session], [{ total: 1 }], [report], []]);
+  const response = await cvReportRoutes(deps(store.db)).handle(
+    request("/api/v1/cv/reports?page=2&pageSize=10")
+  );
+  expect(response.status).toBe(200);
+  const body = (await response.json()) as {
+    page: number;
+    pageSize: number;
+    reports: Record<string, unknown>[];
+    total: number;
+  };
+  expect(body).toMatchObject({
+    page: 2,
+    pageSize: 10,
+    reports: [{ id: 7, jobCount: 0, score: 60 }],
+    total: 1,
+  });
+  expect(body.reports[0]).not.toHaveProperty("jobs");
+  expect(body.reports[0]).not.toHaveProperty("summary");
 });
