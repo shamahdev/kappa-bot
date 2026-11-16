@@ -9,7 +9,6 @@ export const PICKER_IDS = {
   edit: "jobs:edit",
   fetch: "jobs:fetch",
   latest: "jobs:latest",
-  retry: "jobs:retry",
   unsub: "jobs:unsub",
 } as const;
 

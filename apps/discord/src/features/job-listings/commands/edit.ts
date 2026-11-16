@@ -5,11 +5,10 @@ import { jobActor, jobScope, requireManageGuild } from "../interactions";
 import { pickerRow } from "../picker";
 import { PICKER_IDS } from "../presentation";
 
-const showPicker = async (
+export const executeEdit = async (
   interaction: ChatInputCommandInteraction,
-  ctx: FeatureContext,
-  action: "edit" | "retry"
-) => {
+  ctx: FeatureContext
+): Promise<void> => {
   if (!(await requireManageGuild(interaction))) {
     return;
   }
@@ -25,19 +24,7 @@ const showPicker = async (
     return;
   }
   await interaction.editReply({
-    components: [pickerRow(PICKER_IDS[action], rows, interaction).toJSON()],
-    content:
-      action === "edit"
-        ? "Choose a subscription to edit:"
-        : "Choose a subscription to retry failed extraction:",
+    components: [pickerRow(PICKER_IDS.edit, rows, interaction).toJSON()],
+    content: "Choose a subscription to edit:",
   });
 };
-
-export const executeEdit = (
-  interaction: ChatInputCommandInteraction,
-  ctx: FeatureContext
-): Promise<void> => showPicker(interaction, ctx, "edit");
-export const executeRetry = (
-  interaction: ChatInputCommandInteraction,
-  ctx: FeatureContext
-): Promise<void> => showPicker(interaction, ctx, "retry");

@@ -1,6 +1,6 @@
 import { describe, expect, mock, test } from "bun:test";
 
-import { JOB_SOURCE_OPTIONS, CV_MAX_PDF_BYTES } from "@kappa/contracts";
+import { JOB_SOURCE_OPTIONS } from "@kappa/contracts";
 import { JobSubscriptionError } from "@kappa/service/job-listings";
 import type { JobListings, JobSubscription } from "@kappa/service/job-listings";
 import { PermissionFlagsBits, PermissionsBitField } from "discord.js";
@@ -10,7 +10,6 @@ import type {
 } from "discord.js";
 
 import type { FeatureContext } from "../../core/feature";
-import { executeCvUpload } from "./commands/cv";
 import { onComponent, subscriptionId } from "./events/components";
 import { onMessage } from "./events/reply";
 import feature, { jobsCommand } from "./index";
@@ -61,20 +60,6 @@ const row = (overrides: Partial<JobSubscription> = {}): JobSubscription => ({
   retentionDays: 14,
   source: "linkedin",
   ...overrides,
-});
-
-const uploadInteraction = (name: string, size: number) => ({
-  deferReply: mock(() => Promise.resolve()),
-  editReply: mock((_payload: unknown) => Promise.resolve()),
-  guildId: null,
-  options: {
-    getAttachment: () => ({
-      name,
-      size,
-      url: "https://discord.invalid/attachment",
-    }),
-  },
-  user: { id: "user" },
 });
 
 describe("command registration", () => {
@@ -180,27 +165,19 @@ describe("trusted Discord actor", () => {
 });
 
 describe("picker controller boundaries", () => {
-  test("edit and retry pickers reject subscriptions outside the interaction scope", async () => {
-    for (const action of ["jobs:edit", "jobs:retry"]) {
-      const get = mock(() => Promise.resolve(row()));
-      const retry = mock(() => Promise.resolve());
-      const inter = {
-        ...select(action),
-        showModal: mock(() => Promise.resolve()),
-      };
-      // Each picker has an independent scope check before get/retry/modal.
-      // oxlint-disable-next-line no-await-in-loop
-      await onComponent(
-        context(
-          { get, list: () => Promise.resolve([row({ id: 8 })]) },
-          { evaluation: { retry } as never }
-        ),
-        inter
-      );
-      expect(get).not.toHaveBeenCalled();
-      expect(retry).not.toHaveBeenCalled();
-      expect(inter.showModal).not.toHaveBeenCalled();
-    }
+  test("edit picker rejects subscriptions outside the interaction scope", async () => {
+    const get = mock(() => Promise.resolve(row()));
+    const inter = {
+      ...select("jobs:edit"),
+      showModal: mock(() => Promise.resolve()),
+    };
+    // The picker has an independent scope check before get/modal.
+    await onComponent(
+      context({ get, list: () => Promise.resolve([row({ id: 8 })]) }),
+      inter
+    );
+    expect(get).not.toHaveBeenCalled();
+    expect(inter.showModal).not.toHaveBeenCalled();
   });
   test("rejects malformed IDs, not just non-integer Number conversions", () => {
     for (const value of [
@@ -359,65 +336,5 @@ describe("reply adapter", () => {
         userId: "user",
       },
     ]);
-  });
-});
-
-describe("CV attachment adapter", () => {
-  test("checks actual downloaded bytes even when metadata understates size", async () => {
-    const originalFetch = globalThis.fetch;
-    const save = mock(() => Promise.reject(new Error("must not save")));
-    try {
-      globalThis.fetch = mock(() =>
-        Promise.resolve(new Response(new Uint8Array(CV_MAX_PDF_BYTES + 1)))
-      ) as unknown as typeof fetch;
-      const inter = uploadInteraction("cv.txt", 1);
-      await executeCvUpload(
-        inter as unknown as ChatInputCommandInteraction,
-        context({}, { cv: { save } as unknown as JobListings["cv"] })
-      );
-      expect(save).not.toHaveBeenCalled();
-      const payload = required(inter.editReply.mock.calls[0])[0] as {
-        embeds: { toJSON: () => { description?: string } }[];
-      };
-      expect(required(payload.embeds[0]).toJSON().description).toContain(
-        "too big"
-      );
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
-  });
-
-  test("sends PDF bytes to the application parser rather than decoding them in Discord", async () => {
-    const originalFetch = globalThis.fetch;
-    const bytes = new Uint8Array([37, 80, 68, 70]);
-    const savePdf = mock((userId, actual, filename) => {
-      expect(userId).toBe("user");
-      expect(actual).toEqual(bytes);
-      expect(filename).toBe("cv.pdf");
-      return Promise.resolve({
-        discordId: userId,
-        filename,
-        text: "parsed by application",
-        updatedAt: new Date(),
-      });
-    });
-    try {
-      globalThis.fetch = mock(() =>
-        Promise.resolve(new Response(bytes))
-      ) as unknown as typeof fetch;
-      await executeCvUpload(
-        uploadInteraction(
-          "cv.pdf",
-          bytes.length
-        ) as unknown as ChatInputCommandInteraction,
-        context(
-          {},
-          { cv: { saveFile: savePdf } as unknown as JobListings["cv"] }
-        )
-      );
-      expect(savePdf).toHaveBeenCalledTimes(1);
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
   });
 });

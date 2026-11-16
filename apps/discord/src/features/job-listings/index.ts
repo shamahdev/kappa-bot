@@ -11,17 +11,11 @@ import type { ChatInputCommandInteraction } from "discord.js";
 
 import type { FeatureContext, Feature } from "../../core/feature";
 import { executeConfig } from "./commands/config";
-import {
-  executeCvRemove,
-  executeCvStatus,
-  executeCvUpload,
-} from "./commands/cv";
-import { executeEdit, executeRetry } from "./commands/edit";
+import { executeEdit } from "./commands/edit";
 import { executeFetch } from "./commands/fetch";
-import { executeHealth } from "./commands/health";
 import { executeShowLatest } from "./commands/latest";
 import { executeList } from "./commands/list";
-import { executeRoleTag } from "./commands/role-tag";
+import { executeAssignNotify, executeNotifyRole } from "./commands/notify-role";
 import { executeSubscribe } from "./commands/subscribe";
 import { executeUnsubscribe } from "./commands/unsubscribe";
 import { onChannelDelete } from "./events/channel-delete";
@@ -113,26 +107,28 @@ const subcommands = [
   },
   {
     data: new SlashCommandSubcommandBuilder()
-      .setName("role_tag")
+      .setName("notify_role")
       .setDescription("Set or remove a server subscription's notification role")
       .addRoleOption((o) =>
         o
           .setName("role")
           .setDescription("Server role to tag; omit to remove the tag")
       ),
-    execute: executeRoleTag,
+    execute: executeNotifyRole,
+  },
+  {
+    data: new SlashCommandSubcommandBuilder()
+      .setName("assign_notify")
+      .setDescription(
+        "Add a subscription's notification role to yourself (pick one)"
+      ),
+    execute: executeAssignNotify,
   },
   {
     data: new SlashCommandSubcommandBuilder()
       .setName("edit")
       .setDescription("Edit subscription keywords, title and posting filters"),
     execute: executeEdit,
-  },
-  {
-    data: new SlashCommandSubcommandBuilder()
-      .setName("retry_extraction")
-      .setDescription("Retry failed posting extraction for a subscription"),
-    execute: executeRetry,
   },
   {
     data: new SlashCommandSubcommandBuilder()
@@ -173,36 +169,6 @@ const subcommands = [
       .setName("fetch_latest")
       .setDescription("Show the single latest job for a subscription here"),
     execute: executeShowLatest,
-  },
-  {
-    data: new SlashCommandSubcommandBuilder()
-      .setName("health")
-      .setDescription("Check which job sources are active"),
-    execute: executeHealth,
-  },
-  {
-    data: new SlashCommandSubcommandBuilder()
-      .setName("cv_upload")
-      .setDescription("Upload your CV for A–E match grades (DM only)")
-      .addAttachmentOption((o) =>
-        o
-          .setName("file")
-          .setDescription("Your CV (.pdf, .txt, or .md)")
-          .setRequired(true)
-      ),
-    execute: executeCvUpload,
-  },
-  {
-    data: new SlashCommandSubcommandBuilder()
-      .setName("cv_status")
-      .setDescription("Show your saved CV (DM only)"),
-    execute: executeCvStatus,
-  },
-  {
-    data: new SlashCommandSubcommandBuilder()
-      .setName("cv_remove")
-      .setDescription("Remove your saved CV (DM only)"),
-    execute: executeCvRemove,
   },
 ];
 

@@ -3,7 +3,7 @@ import { JobSubscriptionError } from "@kappa/service/job-listings";
 import type { StringSelectMenuInteraction } from "discord.js";
 
 import type { FeatureContext } from "../../../core/feature";
-import { onRoleTag } from "../commands/role-tag";
+import { onAssignNotify, onNotifyRole } from "../commands/notify-role";
 import { cardPayload } from "../embed";
 import {
   applicationErrorMessage,
@@ -61,8 +61,7 @@ const subscriptionSummary = (removed: JobSubscription): string =>
 
 const manageSelection = async (
   ctx: FeatureContext,
-  inter: StringSelectMenuInteraction,
-  action: "edit" | "retry"
+  inter: StringSelectMenuInteraction
 ): Promise<void> => {
   try {
     const id =
@@ -85,17 +84,7 @@ const manageSelection = async (
       );
     }
     const current = await ctx.jobListings.subscriptions.get(actor, id);
-    if (action === "edit") {
-      await showSubscriptionEditor(inter, current);
-    } else {
-      await inter.deferUpdate();
-      await ctx.jobListings.evaluation.retry(actor, id);
-      await inter.editReply({
-        components: [],
-        content: "Failed extraction queued for retry on the next poll.",
-        embeds: [],
-      });
-    }
+    await showSubscriptionEditor(inter, current);
   } catch (error) {
     const payload = {
       embeds: [errorEmbed(applicationErrorMessage(error))],
@@ -202,7 +191,10 @@ export const onComponent = async (
   ctx: FeatureContext,
   interaction: unknown
 ): Promise<void> => {
-  if (await onRoleTag(ctx, interaction)) {
+  if (await onAssignNotify(ctx, interaction)) {
+    return;
+  }
+  if (await onNotifyRole(ctx, interaction)) {
     return;
   }
   if (await onSubscriptionEdit(ctx, interaction)) {
@@ -221,8 +213,8 @@ export const onComponent = async (
   if (!(await requireManageGuild(inter))) {
     return;
   }
-  if (picker[0] === "edit" || picker[0] === "retry") {
-    return manageSelection(ctx, inter, picker[0]);
+  if (picker[0] === "edit") {
+    return manageSelection(ctx, inter);
   }
   return deliverySelection(ctx, inter, picker[0]);
 };
