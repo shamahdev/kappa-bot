@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 
 import { SESSION_COOKIE } from "@kappa/contracts";
 
+import { createHttpJobAccess } from "../core/job-access";
 import { testDatabase } from "../modules/job-listings/application/test-database";
 import { cvRoutes } from "./cv";
 import { cvReportRoutes } from "./cv-reports";
@@ -29,6 +30,29 @@ const request = (path: string, body?: unknown) =>
     method: body ? "PATCH" : "GET",
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
+
+test("HTTP role lookup accepts a normal role with mention disabled", async () => {
+  const roleId = "123456789012345678";
+  const store = testDatabase();
+  const originalFetch = globalThis.fetch;
+  try {
+    globalThis.fetch = (() =>
+      Promise.resolve(
+        Response.json([
+          // Discord creates roles with mentionable=false by default.
+          { id: roleId, managed: false, mentionable: false },
+          { id: "123456789012345679", managed: true, mentionable: false },
+        ])
+      )) as typeof fetch;
+    const { actor } = createHttpJobAccess(deps(store.db), user.discordId);
+    expect(await actor.canMentionRole?.("some-guild", roleId)).toBe(true);
+    expect(
+      await actor.canMentionRole?.("some-guild", "123456789012345679")
+    ).toBe(false);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
 
 test("HTTP PATCH cannot use creator attribution to bypass current server permissions", async () => {
   const row = { createdBy: user.discordId, guildId: "http-server", id: 7 };

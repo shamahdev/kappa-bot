@@ -106,7 +106,7 @@ const subcommands = [
         o
           .setName("role")
           .setDescription(
-            "Mentionable role to ping on server notifications (server only)"
+            "Server role to tag on notifications (not @everyone or bot roles)"
           )
       ),
     execute: executeSubscribe,
@@ -118,7 +118,7 @@ const subcommands = [
       .addRoleOption((o) =>
         o
           .setName("role")
-          .setDescription("Mentionable server role; omit to remove the tag")
+          .setDescription("Server role to tag; omit to remove the tag")
       ),
     execute: executeRoleTag,
   },

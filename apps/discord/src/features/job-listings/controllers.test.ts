@@ -136,9 +136,10 @@ describe("command registration", () => {
 });
 
 describe("trusted Discord actor", () => {
-  test("role access checks require this guild, a mentionable role, and no managed/everyone role", async () => {
+  test("role access accepts a normal role from this guild, including one that is not mentionable", async () => {
     const roleId = "123456789012345678";
-    let role = { id: roleId, managed: false, mentionable: true };
+    // Discord creates roles with "allow anyone to mention" OFF by default.
+    let role = { id: roleId, managed: false, mentionable: false };
     const inter = {
       ...select(),
       guild: { roles: { fetch: mock(() => Promise.resolve(role)) } },
@@ -146,11 +147,9 @@ describe("trusted Discord actor", () => {
     const actor = jobActor(inter as unknown as StringSelectMenuInteraction);
     expect(await actor.canMentionRole?.("guild", roleId)).toBe(true);
     expect(await actor.canMentionRole?.("another-guild", roleId)).toBe(false);
-    role = { ...role, mentionable: false };
+    role = { ...role, managed: true };
     expect(await actor.canMentionRole?.("guild", roleId)).toBe(false);
-    role = { ...role, managed: true, mentionable: true };
-    expect(await actor.canMentionRole?.("guild", roleId)).toBe(false);
-    role = { id: "guild", managed: false, mentionable: true };
+    role = { id: "guild", managed: false, mentionable: false };
     expect(await actor.canMentionRole?.("guild", "guild")).toBe(false);
   });
   test("grants only the interaction guild using current SDK permissions", async () => {

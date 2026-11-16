@@ -5,6 +5,7 @@ import { SUBSCRIPTION_SOURCES } from "@kappa/contracts";
 import {
   assertScopeAccess,
   assertSubscriptionAccess,
+  assertSubscriptionRole,
   dmScopeKey,
   dmUserIdForScope,
   JobSubscriptionError,
@@ -110,6 +111,21 @@ describe("shared validation", () => {
       keywords: "engineer",
       retentionDays: 365,
     });
+  });
+  test("role tags reject @everyone and DM scopes without calling the role lookup", async () => {
+    const checker = {
+      ...actor,
+      canMentionRole: () => Promise.resolve(true),
+    };
+    await expect(
+      assertSubscriptionRole(checker, "guild", "guild")
+    ).rejects.toMatchObject({ code: "VALIDATION" });
+    await expect(
+      assertSubscriptionRole(checker, "dm:alice", "123456789012345678")
+    ).rejects.toMatchObject({ code: "VALIDATION" });
+    await expect(
+      assertSubscriptionRole(checker, "guild", "123456789012345678")
+    ).resolves.toBeUndefined();
   });
   test("role IDs reject arbitrary mentions and support explicit removal", () => {
     for (const roleId of [

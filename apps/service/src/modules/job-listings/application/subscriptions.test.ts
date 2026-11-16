@@ -107,7 +107,7 @@ describe("subscription writes", () => {
     expect(store.transactionCount).toBe(0);
   });
 
-  test("server role changes require a current permission grant and mentionable role in the same server", async () => {
+  test("server role changes require a current permission grant and a role in the same server", async () => {
     const roleId = "123456789012345678";
     const server = { ...row, guildId: "managed", roleId };
     const store = testDatabase([[server], [server], [server]], [server]);

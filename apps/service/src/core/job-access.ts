@@ -62,15 +62,10 @@ export const createHttpJobAccess = (deps: AccessDeps, userId: string) => {
       }
       const roles = (await response.json()) as {
         id: string;
-        mentionable: boolean;
         managed: boolean;
       }[];
       return roles.some(
-        (role) =>
-          role.id === roleId &&
-          role.id !== guildId &&
-          role.mentionable &&
-          !role.managed
+        (role) => role.id === roleId && role.id !== guildId && !role.managed
       );
     },
     userId,

@@ -40,9 +40,7 @@ export const jobActor = (
       return false;
     }
     const role = await interaction.guild.roles.fetch(roleId);
-    return Boolean(
-      role && role.id !== guildId && role.mentionable && !role.managed
-    );
+    return Boolean(role && role.id !== guildId && !role.managed);
   },
   userId: interaction.user.id,
 });

@@ -310,7 +310,7 @@ export const assertSubscriptionRole = async (
   if (roleId === guildId || !(await actor.canMentionRole?.(guildId, roleId))) {
     throw new JobSubscriptionError(
       "VALIDATION",
-      "Choose a mentionable role in this server. @everyone and managed roles are not supported."
+      "Choose a role in this server. @everyone and bot-managed roles are not supported."
     );
   }
 };
