@@ -2,8 +2,9 @@ import { expect, test } from "bun:test";
 
 import type { JobPosting } from "../domain/posting";
 import type { JobSubscription } from "../domain/subscription";
-import { flushSub } from "./polling";
+import { flushSub, pollSubscriptions } from "./polling";
 import type { JobPollingContext } from "./ports";
+import { testDatabase } from "./test-database";
 
 const sub = {
   channelId: "channel",
@@ -73,4 +74,91 @@ test("a later transport failure preserves recall and count for already-sent page
     )
   ).toBe(20);
   expect(recorded[0]?.messageId).toBe("sent");
+});
+
+test("alternative searches are OR, deduped and delivered as one subscription batch", async () => {
+  const subscription = {
+    ...sub,
+    filters: {},
+    keywordAlternatives: ["frontend", "nextjs", "fullstack"],
+    keywords: "frontend, nextjs, fullstack",
+    location: "Indonesia",
+    source: "linkedin",
+    title: "Web engineering",
+  };
+  const postings = jobs
+    .slice(0, 3)
+    .map((job) => ({ ...job, position: "frontend nextjs fullstack engineer" }));
+  const store = testDatabase([[]], [{ id: 1 }]);
+  const searched: string[] = [];
+  const messages: string[][] = [];
+  const ctx = {
+    db: store.db,
+    log: { info() {}, warn() {} },
+    notifications: {
+      async *batch(
+        _channel: string,
+        listing: JobPosting[],
+        title?: string | null
+      ) {
+        expect(title).toBe("Web engineering");
+        messages.push(listing.map((job) => job.id));
+        yield { jobs: listing };
+      },
+    },
+  } as unknown as JobPollingContext;
+  const result = await pollSubscriptions(ctx, [subscription], {
+    search: (_source, query) => {
+      searched.push(query.keywords);
+      return Promise.resolve(
+        query.keywords === "frontend" ? postings.slice(0, 2) : postings.slice(1)
+      );
+    },
+  });
+  expect(searched).toEqual(["frontend", "nextjs", "fullstack"]);
+  expect(messages).toEqual([["0", "1", "2"]]);
+  expect(result.newJobsDelivered).toBe(3);
+  expect(
+    store.writes.filter(
+      (write) => write.table === "seen_jobs" && write.operation === "insert"
+    )
+  ).toHaveLength(3);
+});
+
+test("rejected filtered candidates never create a SeenJob delivery claim", async () => {
+  const subscription = {
+    ...sub,
+    filters: {},
+    location: "Indonesia",
+    minimumSalary: 10_000_000,
+    source: "linkedin",
+  };
+  const store = testDatabase();
+  const queued: string[] = [];
+  const ctx = {
+    db: store.db,
+    evaluation: {
+      enqueue: (_sub: JobSubscription, postings: JobPosting[]) => {
+        queued.push(...postings.map((job) => job.id));
+        return Promise.resolve();
+      },
+      process: () => Promise.resolve(new Map()),
+      statuses: () =>
+        Promise.resolve(
+          new Map([[sub.id, { failed: 0, pending: 1, unavailable: null }]])
+        ),
+    },
+    log: { info() {}, warn() {} },
+  } as unknown as JobPollingContext;
+  const result = await pollSubscriptions(ctx, [subscription], {
+    search: () => Promise.resolve(jobs.slice(0, 1)),
+  });
+  expect(queued).toEqual(["0"]);
+  expect(result.newJobsDelivered).toBe(0);
+  expect(result.pendingEvaluations).toBe(1);
+  expect(
+    store.writes.some(
+      (write) => write.table === "seen_jobs" && write.operation === "insert"
+    )
+  ).toBe(false);
 });

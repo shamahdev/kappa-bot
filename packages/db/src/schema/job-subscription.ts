@@ -8,6 +8,8 @@ import type {
   MatchBreakdownType,
   CvReportSummaryType,
   CvReportJobType,
+  PostingFactsType,
+  WorkEnvironmentType,
 } from "@kappa/contracts";
 import { sql } from "drizzle-orm";
 import {
@@ -15,6 +17,7 @@ import {
   check,
   index,
   integer,
+  doublePrecision,
   jsonb,
   pgTable,
   serial,
@@ -67,13 +70,26 @@ export const subscriptions = pgTable(
       .notNull()
       .references(() => guilds.id, { onDelete: "cascade" }),
     id: serial("id").primaryKey(),
+    includeUnspecifiedEnvironment: boolean("include_unspecified_environment")
+      .notNull()
+      .default(false),
+    includeUnspecifiedSalary: boolean("include_unspecified_salary")
+      .notNull()
+      .default(false),
     isActive: boolean("is_active").notNull().default(true),
+    keywordAlternatives: jsonb("keyword_alternatives").$type<string[]>(),
     keywords: text("keywords"),
     location: text("location"),
+    minimumSalary: doublePrecision("minimum_salary"),
     retentionDays: integer("retention_days")
       .notNull()
       .default(DEFAULT_RETENTION_DAYS),
     source: text("source").notNull().default(DEFAULT_JOB_SOURCE),
+    title: text("title"),
+    workEnvironments: jsonb("work_environments")
+      .$type<WorkEnvironmentType[]>()
+      .notNull()
+      .default([]),
   },
   (t) => [
     index("subs_guild_channel_idx").on(t.guildId, t.channelId),
@@ -81,6 +97,63 @@ export const subscriptions = pgTable(
       .on(t.isActive)
       .where(sql`is_active = true`),
     index("subs_filters_gin").using("gin", t.filters),
+  ]
+);
+
+/** Source-only evidence, shared across subscriptions; no CV-derived information. */
+export const postingFacts = pgTable(
+  "posting_facts",
+  {
+    attempts: integer("attempts").notNull().default(0),
+    claimedAt: timestamp("claimed_at", { withTimezone: true }),
+    evidenceHash: text("evidence_hash"),
+    externalId: text("external_id").notNull(),
+    facts: jsonb("facts").$type<PostingFactsType>(),
+    failureReason: text("failure_reason"),
+    fetchedAt: timestamp("fetched_at", { withTimezone: true }),
+    id: serial("id").primaryKey(),
+    retryAt: timestamp("retry_at", { withTimezone: true }),
+    source: text("source").notNull(),
+    status: text("status").notNull().default("pending"),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("posting_facts_source_external_uidx").on(
+      t.source,
+      t.externalId
+    ),
+  ]
+);
+
+/** Candidate evaluations are not SeenJob claims and never imply delivery. */
+export const postingEvaluations = pgTable(
+  "posting_evaluations",
+  {
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    criteriaKey: text("criteria_key").notNull(),
+    externalId: text("external_id").notNull(),
+    id: serial("id").primaryKey(),
+    posting: jsonb("posting").$type<JobPosting>().notNull(),
+    source: text("source").notNull(),
+    status: text("status").notNull().default("pending"),
+    subscriptionId: integer("subscription_id")
+      .notNull()
+      .references(() => subscriptions.id, { onDelete: "cascade" }),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("posting_evaluations_subscription_posting_uidx").on(
+      t.subscriptionId,
+      t.source,
+      t.externalId
+    ),
+    index("posting_evaluations_status_created_idx").on(t.status, t.createdAt),
   ]
 );
 

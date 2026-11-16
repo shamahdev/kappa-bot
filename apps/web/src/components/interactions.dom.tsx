@@ -9,6 +9,8 @@ import type { ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import type { Root } from "react-dom/client";
 
+import type { SubscriptionDraft } from "../lib/use-subscription-editor";
+
 const ignoreClose = () => null;
 let root: Root | undefined;
 const mount = async (node: ReactNode) => {
@@ -44,6 +46,40 @@ const labels = (role: string) =>
   );
 
 describe("shadcn Dialog (Modal)", () => {
+  test("subscription environments support multiple selection and use no native select", async () => {
+    const { SubscriptionOptions } = await import("./subscription-options");
+    const { useState } = await import("react");
+    const Probe = () => {
+      const [draft, setDraft] = useState<SubscriptionDraft>({
+        keywords: "frontend",
+        location: "Indonesia",
+        retentionDays: "14",
+        workEnvironments: [],
+      });
+      return (
+        <SubscriptionOptions
+          draft={draft}
+          disabled={false}
+          setField={(key, value) =>
+            setDraft((previous) => ({ ...previous, [key]: value }))
+          }
+        />
+      );
+    };
+    await mount(<Probe />);
+    const remote = document.querySelector(
+      '[aria-label="remote"]'
+    ) as HTMLButtonElement;
+    const hybrid = document.querySelector(
+      '[aria-label="hybrid"]'
+    ) as HTMLButtonElement;
+    await act(() => remote.click());
+    await act(() => hybrid.click());
+    expect(remote.getAttribute("aria-pressed")).toBe("true");
+    expect(hybrid.getAttribute("aria-pressed")).toBe("true");
+    expect(document.body.textContent).toContain("Unspecified work environment");
+    expect(document.querySelector("select")).toBeNull();
+  });
   test("keeps Close unless the form already supplies Cancel", async () => {
     const { Modal } = await import("./ui");
     await mount(

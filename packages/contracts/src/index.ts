@@ -119,6 +119,18 @@ export {
 } from "./pagination";
 export { safeHttpUrl } from "./url";
 export type {
+  PostingFactsType,
+  PostingSalaryType,
+  WorkEnvironmentType,
+} from "./posting-facts";
+export {
+  PostingFacts,
+  PostingSalary,
+  WorkEnvironment,
+  WORK_ENVIRONMENTS,
+  decodePostingFacts,
+} from "./posting-facts";
+export type {
   CreateSubscriptionBodyType,
   DeleteSubscriptionResponseType,
   SubscriptionDtoType,
@@ -136,6 +148,10 @@ export {
   RETENTION_DAYS_MAX,
   DEFAULT_RETENTION_DAYS,
   DEFAULT_POLL_INTERVAL_MINUTES,
+  KEYWORD_ALTERNATIVES_MAX,
+  KEYWORD_MAX_CHARS,
+  SUBSCRIPTION_TITLE_MAX_CHARS,
+  parseKeywordAlternatives,
   SubscriptionDto,
   SubscriptionScope,
   SubscriptionSource,

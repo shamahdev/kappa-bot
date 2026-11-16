@@ -133,6 +133,25 @@ const formatSalary = (s: GlintsRawJob["salaries"]): string | null => {
   return null;
 };
 
+const salaryData = (s: GlintsRawJob["salaries"]): JobPosting["salaryData"] => {
+  const salary = s?.find((item) => item.minAmount || item.maxAmount);
+  if (!salary) {
+    return null;
+  }
+  const periods: Record<string, "month" | "year" | "day" | "hour"> = {
+    DAY: "day",
+    HOUR: "hour",
+    MONTH: "month",
+    YEAR: "year",
+  };
+  return {
+    currency: salary.CurrencyCode ?? null,
+    max: salary.maxAmount ?? null,
+    min: salary.minAmount ?? null,
+    period: salary.salaryMode ? (periods[salary.salaryMode] ?? null) : null,
+  };
+};
+
 const formatLocation = (j: GlintsRawJob): string => {
   const parts = [j.location?.formattedName];
   for (const p of j.location?.parents ?? []) {
@@ -179,6 +198,7 @@ export const parseGlintsJobs = (
       logo: null,
       position: j.title,
       salary: formatSalary(j.salaries),
+      salaryData: salaryData(j.salaries),
       source: "glints",
       url,
     });

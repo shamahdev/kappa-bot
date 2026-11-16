@@ -164,6 +164,28 @@ describe("trusted Discord actor", () => {
 });
 
 describe("picker controller boundaries", () => {
+  test("edit and retry pickers reject subscriptions outside the interaction scope", async () => {
+    for (const action of ["jobs:edit", "jobs:retry"]) {
+      const get = mock(() => Promise.resolve(row()));
+      const retry = mock(() => Promise.resolve());
+      const inter = {
+        ...select(action),
+        showModal: mock(() => Promise.resolve()),
+      };
+      // Each picker has an independent scope check before get/retry/modal.
+      // oxlint-disable-next-line no-await-in-loop
+      await onComponent(
+        context(
+          { get, list: () => Promise.resolve([row({ id: 8 })]) },
+          { evaluation: { retry } as never }
+        ),
+        inter
+      );
+      expect(get).not.toHaveBeenCalled();
+      expect(retry).not.toHaveBeenCalled();
+      expect(inter.showModal).not.toHaveBeenCalled();
+    }
+  });
   test("rejects malformed IDs, not just non-integer Number conversions", () => {
     for (const value of [
       "",

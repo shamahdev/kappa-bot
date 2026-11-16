@@ -20,6 +20,7 @@ export const ROUTES = {
   guilds: "/guilds",
   jobs: "/jobs",
   subscriptionById: "/subscriptions/:id",
+  subscriptionRetry: "/subscriptions/:id/retry",
   subscriptions: "/subscriptions",
 } as const;
 
@@ -47,6 +48,7 @@ export const PATHS = {
   jobs: `${API_V1}${ROUTES.jobs}`,
   metrics: "/metrics",
   subscriptionById: withId(ROUTES.subscriptionById),
+  subscriptionRetry: withId(ROUTES.subscriptionRetry),
   subscriptions: `${API_V1}${ROUTES.subscriptions}`,
 } as const;
 

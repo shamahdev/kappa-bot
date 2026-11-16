@@ -74,6 +74,20 @@ describe("subscription mutation read models", () => {
     await mutation.mutate({ source: "linkedin", keywords: "engineer" });
     expectInvalidated(client, ["subscriptions", "account-summary"]);
   });
+  test("server creation also refreshes guild counts", async () => {
+    const client = seedCache();
+    const mutation = new MutationObserver(client, {
+      ...createSubscriptionOptions(client),
+      mutationFn: () => Promise.resolve(sub),
+    });
+    await mutation.mutate({
+      source: "linkedin",
+      keywords: "frontend, nextjs",
+      guildId: "server",
+      channelId: "channel",
+    });
+    expectInvalidated(client, ["subscriptions", "account-summary", "guilds"]);
+  });
 
   test.each([false, true])(
     "guild active-state update (%s) refreshes guild counts",

@@ -5,6 +5,7 @@ import type { EnrichedJobPosting, JobPosting } from "../domain/posting";
 import type { createCvProfiles } from "./cv";
 import type { createCvReports } from "./cv-reports";
 import type { createJobEnrichment } from "./enrichment";
+import type { createPostingEvaluation } from "./posting-evaluation";
 import type { createDeliveryRecall } from "./recall";
 
 /** A batch yields only after each transport page has actually been sent. */
@@ -33,4 +34,5 @@ export interface JobPollingContext {
   enrichment: ReturnType<typeof createJobEnrichment>;
   recall: ReturnType<typeof createDeliveryRecall>;
   reports?: ReturnType<typeof createCvReports>;
+  evaluation?: ReturnType<typeof createPostingEvaluation>;
 }

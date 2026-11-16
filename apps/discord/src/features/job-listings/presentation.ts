@@ -1,3 +1,4 @@
+import { subscriptionDisplayTitle } from "@kappa/service/job-listings";
 import type { JobSubscription, PollResult } from "@kappa/service/job-listings";
 import { EmbedBuilder } from "discord.js";
 
@@ -5,13 +6,15 @@ export const EMBED_COLOR = 0x3f_6b_55;
 export const ERROR_COLOR = 0xe5_48_4d;
 
 export const PICKER_IDS = {
+  edit: "jobs:edit",
   fetch: "jobs:fetch",
   latest: "jobs:latest",
+  retry: "jobs:retry",
   unsub: "jobs:unsub",
 } as const;
 
 export const subscriptionLine = (s: JobSubscription): string =>
-  `${s.isActive ? "Active" : "Inactive"} · \`${s.source}\` ${s.keywords ?? "—"}${s.location ? ` · ${s.location}` : ""} → <#${s.channelId}>`;
+  `${s.isActive ? "Active" : "Inactive"} · \`${s.source}\` ${subscriptionDisplayTitle(s)}${s.title ? ` (${s.keywords})` : ""}${s.location ? ` · ${s.location}` : ""}${s.workEnvironments?.length ? ` · ${s.workEnvironments.join(", ")}` : ""}${s.minimumSalary === null || s.minimumSalary === undefined ? "" : ` · ≥ IDR ${s.minimumSalary.toLocaleString("id-ID")}/month (advertised upper pay)`} → <#${s.channelId}>`;
 
 export const fetchResultEmbed = (result: PollResult): EmbedBuilder => {
   const timeFormatted = (result.durationMs / 1000).toFixed(2);
@@ -31,6 +34,12 @@ export const fetchResultEmbed = (result: PollResult): EmbedBuilder => {
         `Polled **${subText}**`,
         `Delivered **${jobText}** to subscribed channels`,
         `Completed in **${timeFormatted}s**`,
+        ...(result.pendingEvaluations || result.failedEvaluations
+          ? [
+              `Extraction: ${result.pendingEvaluations ?? 0} pending, ${result.failedEvaluations ?? 0} failed`,
+            ]
+          : []),
+        ...(result.extractionUnavailable ? [result.extractionUnavailable] : []),
       ].join("\n")
     );
 };

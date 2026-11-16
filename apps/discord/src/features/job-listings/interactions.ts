@@ -4,12 +4,14 @@ import { EmbedBuilder, PermissionFlagsBits } from "discord.js";
 import type {
   ChatInputCommandInteraction,
   StringSelectMenuInteraction,
+  ModalSubmitInteraction,
 } from "discord.js";
 
 import { ERROR_COLOR } from "./presentation";
 
 export type JobInteraction =
   | ChatInputCommandInteraction
+  | ModalSubmitInteraction
   | StringSelectMenuInteraction;
 
 export const isDMInteraction = (interaction: {

@@ -7,8 +7,17 @@ import {
   useCreateSubscription,
   useDeleteSubscription,
   useUpdateSubscription,
+  useRetrySubscription,
 } from "../lib/queries";
-import { useSubscriptionEditor } from "../lib/use-subscription-editor";
+import {
+  useSubscriptionEditor,
+  parseSubscriptionDraft,
+} from "../lib/use-subscription-editor";
+import type {
+  SubscriptionDraft,
+  SubscriptionFieldErrors,
+} from "../lib/use-subscription-editor";
+import { SubscriptionOptions } from "./subscription-options";
 import {
   Badge,
   Button,
@@ -37,17 +46,51 @@ export const formatDate = (iso: string): string => {
       });
 };
 
-export const CreateForm = () => {
+export const CreateForm = ({ guildId }: { guildId?: string }) => {
   const create = useCreateSubscription();
   const [source, setSource] = useState<string>(SUBSCRIPTION_SOURCES[0]);
   const [keywords, setKeywords] = useState("");
+  const [channelId, setChannelId] = useState("");
+  const [draft, setDraft] = useState<SubscriptionDraft>({
+    keywords: "",
+    location: "Indonesia",
+    retentionDays: "14",
+    title: "",
+    minimumSalary: "",
+    workEnvironments: [],
+    includeUnspecifiedSalary: false,
+    includeUnspecifiedEnvironment: false,
+  });
+  const [errors, setErrors] = useState<SubscriptionFieldErrors>({});
+  const submitLabel = guildId
+    ? "New server subscription"
+    : "New DM subscription";
+  const setField = <K extends keyof SubscriptionDraft>(
+    key: K,
+    value: SubscriptionDraft[K]
+  ) => {
+    setDraft((current) => ({ ...current, [key]: value }));
+    setErrors((current) => ({ ...current, [key]: undefined }));
+  };
   return (
     <form
       onSubmit={(event) => {
         event.preventDefault();
         create.reset();
+        const parsed = parseSubscriptionDraft({ ...draft, keywords });
+        if (!parsed.ok) {
+          setErrors(parsed.errors);
+          return;
+        }
+        setErrors({});
+        const { retentionDays: _retention, ...options } = parsed.patch;
         create.mutate(
-          { source, keywords: keywords.trim() },
+          {
+            ...options,
+            source,
+            keywords: keywords.trim(),
+            ...(guildId ? { guildId, channelId: channelId.trim() } : {}),
+          },
           { onSuccess: () => setKeywords("") }
         );
       }}
@@ -62,24 +105,54 @@ export const CreateForm = () => {
             value={source}
           />
           <TextInput
-            description="Delivered to your DMs."
+            description="Separate alternatives with commas. Match any alternative; all words within each alternative are required."
             disabled={create.isPending}
             label="Keywords"
-            onChange={(event) => setKeywords(event.target.value)}
-            placeholder="e.g. backend engineer golang"
+            onChange={(event) => {
+              setKeywords(event.target.value);
+              setErrors((current) => ({ ...current, keywords: undefined }));
+            }}
+            placeholder="e.g. frontend, nextjs, fullstack"
+            error={errors.keywords}
             value={keywords}
           />
         </div>
+        <TextInput
+          label="Location"
+          value={draft.location}
+          error={errors.location}
+          disabled={create.isPending}
+          onChange={(event) => setField("location", event.target.value)}
+        />
+        {guildId ? (
+          <TextInput
+            label="Discord text channel ID"
+            description="Enable Discord Developer Mode, then copy the channel ID. The bot must have access to this server text channel."
+            value={channelId}
+            onChange={(event) => setChannelId(event.target.value)}
+            disabled={create.isPending}
+          />
+        ) : null}
+        <SubscriptionOptions
+          draft={draft}
+          setField={setField}
+          disabled={create.isPending}
+          errors={errors}
+        />
         {create.isError ? (
           <ErrorNote>{apiMessage(create.error)}</ErrorNote>
         ) : null}
         <HStack>
           <Button
-            disabled={create.isPending || !keywords.trim()}
+            disabled={
+              create.isPending ||
+              !keywords.trim() ||
+              Boolean(guildId && !channelId.trim())
+            }
             loading={create.isPending}
             type="submit"
           >
-            {create.isPending ? "Creating…" : "New DM subscription"}
+            {create.isPending ? "Creating…" : submitLabel}
           </Button>
         </HStack>
       </VStack>
@@ -107,6 +180,12 @@ const EditPanel = ({
           disabled={editor.isPending}
           error={editor.errors.keywords}
           label="Keywords"
+          description={
+            sub.keywordAlternatives === null ||
+            sub.keywordAlternatives === undefined
+              ? "Legacy search: unchanged text stays one search. Editing keywords enables comma-separated alternatives."
+              : "Separate alternatives with commas. Match any alternative."
+          }
           onChange={(event) => editor.setField("keywords", event.target.value)}
           value={editor.draft.keywords}
         />
@@ -116,6 +195,12 @@ const EditPanel = ({
           label="Location"
           onChange={(event) => editor.setField("location", event.target.value)}
           value={editor.draft.location}
+        />
+        <SubscriptionOptions
+          draft={editor.draft}
+          setField={editor.setField}
+          disabled={editor.isPending}
+          errors={editor.errors}
         />
         <TextInput
           disabled={editor.isPending}
@@ -166,7 +251,7 @@ const DeletePanel = ({
         <HStack>
           <Badge>{sub.source}</Badge>
         </HStack>
-        <Text weight="semibold">{sub.keywords ?? "—"}</Text>
+        <Text weight="semibold">{sub.title || sub.keywords || "—"}</Text>
         <div className={styles.meta}>
           <Text as="span" color="secondary">
             {sub.location ?? "—"}
@@ -217,6 +302,7 @@ const SubscriptionActions = ({
   setOpen: (open: OpenPanel) => void;
 }) => {
   const update = useUpdateSubscription();
+  const retry = useRetrySubscription();
   return (
     <VStack gap={2}>
       <HStack gap={2} wrap="wrap">
@@ -245,10 +331,22 @@ const SubscriptionActions = ({
         >
           Delete
         </Button>
+        {sub.evaluation?.failed ? (
+          <Button
+            small
+            variant="subtle"
+            disabled={retry.isPending}
+            loading={retry.isPending}
+            onClick={() => retry.mutate(sub.id)}
+          >
+            Retry extraction
+          </Button>
+        ) : null}
       </HStack>
       {update.isError ? (
         <ErrorNote>{apiMessage(update.error)}</ErrorNote>
       ) : null}
+      {retry.isError ? <ErrorNote>{apiMessage(retry.error)}</ErrorNote> : null}
     </VStack>
   );
 };
@@ -308,7 +406,40 @@ export const SubscriptionsTable = ({
                         {sub.isActive ? "Active" : "Paused"}
                       </Badge>
                     </HStack>
-                    <Text weight="semibold">{sub.keywords ?? "—"}</Text>
+                    <Text weight="semibold">
+                      {sub.title || sub.keywords || "—"}
+                    </Text>
+                    {sub.title ? (
+                      <Text color="secondary" type="supporting">
+                        {sub.keywords}
+                      </Text>
+                    ) : null}
+                    {sub.workEnvironments?.length ? (
+                      <Text color="secondary" type="supporting">
+                        {sub.workEnvironments.join(", ")} · unspecified{" "}
+                        {sub.includeUnspecifiedEnvironment
+                          ? "included"
+                          : "excluded"}
+                      </Text>
+                    ) : null}
+                    {sub.minimumSalary === null ||
+                    sub.minimumSalary === undefined ? null : (
+                      <Text color="secondary" type="supporting">
+                        Minimum IDR {sub.minimumSalary.toLocaleString("id-ID")}
+                        /month · unspecified{" "}
+                        {sub.includeUnspecifiedSalary ? "included" : "excluded"}
+                      </Text>
+                    )}
+                    {sub.evaluation &&
+                    (sub.evaluation.pending || sub.evaluation.failed) ? (
+                      <Text as="output" color="secondary" type="supporting">
+                        Extraction: {sub.evaluation.pending} pending,{" "}
+                        {sub.evaluation.failed} failed
+                      </Text>
+                    ) : null}
+                    {sub.evaluation?.unavailable ? (
+                      <ErrorNote>{sub.evaluation.unavailable}</ErrorNote>
+                    ) : null}
                     <div className={styles.meta}>
                       <Text as="span" color="secondary" type="supporting">
                         {sub.location ?? "—"}
@@ -333,6 +464,7 @@ export const SubscriptionsTable = ({
         </table>
       </div>
       <Modal
+        className={styles.subscriptionDialog}
         onClose={() => setOpen(null)}
         open={Boolean(selected)}
         showCloseButton={false}

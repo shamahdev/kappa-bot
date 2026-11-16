@@ -28,12 +28,42 @@ export const executeList = async (
     return;
   }
   const lines = rows.map(subscriptionLine);
+  const statuses = await ctx.jobListings.evaluation.statuses(rows);
+  for (const [index, row] of rows.entries()) {
+    const status = statuses.get(row.id);
+    if (status) {
+      lines[index] +=
+        `\nExtraction: ${status.pending} pending, ${status.failed} failed${status.unavailable ? ` · ${status.unavailable}` : ""}`;
+    }
+  }
+  // Split at subscription boundaries to stay within Discord's description limit.
+  const pages: string[] = [];
+  for (const line of lines) {
+    const last = pages.length - 1;
+    if (last < 0 || (pages[last]?.length ?? 0) + line.length + 2 > 4000) {
+      pages.push(line);
+    } else {
+      pages[last] += `\n\n${line}`;
+    }
+  }
   await interaction.editReply({
     embeds: [
       new EmbedBuilder()
         .setColor(EMBED_COLOR)
         .setTitle("Job subscriptions")
-        .setDescription(lines.join("\n")),
+        .setDescription(pages[0] ?? ""),
     ],
   });
+  for (const page of pages.slice(1)) {
+    // Discord messages also have a total embed-text limit; send pages separately.
+    // oxlint-disable-next-line no-await-in-loop
+    await interaction.followUp({
+      embeds: [
+        new EmbedBuilder()
+          .setColor(EMBED_COLOR)
+          .setTitle("Job subscriptions")
+          .setDescription(page),
+      ],
+    });
+  }
 };

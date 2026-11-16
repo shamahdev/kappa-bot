@@ -21,6 +21,7 @@ export const testDatabase = (
     const result = Promise.resolve(rows);
     return Object.assign(result, {
       from: () => chain(rows),
+      groupBy: () => chain(rows),
       innerJoin: () => chain(rows),
       leftJoin: () => chain(rows),
       limit: () => chain(rows),
@@ -43,6 +44,7 @@ export const testDatabase = (
       writes.push(write);
       return chain(returned, write);
     },
+    execute: () => Promise.resolve([]),
     insert(table: PgTable) {
       return {
         values(values: unknown) {

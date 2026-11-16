@@ -95,6 +95,110 @@ test("foreign DM access is masked without consulting Discord", async () => {
   expect(store.writes).toEqual([]);
 });
 
+test("HTTP extraction retry cannot access another owner's candidates", async () => {
+  const store = testDatabase([
+    [session],
+    [{ guildId: "dm:another-user", id: 7 }],
+  ]);
+  const response = await subscriptionRoutes(deps(store.db)).handle(
+    new Request("http://localhost/api/v1/subscriptions/7/retry", {
+      headers: { cookie: `${SESSION_COOKIE}=offline-session` },
+      method: "POST",
+    })
+  );
+  expect(response.status).toBe(404);
+  expect(store.writes).toEqual([]);
+});
+
+test("invalid posting filters are rejected before any Discord destination request", async () => {
+  const store = testDatabase([[session]]);
+  const response = await subscriptionRoutes(deps(store.db)).handle(
+    new Request("http://localhost/api/v1/subscriptions", {
+      body: JSON.stringify({
+        keywords: "frontend, nextjs",
+        minimumSalary: -1,
+        source: "all",
+      }),
+      headers: {
+        "content-type": "application/json",
+        cookie: `${SESSION_COOKIE}=offline-session`,
+      },
+      method: "POST",
+    })
+  );
+  expect(response.status).toBe(400);
+  expect(store.readCount).toBe(1);
+  expect(store.writes).toEqual([]);
+});
+
+test("server subscription creation validates channel ownership and never creates a DM destination", async () => {
+  // The bot-membership cache is shared with the preceding permission test.
+  const serverId = "http-server";
+  const store = testDatabase([
+    [{ ...session, user: { ...user, discordId: "http-server-creator" } }],
+    [
+      {
+        accessToken: "offline-user-token",
+        id: 1,
+        refreshToken: "offline-refresh",
+        scopes: "identify guilds",
+        tokenExpiresAt: new Date(Date.now() + 600_000),
+      },
+    ],
+  ]);
+  const originalFetch = globalThis.fetch;
+  const urls: string[] = [];
+  try {
+    globalThis.fetch = ((input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input);
+      urls.push(url);
+      if (url.endsWith("/users/@me/guilds")) {
+        const bot = new Headers(init?.headers)
+          .get("authorization")
+          ?.startsWith("Bot ");
+        return Promise.resolve(
+          Response.json(
+            bot
+              ? [{ id: serverId }]
+              : [
+                  {
+                    id: serverId,
+                    name: "Server",
+                    owner: true,
+                    permissions: "32",
+                  },
+                ]
+          )
+        );
+      }
+      return Promise.resolve(
+        Response.json({ guild_id: "another-server", type: 0 })
+      );
+    }) as typeof fetch;
+    const response = await subscriptionRoutes(deps(store.db)).handle(
+      new Request("http://localhost/api/v1/subscriptions", {
+        body: JSON.stringify({
+          channelId: "channel",
+          guildId: serverId,
+          keywords: "frontend, nextjs",
+          source: "all",
+        }),
+        headers: {
+          "content-type": "application/json",
+          cookie: `${SESSION_COOKIE}=offline-session`,
+        },
+        method: "POST",
+      })
+    );
+    expect(response.status).toBe(400);
+    expect(urls).toContain("https://discord.com/api/v10/channels/channel");
+    expect(urls.some((url) => url.includes("/users/@me/channels"))).toBe(false);
+    expect(store.writes).toEqual([]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("HTTP CV controller serializes the shared personal profile result", async () => {
   const updatedAt = new Date("2026-01-01T00:00:00Z");
   const store = testDatabase([

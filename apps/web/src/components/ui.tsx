@@ -368,12 +368,14 @@ export const Modal = ({
   title,
   children,
   showCloseButton = true,
+  className,
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   children: ReactNode;
   showCloseButton?: boolean;
+  className?: string;
 }) => (
   <Dialog
     onOpenChange={(next) => {
@@ -383,7 +385,7 @@ export const Modal = ({
     }}
     open={open}
   >
-    <DialogContent showCloseButton={showCloseButton}>
+    <DialogContent className={className} showCloseButton={showCloseButton}>
       <header className="app-modal-header">
         <DialogTitle>{title}</DialogTitle>
       </header>

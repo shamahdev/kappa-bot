@@ -1,6 +1,9 @@
 import { createHash } from "node:crypto";
 
-import { DEFAULT_RETENTION_DAYS } from "@kappa/contracts";
+import {
+  DEFAULT_RETENTION_DAYS,
+  sortPostingsNewestFirst,
+} from "@kappa/contracts";
 import {
   deliveryMessages,
   fingerprintSnapshots,
@@ -12,7 +15,13 @@ import { eq, lt, notExists, notInArray, sql } from "drizzle-orm";
 
 import { incCounter, setGauge } from "../../../core/metrics";
 import type { FingerprintQuery, JobPosting } from "../domain/posting";
-import { postingQueryForSubscription } from "../domain/subscription";
+import {
+  postingQueryForSubscription,
+  keywordAlternativesForSubscription,
+  hasPostingFilters,
+  subscriptionDisplayTitle,
+} from "../domain/subscription";
+import type { JobSubscription } from "../domain/subscription";
 import {
   ensureJobIds,
   jobKey,
@@ -23,21 +32,30 @@ import {
   pollSources,
   searchJobPostings,
 } from "../infrastructure/sources";
+import {
+  keywordTokens,
+  matchesKeywords,
+} from "../infrastructure/sources/shared";
 import type { JobPollingContext } from "./ports";
+import { evaluationCriteriaKey } from "./posting-evaluation";
 
 interface DeliveryItem {
   job: JobPosting;
   seenId: number;
 }
 
-type Subscription = typeof subscriptions.$inferSelect;
+type Subscription = JobSubscription;
 
 const fingerprintOf = (
   sub: Subscription,
-  sourceOverride?: string
+  sourceOverride?: string,
+  keywordOverride?: string
 ): { key: string; query: FingerprintQuery } => {
   const source = sourceOverride ?? sub.source;
   const query = postingQueryForSubscription(sub);
+  if (keywordOverride !== undefined) {
+    query.keywords = keywordOverride;
+  }
   const key = createHash("sha1")
     .update(
       JSON.stringify([
@@ -202,7 +220,7 @@ export const flushSub = async (
   }
   let delivered = 0;
   try {
-    const keyword = sub.keywords;
+    const keyword = subscriptionDisplayTitle(sub);
     const [first] = items;
     if (items.length === 1 && first) {
       const { job } = first;
@@ -340,6 +358,9 @@ export interface PollResult {
   newJobsDelivered: number;
   fingerprintsSkipped: number;
   durationMs: number;
+  pendingEvaluations?: number;
+  failedEvaluations?: number;
+  extractionUnavailable?: string | null;
 }
 
 /** Scheduled ticks only: a manual /jobs fetch must not wait on report generation. */
@@ -349,9 +370,118 @@ const processReports = (
 ): Promise<void> =>
   (isFullTick ? ctx.reports?.processPending() : undefined) ?? Promise.resolve();
 
+const fingerprintGroups = (subs: Subscription[]) => {
+  const groups = new Map<
+    string,
+    { query: FingerprintQuery; source: string; subs: Subscription[] }
+  >();
+  for (const sub of subs) {
+    const sources = sub.source === "all" ? pollSources() : [sub.source];
+    for (const source of sources) {
+      for (const keyword of keywordAlternativesForSubscription(sub)) {
+        const { key, query } = fingerprintOf(sub, source, keyword);
+        const group = groups.get(key) ?? { query, source, subs: [] };
+        if (!group.subs.some((row) => row.id === sub.id)) {
+          group.subs.push(sub);
+        }
+        groups.set(key, group);
+      }
+    }
+  }
+  return groups;
+};
+
+const prepareCandidates = async (
+  ctx: JobPollingContext,
+  subs: Subscription[],
+  candidates: Map<number, JobPosting[]>
+): Promise<void> => {
+  for (const sub of subs) {
+    const listing = [
+      ...new Map(
+        (candidates.get(sub.id) ?? []).map((job) => [
+          jobKey(job.source, job.id),
+          job,
+        ])
+      ).values(),
+    ];
+    if (hasPostingFilters(sub)) {
+      // Queue every alternative's candidates before spending the shared extraction budget.
+      // oxlint-disable-next-line no-await-in-loop
+      await ctx.evaluation?.enqueue(sub, listing);
+    } else {
+      candidates.set(sub.id, listing);
+    }
+  }
+};
+
+const deliverCandidates = async (
+  ctx: JobPollingContext,
+  subs: Subscription[],
+  candidates: Map<number, JobPosting[]>
+): Promise<number> => {
+  const evaluated =
+    (await ctx.evaluation?.process(subs)) ?? new Map<number, JobPosting[]>();
+  let delivered = 0;
+  for (const sub of subs) {
+    const jobs = sortPostingsNewestFirst(
+      hasPostingFilters(sub)
+        ? (evaluated.get(sub.id) ?? [])
+        : (candidates.get(sub.id) ?? [])
+    );
+    if (!jobs.length) {
+      continue;
+    }
+    let jobIds = new Map<string, number>();
+    try {
+      // Finish shared posting writes before claim-first collection.
+      // oxlint-disable-next-line no-await-in-loop
+      jobIds = await ensureJobIds(ctx.db, jobs);
+    } catch (error) {
+      ctx.log.warn(
+        { err: error, module: "job-listings", source: sub.source, sub: sub.id },
+        "jobs upsert failed (collecting without links)"
+      );
+    }
+    // Claims and transport retain subscription order.
+    // oxlint-disable-next-line no-await-in-loop
+    const pending = await collectPending(ctx, jobs, [sub], jobIds);
+    const items = pending.get(sub.id);
+    if (items?.length) {
+      // oxlint-disable-next-line no-await-in-loop
+      delivered += await flushSub(ctx, sub, items);
+    }
+  }
+  return delivered;
+};
+
+const evaluationSummary = async (
+  ctx: JobPollingContext,
+  subs: Subscription[]
+) => {
+  const evaluations = await ctx.evaluation?.statuses(subs);
+  if (!evaluations) {
+    return {};
+  }
+  const statuses = [...evaluations.values()];
+  return {
+    extractionUnavailable:
+      statuses.find((status) => status.unavailable)?.unavailable ?? null,
+    failedEvaluations: statuses.reduce(
+      (total, status) => total + status.failed,
+      0
+    ),
+    pendingEvaluations: statuses.reduce(
+      (total, status) => total + status.pending,
+      0
+    ),
+  };
+};
+
 export const pollSubscriptions = async (
   ctx: JobPollingContext,
-  targetSubs?: Subscription[]
+  targetSubs?: Subscription[],
+  dependencies: { search?: typeof searchJobPostings } = {}
 ): Promise<PollResult> => {
   const started = Date.now();
   // Manual /jobs fetch passes a channel subset: it always processes fresh and
@@ -379,32 +509,31 @@ export const pollSubscriptions = async (
     };
   }
 
-  const groups = new Map<
-    string,
-    { query: FingerprintQuery; source: string; subs: Subscription[] }
-  >();
-  for (const sub of subs) {
-    const sourcesToPoll = sub.source === "all" ? pollSources() : [sub.source];
-    for (const src of sourcesToPoll) {
-      const { key, query } = fingerprintOf(sub, src);
-      const group = groups.get(key) ?? { query, source: src, subs: [] };
-      group.subs.push(sub);
-      groups.set(key, group);
-    }
-  }
+  const groups = fingerprintGroups(subs);
   ctx.log.info(
     { fingerprints: groups.size, module: "job-listings", subs: subs.length },
     "poll tick start"
   );
 
-  let newJobsDelivered = 0;
   let fingerprintsSkipped = 0;
+  const candidates = new Map<number, JobPosting[]>();
+  const snapshots: {
+    key: string;
+    source: string;
+    listingHash: string;
+    jobCount: number;
+    subIds: number[];
+  }[] = [];
   for (const [key, group] of groups) {
     let jobs: JobPosting[];
     try {
       // Fingerprints share external sources; preserve serial polling and rate limiting.
       // oxlint-disable-next-line no-await-in-loop
-      jobs = await searchJobPostings(group.source, group.query, key);
+      jobs = await (dependencies.search ?? searchJobPostings)(
+        group.source,
+        group.query,
+        key
+      );
     } catch (error) {
       ctx.log.warn(
         {
@@ -418,7 +547,17 @@ export const pollSubscriptions = async (
       continue;
     }
     const subIds = group.subs.map((sub) => sub.id).toSorted((a, b) => a - b);
-    const listingHash = listingHashFor(jobs);
+    // Criteria changes (including removing posting filters) must invalidate skip snapshots.
+    const listingHash = createHash("sha1")
+      .update(
+        JSON.stringify([
+          listingHashFor(jobs),
+          group.subs
+            .map((sub) => [sub.id, evaluationCriteriaKey(sub)])
+            .toSorted((a, b) => Number(a[0]) - Number(b[0])),
+        ])
+      )
+      .digest("hex");
     if (isFullTick) {
       // Read this fingerprint's snapshot before deciding whether to collect or deliver.
       // oxlint-disable-next-line no-await-in-loop
@@ -426,7 +565,10 @@ export const pollSubscriptions = async (
       const minRetention = Math.min(
         ...group.subs.map((sub) => sub.retentionDays ?? DEFAULT_RETENTION_DAYS)
       );
-      if (shouldSkipGroup(snapshot, listingHash, subIds, minRetention)) {
+      if (
+        !group.subs.some(hasPostingFilters) &&
+        shouldSkipGroup(snapshot, listingHash, subIds, minRetention)
+      ) {
         fingerprintsSkipped += 1;
         incCounter("fingerprint_skipped_total", { source: group.source });
         ctx.log.info(
@@ -436,46 +578,45 @@ export const pollSubscriptions = async (
         continue;
       }
     }
-    // One shared jobs row per posting; failures fall back to null jobIds.
-    let jobIds = new Map<string, number>();
-    try {
-      // Complete this fingerprint's shared-row writes before claim-first collection.
-      // oxlint-disable-next-line no-await-in-loop
-      jobIds = await ensureJobIds(ctx.db, jobs);
-    } catch (error) {
-      ctx.log.warn(
-        {
-          err: error,
-          fingerprint: key,
-          module: "job-listings",
-          source: group.source,
-        },
-        "jobs upsert failed (collecting without links)"
-      );
-    }
-    // Finish all claims for this fingerprint before delivering in subscription order.
-    // oxlint-disable-next-line no-await-in-loop
-    const pending = await collectPending(ctx, jobs, group.subs, jobIds);
     for (const sub of group.subs) {
-      const items = pending.get(sub.id);
-      if (items && items.length > 0) {
-        // Deliver subscriptions serially, retaining transport and recall ordering.
-        // oxlint-disable-next-line no-await-in-loop
-        newJobsDelivered += await flushSub(ctx, sub, items);
-      }
+      const listing = candidates.get(sub.id) ?? [];
+      const matching =
+        sub.keywordAlternatives === null ||
+        sub.keywordAlternatives === undefined
+          ? jobs
+          : jobs.filter((job) =>
+              matchesKeywords(
+                keywordTokens(group.query.keywords),
+                `${job.position} ${job.company} ${job.description ?? ""}`
+              )
+            );
+      listing.push(...matching);
+      candidates.set(sub.id, listing);
     }
     if (isFullTick) {
-      // Snapshot only after this fingerprint's deliveries, before starting the next group.
-      // oxlint-disable-next-line no-await-in-loop
-      await storeSnapshot(
-        ctx,
+      snapshots.push({
+        jobCount: jobs.length,
         key,
-        group.source,
         listingHash,
-        jobs.length,
-        subIds
-      );
+        source: group.source,
+        subIds,
+      });
     }
+  }
+
+  await prepareCandidates(ctx, subs, candidates);
+  const newJobsDelivered = await deliverCandidates(ctx, subs, candidates);
+  for (const snapshot of snapshots) {
+    // Snapshot only after this fingerprint's deliveries, before starting the next group.
+    // oxlint-disable-next-line no-await-in-loop
+    await storeSnapshot(
+      ctx,
+      snapshot.key,
+      snapshot.source,
+      snapshot.listingHash,
+      snapshot.jobCount,
+      snapshot.subIds
+    );
   }
 
   // Drop snapshots for filters with no active subscription left behind.
@@ -496,6 +637,7 @@ export const pollSubscriptions = async (
 
   await processReports(ctx, isFullTick);
   await enforceTtl(ctx);
+  const evaluation = await evaluationSummary(ctx, subs);
   setGauge("linkedin_circuit_open", linkedinCircuitCount());
   incCounter("poll_ticks_total", { module: "job-listings" });
   const durationMs = Date.now() - started;
@@ -510,6 +652,7 @@ export const pollSubscriptions = async (
   );
 
   return {
+    ...evaluation,
     durationMs,
     fingerprintsSkipped,
     newJobsDelivered,

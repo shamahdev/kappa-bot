@@ -10,6 +10,34 @@ const draft: SubscriptionDraft = {
 };
 
 describe("subscription editor draft", () => {
+  test("validates minimum-only salary and comma alternatives without currency controls", () => {
+    expect(
+      parseSubscriptionDraft({
+        ...draft,
+        keywords: "frontend, nextjs",
+        title: " Web engineering ",
+        minimumSalary: "10000000",
+        workEnvironments: ["remote", "hybrid"],
+        includeUnspecifiedSalary: true,
+      })
+    ).toMatchObject({
+      ok: true,
+      patch: {
+        title: "Web engineering",
+        minimumSalary: 10_000_000,
+        workEnvironments: ["remote", "hybrid"],
+        includeUnspecifiedSalary: true,
+      },
+    });
+    expect(
+      parseSubscriptionDraft({ ...draft, minimumSalary: "" })
+    ).toMatchObject({ ok: true, patch: { minimumSalary: null } });
+    for (const minimumSalary of ["-1", "NaN", "Infinity", "1e7", "10million"]) {
+      expect(parseSubscriptionDraft({ ...draft, minimumSalary })).toMatchObject(
+        { ok: false, errors: { minimumSalary: expect.any(String) } }
+      );
+    }
+  });
   test.each(["1", "30", "365", " 30 "])(
     "accepts an existing-contract whole day value: %s",
     (retentionDays) => {

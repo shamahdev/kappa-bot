@@ -6,6 +6,7 @@ import type {
   JobScope,
   JobSubscription,
 } from "@kappa/service/job-listings";
+import { subscriptionDisplayTitle } from "@kappa/service/job-listings";
 import {
   ActionRowBuilder,
   StringSelectMenuBuilder,
@@ -31,7 +32,7 @@ export const activeSubscriptions = async (
 
 /** Human label for a picker option — no id. Max 100 chars (Discord limit). */
 const subscriptionLabel = (s: JobSubscription): string =>
-  `${s.keywords ?? "—"} · ${s.source}${s.location ? ` · ${s.location}` : ""}`.slice(
+  `${subscriptionDisplayTitle(s)} · ${s.source}${s.location ? ` · ${s.location}` : ""}`.slice(
     0,
     100
   );

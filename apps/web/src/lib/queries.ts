@@ -2,6 +2,7 @@ import type {
   ApplicationDtoType,
   ApplicationStatusType,
   UpdateSubscriptionBodyType,
+  CreateSubscriptionBodyType,
 } from "@kappa/contracts";
 import { DEFAULT_CV_REPORT_PAGE_SIZE } from "@kappa/contracts";
 import {
@@ -36,6 +37,7 @@ import {
   logout,
   saveCvFile,
   updateSubscription,
+  retrySubscription,
 } from "./api";
 import type { JobsParams } from "./api";
 
@@ -85,6 +87,7 @@ export const useSubscriptions = (enabled: boolean, guildId?: string) =>
     queryFn: () => fetchSubscriptions(guildId),
     enabled,
     retry: false,
+    refetchInterval: 30_000,
   });
 
 export const useGuilds = (enabled: boolean) =>
@@ -106,13 +109,15 @@ export const useJobs = (params: JobsParams) =>
 
 export const createSubscriptionOptions = (client: QueryClient) =>
   mutationOptions({
-    mutationFn: ({ source, keywords }: { source: string; keywords: string }) =>
-      createSubscription({ source, keywords }),
-    // Creation is DM-only; the account summary includes the DM count.
-    onSuccess: () =>
+    mutationFn: (input: CreateSubscriptionBodyType) =>
+      createSubscription(input),
+    onSuccess: (sub) =>
       Promise.all([
         client.invalidateQueries({ queryKey: queryKeys.subscriptions }),
         client.invalidateQueries({ queryKey: queryKeys.accountSummary }),
+        ...(sub.scope === "guild"
+          ? [client.invalidateQueries({ queryKey: queryKeys.guilds })]
+          : []),
       ]),
   });
 
@@ -157,6 +162,15 @@ export const useUpdateSubscription = () =>
 
 export const useDeleteSubscription = () =>
   useMutation(deleteSubscriptionOptions(useQueryClient()));
+
+export const useRetrySubscription = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: retrySubscription,
+    onSuccess: () =>
+      client.invalidateQueries({ queryKey: queryKeys.subscriptions }),
+  });
+};
 
 export const useCreateCvReport = () => {
   const client = useQueryClient();

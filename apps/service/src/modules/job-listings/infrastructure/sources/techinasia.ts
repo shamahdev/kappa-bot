@@ -149,6 +149,12 @@ export const searchTechInAsia = async (
       logo: j.company?.logo_url || null,
       position: j.title,
       salary: formatSalary(j.salary_min, j.salary_max, j.currency),
+      salaryData: {
+        currency: j.currency?.currency_code ?? null,
+        max: j.salary_max ?? null,
+        min: j.salary_min ?? null,
+        period: null,
+      },
       source: "techinasia",
       url: `https://www.techinasia.com/jobs/${j.id}`,
     };

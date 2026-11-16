@@ -33,6 +33,13 @@ export interface JobPosting {
   url: string;
   logo: string | null;
   description?: string | null;
+  salaryData?: {
+    min: number | null;
+    max: number | null;
+    currency: string | null;
+    period: "month" | "year" | "day" | "hour" | null;
+  } | null;
+  workEnvironment?: "onsite" | "remote" | "hybrid" | null;
 }
 
 const listedAt = (posting: JobPosting): number => {

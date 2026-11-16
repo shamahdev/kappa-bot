@@ -17,6 +17,8 @@ export {
   guilds,
   jobApplications,
   jobs,
+  postingFacts,
+  postingEvaluations,
   seenJobs,
   subscriptions,
 } from "./schema/job-subscription";

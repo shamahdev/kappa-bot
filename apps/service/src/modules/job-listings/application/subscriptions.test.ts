@@ -86,6 +86,29 @@ describe("subscription application access", () => {
 });
 
 describe("subscription writes", () => {
+  test("filter/title edits preserve legacy keyword text; explicit keyword edits split alternatives", async () => {
+    const legacy = {
+      ...row,
+      guildId: "dm:alice",
+      keywordAlternatives: null,
+      keywords: "frontend, nextjs",
+    };
+    const fake = testDatabase([[legacy], [legacy]], [legacy]);
+    const service = createJobSubscriptions(fake.db);
+    await service.update(actor, 1, {
+      minimumSalary: 10_000_000,
+      title: "Web engineering",
+    });
+    expect(fake.writes[0].values).toEqual({
+      minimumSalary: 10_000_000,
+      title: "Web engineering",
+    });
+    await service.update(actor, 1, { keywords: "frontend, nextjs, fullstack" });
+    expect(fake.writes[1].values).toEqual({
+      keywordAlternatives: ["frontend", "nextjs", "fullstack"],
+      keywords: "frontend, nextjs, fullstack",
+    });
+  });
   test("create trims keywords, preserves every shared source, and groups related writes in a transaction", async () => {
     for (const source of SUBSCRIPTION_SOURCES) {
       const saved = {

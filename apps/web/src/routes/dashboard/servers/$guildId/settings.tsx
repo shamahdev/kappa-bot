@@ -2,9 +2,17 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { QueryError } from "../../../../components/api-feedback";
-import { SubscriptionsTable } from "../../../../components/subscriptions";
+import {
+  SubscriptionsTable,
+  CreateForm,
+} from "../../../../components/subscriptions";
 import type { OpenPanel } from "../../../../components/subscriptions";
-import { InfoNote, LoadingNote, VStack } from "../../../../components/ui";
+import {
+  InfoNote,
+  LoadingNote,
+  VStack,
+  SectionCard,
+} from "../../../../components/ui";
 import { useSubscriptions } from "../../../../lib/queries";
 
 const ServerSettingsPage = () => {
@@ -19,10 +27,12 @@ const ServerSettingsPage = () => {
   return (
     <VStack gap={4}>
       <InfoNote>
-        Create a server subscription with <code>/jobs subscribe</code> in
-        Discord. You can edit, pause or remove it here. Personal CVs are never
-        used for server matches.
+        Create a server subscription here or with <code>/jobs subscribe</code>{" "}
+        in Discord. Personal CVs are never used for server matches.
       </InfoNote>
+      <SectionCard title="New server subscription">
+        <CreateForm key={guildId} guildId={guildId} />
+      </SectionCard>
       <section
         className="dashboard-settings-section"
         aria-labelledby="server-subscriptions-title"
@@ -39,7 +49,7 @@ const ServerSettingsPage = () => {
             open={open}
             setOpen={setOpen}
             emptyTitle="No subscriptions here yet"
-            emptyBody="Run /jobs subscribe in this Discord server to add one."
+            emptyBody="Create a subscription above or run /jobs subscribe in this server."
           />
         ) : null}
       </section>

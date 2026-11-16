@@ -2,6 +2,37 @@
 @reference "../styles.css";
 
 @layer components {
+  .environments {
+    @apply m-0 min-w-0 border-0 p-0;
+  }
+  .environments legend {
+    @apply mb-2 p-0;
+  }
+  .environments :global(.app-toggle-group) {
+    @apply flex flex-wrap gap-2;
+  }
+  .environments :global(.app-toggle) {
+    @apply border-kappa-input-edge text-kappa-ink rounded-control bg-kappa-surface min-h-12 cursor-pointer border border-solid px-4 py-2 text-[1rem] font-medium;
+  }
+  .environments :global(.app-toggle[data-state="on"]) {
+    @apply bg-kappa-accent-soft border-kappa-accent text-kappa-accent;
+  }
+  .environments :global(.app-toggle:disabled) {
+    @apply cursor-not-allowed opacity-50;
+  }
+  .environments :global(.app-toggle:focus-visible) {
+    @apply outline-kappa-accent outline-2 outline-offset-2;
+  }
+  @media (hover: hover) {
+    .environments :global(.app-toggle:hover:not(:disabled)) {
+      @apply bg-kappa-paper-2;
+    }
+  }
+  .subscriptionDialog {
+    max-height: calc(100dvh - var(--space-lg) * 2);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
   .filters {
     @apply flex flex-wrap items-end gap-4;
   }

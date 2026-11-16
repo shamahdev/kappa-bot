@@ -3,7 +3,11 @@ import {
   SUBSCRIPTION_SOURCES,
   RETENTION_DAYS_MIN,
   RETENTION_DAYS_MAX,
+  parseKeywordAlternatives,
+  SUBSCRIPTION_TITLE_MAX_CHARS,
+  WORK_ENVIRONMENTS,
 } from "@kappa/contracts";
+import type { WorkEnvironmentType } from "@kappa/contracts";
 
 import type { FingerprintQuery } from "./posting";
 
@@ -22,6 +26,12 @@ export interface JobSubscription {
   guildId: string;
   channelId: string;
   keywords: string | null;
+  keywordAlternatives?: string[] | null;
+  title?: string | null;
+  workEnvironments?: WorkEnvironmentType[];
+  minimumSalary?: number | null;
+  includeUnspecifiedSalary?: boolean;
+  includeUnspecifiedEnvironment?: boolean;
   location: string | null;
   geoId: string | null;
   distance: number | null;
@@ -32,6 +42,17 @@ export interface JobSubscription {
   createdBy: string | null;
   createdAt: Date;
 }
+
+export const keywordAlternativesForSubscription = (
+  sub: JobSubscription
+): string[] => sub.keywordAlternatives ?? [sub.keywords ?? ""];
+
+export const subscriptionDisplayTitle = (sub: JobSubscription): string =>
+  sub.title || sub.keywords || "—";
+
+export const hasPostingFilters = (sub: JobSubscription): boolean =>
+  (sub.minimumSalary !== null && sub.minimumSalary !== undefined) ||
+  Boolean(sub.workEnvironments?.length);
 
 export const postingQueryForSubscription = (
   sub: JobSubscription
@@ -128,7 +149,14 @@ export const subscriptionKeywords = (keywords: string): string => {
   if (typeof keywords !== "string" || !keywords.trim()) {
     throw new JobSubscriptionError("VALIDATION", "keywords must not be blank");
   }
-  return keywords.trim();
+  try {
+    return parseKeywordAlternatives(keywords).join(", ");
+  } catch (error) {
+    throw new JobSubscriptionError(
+      "VALIDATION",
+      error instanceof Error ? error.message : "invalid keywords"
+    );
+  }
 };
 
 export const subscriptionLocation = (location: string): string => {
@@ -154,16 +182,80 @@ export const subscriptionRetentionDays = (days: number): number => {
 };
 
 export interface JobSubscriptionPatch {
+  title?: string | null;
+  workEnvironments?: readonly WorkEnvironmentType[];
+  minimumSalary?: number | null;
+  includeUnspecifiedSalary?: boolean;
+  includeUnspecifiedEnvironment?: boolean;
   keywords?: string;
   location?: string;
   isActive?: boolean;
   retentionDays?: number;
 }
 
-export const subscriptionPatch = (
+const subscriptionPostingOptions = (
   patch: JobSubscriptionPatch
 ): JobSubscriptionPatch => {
   const result: JobSubscriptionPatch = {};
+  if (patch.title !== undefined) {
+    if (
+      patch.title !== null &&
+      (typeof patch.title !== "string" ||
+        patch.title.trim().length > SUBSCRIPTION_TITLE_MAX_CHARS)
+    ) {
+      throw new JobSubscriptionError(
+        "VALIDATION",
+        `Title must be at most ${SUBSCRIPTION_TITLE_MAX_CHARS} characters.`
+      );
+    }
+    result.title = patch.title?.trim() || null;
+  }
+  if (patch.minimumSalary !== undefined) {
+    if (
+      patch.minimumSalary !== null &&
+      (typeof patch.minimumSalary !== "number" ||
+        !Number.isFinite(patch.minimumSalary) ||
+        patch.minimumSalary < 0)
+    ) {
+      throw new JobSubscriptionError(
+        "VALIDATION",
+        "Minimum salary must be a non-negative finite number in IDR/month."
+      );
+    }
+    result.minimumSalary = patch.minimumSalary;
+  }
+  if (patch.workEnvironments !== undefined) {
+    if (
+      !Array.isArray(patch.workEnvironments) ||
+      patch.workEnvironments.some(
+        (value) => !(WORK_ENVIRONMENTS as readonly string[]).includes(value)
+      )
+    ) {
+      throw new JobSubscriptionError("VALIDATION", "Unknown work environment.");
+    }
+    result.workEnvironments = [...new Set(patch.workEnvironments)];
+  }
+  for (const key of [
+    "includeUnspecifiedSalary",
+    "includeUnspecifiedEnvironment",
+  ] as const) {
+    if (patch[key] !== undefined) {
+      if (typeof patch[key] !== "boolean") {
+        throw new JobSubscriptionError(
+          "VALIDATION",
+          `${key} must be a boolean`
+        );
+      }
+      result[key] = patch[key];
+    }
+  }
+  return result;
+};
+
+export const subscriptionPatch = (
+  patch: JobSubscriptionPatch
+): JobSubscriptionPatch => {
+  const result = subscriptionPostingOptions(patch);
   if (patch.keywords !== undefined) {
     result.keywords = subscriptionKeywords(patch.keywords);
   }

@@ -1,4 +1,7 @@
-import { DEFAULT_POLL_INTERVAL_MINUTES } from "@kappa/contracts";
+import {
+  DEFAULT_POLL_INTERVAL_MINUTES,
+  parseKeywordAlternatives,
+} from "@kappa/contracts";
 import { botConfig, channels, guilds, subscriptions } from "@kappa/db";
 import type { Database } from "@kappa/db";
 import { and, desc, eq, or } from "drizzle-orm";
@@ -23,7 +26,7 @@ import type {
   JobSubscriptionPatch,
 } from "../domain/subscription";
 
-export interface CreateJobSubscription {
+export interface CreateJobSubscription extends JobSubscriptionPatch {
   scope: JobScope;
   channelId: string;
   scopeName?: string;
@@ -55,6 +58,7 @@ export const createJobSubscriptions = (db: Database) => {
       const channelId = nonBlankId(input.channelId, "channel id");
       const source = subscriptionSource(input.source);
       const keywords = subscriptionKeywords(input.keywords);
+      const options = subscriptionPatch(input);
       await assertScopeAccess(actor, input.scope);
       return db.transaction(async (tx) => {
         // Channel IDs cannot be rebound to a different personal/guild scope.
@@ -90,14 +94,19 @@ export const createJobSubscriptions = (db: Database) => {
         const [row] = await tx
           .insert(subscriptions)
           .values({
+            ...options,
             channelId,
             createdBy: actor.userId,
             distance: null,
             filters: {},
             guildId,
+            keywordAlternatives: parseKeywordAlternatives(keywords),
             keywords,
-            location: "Indonesia",
+            location: options.location ?? "Indonesia",
             source,
+            workEnvironments: options.workEnvironments
+              ? [...options.workEnvironments]
+              : [],
           })
           .returning();
         return row;
@@ -215,10 +224,19 @@ export const createJobSubscriptions = (db: Database) => {
       if (Object.keys(valid).length === 0) {
         return row;
       }
+      const { workEnvironments, ...fields } = valid;
       const [updated] = await db
         .update(subscriptions)
         .set({
-          ...valid,
+          ...fields,
+          ...(workEnvironments === undefined
+            ? {}
+            : { workEnvironments: [...workEnvironments] }),
+          ...(valid.keywords === undefined
+            ? {}
+            : {
+                keywordAlternatives: parseKeywordAlternatives(valid.keywords),
+              }),
           ...(valid.location !== undefined && valid.location !== row.location
             ? { geoId: null }
             : {}),

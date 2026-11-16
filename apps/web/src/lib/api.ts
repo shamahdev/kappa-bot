@@ -203,6 +203,14 @@ export const fetchSubscriptions = (
   ).then((res) => res.subscriptions);
 };
 
+export const retrySubscription = (id: number): Promise<SubscriptionDtoType> =>
+  runApi(
+    request(
+      HttpClientRequest.post(PATHS.subscriptionRetry(id)),
+      SubscriptionDto
+    )
+  );
+
 export const fetchGuilds = (): Promise<GuildsResponseType["guilds"]> =>
   runApi(request(HttpClientRequest.get(PATHS.guilds), GuildsResponse)).then(
     (res) => res.guilds

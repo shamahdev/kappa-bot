@@ -8,6 +8,8 @@ import type {
   JobPosting,
 } from "../../domain/posting";
 import { listingDetail } from "../../domain/posting";
+import { cookieHeader, wafHeaders } from "./cookies";
+import { fetchOriginalDescription } from "./description";
 import { ENV as GLINTS_ENV, searchGlints } from "./glints";
 import { ENV as INDEED_ENV, searchIndeed } from "./indeed";
 import { ENV as JOBSTREET_ENV, searchJobstreet } from "./jobstreet";
@@ -151,3 +153,21 @@ export const searchSelection = async (
 export const fetchJobPostingDetail = async (
   job: JobPosting
 ): Promise<JobDetail | null> => await implFor(job.source).detail(job);
+
+/** Filtering needs original evidence; a failed detail fetch must remain observable. */
+export const fetchJobPostingEvidence = (
+  job: JobPosting,
+  signal?: AbortSignal
+): Promise<JobDetail> => {
+  if (
+    job.description &&
+    (job.source === "kalibrr" || job.source === "techinasia")
+  ) {
+    return Promise.resolve(listingDetail(job));
+  }
+  const cookieEnv = SOURCE_COOKIE_ENV[job.source as OptInSource];
+  const headers = cookieEnv
+    ? wafHeaders(cookieHeader(cookieEnv, job.source))
+    : { Accept: "text/html", "User-Agent": "Mozilla/5.0" };
+  return fetchOriginalDescription(job, headers, signal);
+};

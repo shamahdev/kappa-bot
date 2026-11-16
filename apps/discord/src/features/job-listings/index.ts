@@ -16,6 +16,7 @@ import {
   executeCvStatus,
   executeCvUpload,
 } from "./commands/cv";
+import { executeEdit, executeRetry } from "./commands/edit";
 import { executeFetch } from "./commands/fetch";
 import { executeHealth } from "./commands/health";
 import { executeShowLatest } from "./commands/latest";
@@ -48,16 +49,71 @@ const subcommands = [
       .addStringOption((o) =>
         o
           .setName("keywords")
-          .setDescription("Search keywords")
+          .setDescription(
+            "Comma-separated alternatives, e.g. frontend, nextjs, fullstack"
+          )
           .setRequired(true)
+          .setMaxLength(1018)
       )
       .addChannelOption((o) =>
         o
           .setName("channel")
           .setDescription("Text channel (default current)")
           .addChannelTypes(ChannelType.GuildText)
+      )
+      .addStringOption((o) =>
+        o
+          .setName("title")
+          .setDescription("Optional display title; not a search keyword")
+          .setMaxLength(80)
+      )
+      .addStringOption((o) =>
+        o
+          .setName("location")
+          .setDescription("Search location (default Indonesia)")
+      )
+      .addStringOption((o) =>
+        o
+          .setName("work_environments")
+          .setDescription(
+            "Acceptable environments, comma-separated: onsite, remote, hybrid"
+          )
+      )
+      .addNumberOption((o) =>
+        o
+          .setName("minimum_salary")
+          .setDescription(
+            "Minimum IDR/month; advertised upper salary can qualify"
+          )
+          .setMinValue(0)
+      )
+      .addBooleanOption((o) =>
+        o
+          .setName("include_unspecified_salary")
+          .setDescription(
+            "Include postings whose salary cannot be compared (default false)"
+          )
+      )
+      .addBooleanOption((o) =>
+        o
+          .setName("include_unspecified_environment")
+          .setDescription(
+            "Include unspecified work environments (default false)"
+          )
       ),
     execute: executeSubscribe,
+  },
+  {
+    data: new SlashCommandSubcommandBuilder()
+      .setName("edit")
+      .setDescription("Edit subscription keywords, title and posting filters"),
+    execute: executeEdit,
+  },
+  {
+    data: new SlashCommandSubcommandBuilder()
+      .setName("retry_extraction")
+      .setDescription("Retry failed posting extraction for a subscription"),
+    execute: executeRetry,
   },
   {
     data: new SlashCommandSubcommandBuilder()

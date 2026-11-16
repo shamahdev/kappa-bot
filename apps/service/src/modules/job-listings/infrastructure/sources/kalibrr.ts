@@ -120,6 +120,12 @@ export const searchKalibrr = async (
       logo: j.company_info?.logo || j.company?.logo || null,
       position: j.name,
       salary: formatSalary(j.salary_min, j.salary_max, j.salary_currency),
+      salaryData: {
+        currency: j.salary_currency ?? null,
+        max: j.salary_max ?? null,
+        min: j.salary_min ?? null,
+        period: null,
+      },
       source: "kalibrr",
       url: fullUrl,
     };

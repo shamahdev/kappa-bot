@@ -1,4 +1,5 @@
 import type { JobSubscription } from "@kappa/service/job-listings";
+import { JobSubscriptionError } from "@kappa/service/job-listings";
 import type { StringSelectMenuInteraction } from "discord.js";
 
 import type { FeatureContext } from "../../../core/feature";
@@ -12,6 +13,7 @@ import {
 } from "../interactions";
 import { activeSubscriptions } from "../picker";
 import { fetchResultEmbed, removedEmbed, PICKER_IDS } from "../presentation";
+import { onSubscriptionEdit, showSubscriptionEditor } from "./edit";
 
 const asSelectMenu = (
   interaction: unknown
@@ -56,23 +58,59 @@ const parseSelection = (action: string, values: string[]): Selection | null => {
 const subscriptionSummary = (removed: JobSubscription): string =>
   `\`${removed.source}\` ${removed.keywords ?? ""}${removed.location ? ` · ${removed.location}` : ""}`;
 
-export const onComponent = async (
+const manageSelection = async (
   ctx: FeatureContext,
-  interaction: unknown
+  inter: StringSelectMenuInteraction,
+  action: "edit" | "retry"
 ): Promise<void> => {
-  const inter = asSelectMenu(interaction);
-  if (!inter) {
-    return;
+  try {
+    const id =
+      inter.values.length === 1 ? subscriptionId(inter.values[0] ?? "") : null;
+    if (id === null) {
+      throw new JobSubscriptionError(
+        "VALIDATION",
+        "Pick a subscription from the menu."
+      );
+    }
+    const actor = jobActor(inter);
+    const rows = await ctx.jobListings.subscriptions.list(
+      actor,
+      jobScope(inter)
+    );
+    if (!rows.some((sub) => sub.id === id)) {
+      throw new JobSubscriptionError(
+        "NOT_FOUND",
+        "Subscription not found here."
+      );
+    }
+    const current = await ctx.jobListings.subscriptions.get(actor, id);
+    if (action === "edit") {
+      await showSubscriptionEditor(inter, current);
+    } else {
+      await inter.deferUpdate();
+      await ctx.jobListings.evaluation.retry(actor, id);
+      await inter.editReply({
+        components: [],
+        content: "Failed extraction queued for retry on the next poll.",
+        embeds: [],
+      });
+    }
+  } catch (error) {
+    const payload = {
+      embeds: [errorEmbed(applicationErrorMessage(error))],
+      ephemeral: true,
+    };
+    await (inter.deferred || inter.replied
+      ? inter.editReply(payload)
+      : inter.reply(payload));
   }
-  const picker = Object.entries(PICKER_IDS).find(
-    ([, customId]) => customId === inter.customId
-  );
-  if (!picker) {
-    return;
-  }
-  if (!(await requireManageGuild(inter))) {
-    return;
-  }
+};
+
+const deliverySelection = async (
+  ctx: FeatureContext,
+  inter: StringSelectMenuInteraction,
+  picker: string
+): Promise<void> => {
   await inter.deferUpdate();
   const fail = async (message: string) => {
     await inter.editReply({
@@ -83,7 +121,7 @@ export const onComponent = async (
   };
   const actor = jobActor(inter);
   const scope = jobScope(inter);
-  const selection = parseSelection(picker[0], inter.values);
+  const selection = parseSelection(picker, inter.values);
   if (!selection) {
     return fail("Pick a subscription from the menu.");
   }
@@ -141,7 +179,7 @@ export const onComponent = async (
       const sub = rows.find((row) => row.id === id);
       await inter.editReply({
         content: null,
-        ...cardPayload(posting, sub?.keywords),
+        ...cardPayload(posting, sub?.title || sub?.keywords),
         components: [],
       });
     }
@@ -157,4 +195,30 @@ export const onComponent = async (
       )
     );
   }
+};
+
+export const onComponent = async (
+  ctx: FeatureContext,
+  interaction: unknown
+): Promise<void> => {
+  if (await onSubscriptionEdit(ctx, interaction)) {
+    return;
+  }
+  const inter = asSelectMenu(interaction);
+  if (!inter) {
+    return;
+  }
+  const picker = Object.entries(PICKER_IDS).find(
+    ([, customId]) => customId === inter.customId
+  );
+  if (!picker) {
+    return;
+  }
+  if (!(await requireManageGuild(inter))) {
+    return;
+  }
+  if (picker[0] === "edit" || picker[0] === "retry") {
+    return manageSelection(ctx, inter, picker[0]);
+  }
+  return deliverySelection(ctx, inter, picker[0]);
 };
