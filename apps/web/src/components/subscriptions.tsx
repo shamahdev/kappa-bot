@@ -56,6 +56,7 @@ export const CreateForm = ({ guildId }: { guildId?: string }) => {
     location: "Indonesia",
     retentionDays: "14",
     title: "",
+    ...(guildId ? { roleId: "" } : {}),
     minimumSalary: "",
     workEnvironments: [],
     includeUnspecifiedSalary: false,
@@ -412,6 +413,11 @@ export const SubscriptionsTable = ({
                     {sub.title ? (
                       <Text color="secondary" type="supporting">
                         {sub.keywords}
+                      </Text>
+                    ) : null}
+                    {sub.scope === "guild" && sub.roleId ? (
+                      <Text color="secondary" type="supporting">
+                        Notification role: &lt;@&amp;{sub.roleId}&gt;
                       </Text>
                     ) : null}
                     {sub.workEnvironments?.length ? (

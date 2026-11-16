@@ -11,6 +11,9 @@ import {
 } from "../interactions";
 import { EMBED_COLOR } from "../presentation";
 
+const roleTagLine = (roleId?: string | null): string[] =>
+  roleId ? [`Role tag: <@&${roleId}>`] : [];
+
 export const executeSubscribe = async (
   interaction: ChatInputCommandInteraction,
   ctx: FeatureContext
@@ -42,6 +45,7 @@ export const executeSubscribe = async (
       keywords: interaction.options.getString("keywords", true),
       location: interaction.options.getString("location") ?? "Indonesia",
       minimumSalary: interaction.options.getNumber("minimum_salary"),
+      roleId: interaction.options.getRole("role")?.id ?? null,
       scope: jobScope(interaction),
       scopeName: interaction.guild?.name ?? `DM with ${interaction.user.tag}`,
       source: interaction.options.getString("source", true),
@@ -65,6 +69,7 @@ export const executeSubscribe = async (
             `\`${saved.source}\` → <#${saved.channelId}>`,
             `Keywords: ${saved.keywords ?? "—"}`,
             ...(saved.title ? [`Title: ${saved.title}`] : []),
+            ...roleTagLine(saved.roleId),
             ...(saved.workEnvironments?.length
               ? [`Work environment: ${saved.workEnvironments.join(", ")}`]
               : []),

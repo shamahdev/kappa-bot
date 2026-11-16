@@ -46,6 +46,33 @@ export const createHttpJobAccess = (deps: AccessDeps, userId: string) => {
       const guilds = await manageableGuilds();
       return guilds.some((guild) => guild.id === guildId);
     },
+    canMentionRole: async (guildId, roleId) => {
+      const response = await fetch(
+        `https://discord.com/api/v10/guilds/${encodeURIComponent(guildId)}/roles`,
+        {
+          headers: { Authorization: `Bot ${deps.config.discordToken}` },
+          signal: AbortSignal.timeout(15_000),
+        }
+      );
+      if (!response.ok) {
+        throw new HttpJobAccessError(
+          "transport",
+          new Error(`Discord role lookup HTTP ${response.status}`)
+        );
+      }
+      const roles = (await response.json()) as {
+        id: string;
+        mentionable: boolean;
+        managed: boolean;
+      }[];
+      return roles.some(
+        (role) =>
+          role.id === roleId &&
+          role.id !== guildId &&
+          role.mentionable &&
+          !role.managed
+      );
+    },
     userId,
   };
   return { actor, manageableGuilds };

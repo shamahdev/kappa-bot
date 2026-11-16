@@ -26,7 +26,8 @@ export const jobScope = (interaction: { guildId: string | null }): JobScope =>
 
 /** Authenticated Discord identity and current permissions; never grant access just for being the creator. */
 export const jobActor = (
-  interaction: Pick<JobInteraction, "user" | "guildId" | "memberPermissions">
+  interaction: Pick<JobInteraction, "user" | "guildId" | "memberPermissions"> &
+    Partial<Pick<JobInteraction, "guild">>
 ): JobActor => ({
   canManageGuild: (guildId) =>
     Promise.resolve(
@@ -34,6 +35,15 @@ export const jobActor = (
         (interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild) ??
           false)
     ),
+  canMentionRole: async (guildId, roleId) => {
+    if (guildId !== interaction.guildId || !interaction.guild) {
+      return false;
+    }
+    const role = await interaction.guild.roles.fetch(roleId);
+    return Boolean(
+      role && role.id !== guildId && role.mentionable && !role.managed
+    );
+  },
   userId: interaction.user.id,
 });
 

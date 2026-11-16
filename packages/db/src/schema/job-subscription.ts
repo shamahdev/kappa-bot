@@ -84,6 +84,7 @@ export const subscriptions = pgTable(
     retentionDays: integer("retention_days")
       .notNull()
       .default(DEFAULT_RETENTION_DAYS),
+    roleId: text("role_id"),
     source: text("source").notNull().default(DEFAULT_JOB_SOURCE),
     title: text("title"),
     workEnvironments: jsonb("work_environments")

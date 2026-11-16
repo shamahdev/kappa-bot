@@ -13,13 +13,15 @@ export interface JobNotifications {
   card: (
     channelId: string,
     posting: EnrichedJobPosting,
-    keyword?: string | null
+    keyword?: string | null,
+    roleId?: string | null
   ) => Promise<void>;
   report: (userId: string, reportId: number, grade: string) => Promise<void>;
   batch: (
     channelId: string,
     jobs: JobPosting[],
-    keyword?: string | null
+    keyword?: string | null,
+    roleId?: string | null
   ) => AsyncIterable<{
     messageId?: string;
     jobs: JobPosting[];

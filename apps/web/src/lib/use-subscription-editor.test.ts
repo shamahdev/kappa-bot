@@ -10,6 +10,19 @@ const draft: SubscriptionDraft = {
 };
 
 describe("subscription editor draft", () => {
+  test("role tag drafts accept IDs and clear the tag when blank", () => {
+    expect(
+      parseSubscriptionDraft({ ...draft, roleId: "123456789012345678" })
+    ).toMatchObject({ ok: true, patch: { roleId: "123456789012345678" } });
+    expect(parseSubscriptionDraft({ ...draft, roleId: "" })).toMatchObject({
+      ok: true,
+      patch: { roleId: null },
+    });
+    expect(
+      parseSubscriptionDraft({ ...draft, roleId: "@everyone" })
+    ).toMatchObject({ ok: false, errors: { roleId: expect.any(String) } });
+    expect(parseSubscriptionDraft(draft)).not.toHaveProperty("patch.roleId");
+  });
   test("validates minimum-only salary and comma alternatives without currency controls", () => {
     expect(
       parseSubscriptionDraft({

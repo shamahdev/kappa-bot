@@ -9,6 +9,7 @@ import { and, desc, eq, or } from "drizzle-orm";
 import {
   assertScopeAccess,
   assertSubscriptionAccess,
+  assertSubscriptionRole,
   dmScopeKey,
   JobSubscriptionError,
   nonBlankId,
@@ -60,6 +61,7 @@ export const createJobSubscriptions = (db: Database) => {
       const keywords = subscriptionKeywords(input.keywords);
       const options = subscriptionPatch(input);
       await assertScopeAccess(actor, input.scope);
+      await assertSubscriptionRole(actor, guildId, options.roleId);
       return db.transaction(async (tx) => {
         // Channel IDs cannot be rebound to a different personal/guild scope.
         const [existing] = await tx
@@ -221,6 +223,7 @@ export const createJobSubscriptions = (db: Database) => {
       positiveSubscriptionId(id);
       const row = await get(actor, id);
       const valid = subscriptionPatch(patch);
+      await assertSubscriptionRole(actor, row.guildId, valid.roleId);
       if (Object.keys(valid).length === 0) {
         return row;
       }

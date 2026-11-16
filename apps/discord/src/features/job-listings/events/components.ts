@@ -3,6 +3,7 @@ import { JobSubscriptionError } from "@kappa/service/job-listings";
 import type { StringSelectMenuInteraction } from "discord.js";
 
 import type { FeatureContext } from "../../../core/feature";
+import { onRoleTag } from "../commands/role-tag";
 import { cardPayload } from "../embed";
 import {
   applicationErrorMessage,
@@ -201,6 +202,9 @@ export const onComponent = async (
   ctx: FeatureContext,
   interaction: unknown
 ): Promise<void> => {
+  if (await onRoleTag(ctx, interaction)) {
+    return;
+  }
   if (await onSubscriptionEdit(ctx, interaction)) {
     return;
   }

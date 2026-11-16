@@ -21,6 +21,7 @@ import { executeFetch } from "./commands/fetch";
 import { executeHealth } from "./commands/health";
 import { executeShowLatest } from "./commands/latest";
 import { executeList } from "./commands/list";
+import { executeRoleTag } from "./commands/role-tag";
 import { executeSubscribe } from "./commands/subscribe";
 import { executeUnsubscribe } from "./commands/unsubscribe";
 import { onChannelDelete } from "./events/channel-delete";
@@ -100,8 +101,26 @@ const subcommands = [
           .setDescription(
             "Include unspecified work environments (default false)"
           )
+      )
+      .addRoleOption((o) =>
+        o
+          .setName("role")
+          .setDescription(
+            "Mentionable role to ping on server notifications (server only)"
+          )
       ),
     execute: executeSubscribe,
+  },
+  {
+    data: new SlashCommandSubcommandBuilder()
+      .setName("role_tag")
+      .setDescription("Set or remove a server subscription's notification role")
+      .addRoleOption((o) =>
+        o
+          .setName("role")
+          .setDescription("Mentionable server role; omit to remove the tag")
+      ),
+    execute: executeRoleTag,
   },
   {
     data: new SlashCommandSubcommandBuilder()

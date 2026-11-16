@@ -131,6 +131,32 @@ test("invalid posting filters are rejected before any Discord destination reques
   expect(store.writes).toEqual([]);
 });
 
+test("personal subscription creation rejects a role tag before ensuring a DM destination", async () => {
+  const store = testDatabase([[session]]);
+  const response = await subscriptionRoutes(deps(store.db)).handle(
+    new Request("http://localhost/api/v1/subscriptions", {
+      body: JSON.stringify({
+        keywords: "frontend",
+        roleId: "123456789012345678",
+        source: "all",
+      }),
+      headers: {
+        "content-type": "application/json",
+        cookie: `${SESSION_COOKIE}=offline-session`,
+      },
+      method: "POST",
+    })
+  );
+  expect(response.status).toBe(400);
+  expect(await response.json()).toMatchObject({
+    error: {
+      message: "Role tags are only available for server subscriptions.",
+    },
+  });
+  expect(store.readCount).toBe(1);
+  expect(store.writes).toEqual([]);
+});
+
 test("server subscription creation validates channel ownership and never creates a DM destination", async () => {
   // The bot-membership cache is shared with the preceding permission test.
   const serverId = "http-server";

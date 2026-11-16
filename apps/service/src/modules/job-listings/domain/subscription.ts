@@ -14,6 +14,7 @@ import type { FingerprintQuery } from "./posting";
 export interface JobActor {
   userId: string;
   canManageGuild: (guildId: string) => Promise<boolean>;
+  canMentionRole?: (guildId: string, roleId: string) => Promise<boolean>;
 }
 
 export type JobScope =
@@ -28,6 +29,7 @@ export interface JobSubscription {
   keywords: string | null;
   keywordAlternatives?: string[] | null;
   title?: string | null;
+  roleId?: string | null;
   workEnvironments?: WorkEnvironmentType[];
   minimumSalary?: number | null;
   includeUnspecifiedSalary?: boolean;
@@ -182,6 +184,7 @@ export const subscriptionRetentionDays = (days: number): number => {
 };
 
 export interface JobSubscriptionPatch {
+  roleId?: string | null;
   title?: string | null;
   workEnvironments?: readonly WorkEnvironmentType[];
   minimumSalary?: number | null;
@@ -256,6 +259,19 @@ export const subscriptionPatch = (
   patch: JobSubscriptionPatch
 ): JobSubscriptionPatch => {
   const result = subscriptionPostingOptions(patch);
+  if (patch.roleId !== undefined) {
+    if (
+      patch.roleId !== null &&
+      (typeof patch.roleId !== "string" ||
+        !/^[1-9]\d{16,19}$/u.test(patch.roleId.trim()))
+    ) {
+      throw new JobSubscriptionError(
+        "VALIDATION",
+        "Role ID must be a Discord role ID, or null to remove the tag."
+      );
+    }
+    result.roleId = patch.roleId?.trim() ?? null;
+  }
   if (patch.keywords !== undefined) {
     result.keywords = subscriptionKeywords(patch.keywords);
   }
@@ -275,4 +291,26 @@ export const subscriptionPatch = (
     result.retentionDays = subscriptionRetentionDays(patch.retentionDays);
   }
   return result;
+};
+
+export const assertSubscriptionRole = async (
+  actor: JobActor,
+  guildId: string,
+  roleId: string | null | undefined
+): Promise<void> => {
+  if (roleId === null || roleId === undefined) {
+    return;
+  }
+  if (guildId.startsWith("dm:")) {
+    throw new JobSubscriptionError(
+      "VALIDATION",
+      "Role tags are only available for server subscriptions."
+    );
+  }
+  if (roleId === guildId || !(await actor.canMentionRole?.(guildId, roleId))) {
+    throw new JobSubscriptionError(
+      "VALIDATION",
+      "Choose a mentionable role in this server. @everyone and managed roles are not supported."
+    );
+  }
 };

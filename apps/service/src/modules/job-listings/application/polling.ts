@@ -221,6 +221,7 @@ export const flushSub = async (
   let delivered = 0;
   try {
     const keyword = subscriptionDisplayTitle(sub);
+    const roleId = sub.guildId.startsWith("dm:") ? null : (sub.roleId ?? null);
     const [first] = items;
     if (items.length === 1 && first) {
       const { job } = first;
@@ -228,7 +229,7 @@ export const flushSub = async (
       // (Multi-item lists skip scoring — the reply-by-number card scores.)
       const cvText = await ctx.cv.textForScope(sub.guildId);
       const posting = await ctx.enrichment.enrich(job, cvText);
-      await ctx.notifications.card(sub.channelId, posting, keyword);
+      await ctx.notifications.card(sub.channelId, posting, keyword, roleId);
       delivered = 1;
       await ctx.reports?.recordDelivered(sub.id, [
         { job, seenId: first.seenId },
@@ -248,7 +249,8 @@ export const flushSub = async (
     for await (const sent of ctx.notifications.batch(
       sub.channelId,
       items.map((item) => item.job),
-      keyword
+      keyword,
+      roleId
     )) {
       delivered += sent.jobs.length;
       const deliveredItems = sent.jobs.flatMap((job) => {

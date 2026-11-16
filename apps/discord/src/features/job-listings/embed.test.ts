@@ -3,7 +3,7 @@ import { describe, expect, test } from "bun:test";
 import type { JobPosting } from "@kappa/service/job-listings";
 
 import { cardPayload, deliveryPages } from "./embed";
-import { createDiscordNotifications } from "./notifications";
+import { createDiscordNotifications, roleNotification } from "./notifications";
 
 const required = <T>(value: T | null | undefined): T => {
   if (value === null || value === undefined) {
@@ -177,7 +177,7 @@ describe("createDiscordNotifications", () => {
       // oxlint-disable-next-line no-await-in-loop
       const next = await iterator.next();
       expect(sent).toHaveLength(index + 1);
-      expect(sent[index]).toEqual(page.payload);
+      expect(sent[index]).toEqual(roleNotification(page.payload));
       expect(next.value).toEqual({
         jobs: page.jobs,
         messageId: `message-${index + 1}`,
@@ -216,6 +216,6 @@ describe("createDiscordNotifications", () => {
       return Promise.resolve({});
     }, config);
     await notifications.card("channel", posting, "engineer");
-    expect(sent).toEqual([cardPayload(posting, "engineer")]);
+    expect(sent).toEqual([roleNotification(cardPayload(posting, "engineer"))]);
   });
 });

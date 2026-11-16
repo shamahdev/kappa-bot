@@ -19,6 +19,7 @@ export interface SubscriptionDraft {
   location: string;
   retentionDays: string;
   title?: string;
+  roleId?: string;
   minimumSalary?: string;
   workEnvironments?: WorkEnvironmentType[];
   includeUnspecifiedSalary?: boolean;
@@ -76,6 +77,15 @@ export const parseSubscriptionDraft = (
   draft: SubscriptionDraft
 ): ParsedDraft => {
   const { errors, patch } = parsePostingOptions(draft);
+  let roleIdPatch: { roleId: string | null } | undefined;
+  if (draft.roleId !== undefined) {
+    const roleId = draft.roleId.trim();
+    if (roleId && !/^[1-9]\d{16,19}$/u.test(roleId)) {
+      errors.roleId =
+        "Enter a Discord role ID, or leave blank to disable the tag.";
+    }
+    roleIdPatch = { roleId: roleId || null };
+  }
   const keywords = draft.keywords.trim();
   const location = draft.location.trim();
   const retentionText = draft.retentionDays.trim();
@@ -108,6 +118,7 @@ export const parseSubscriptionDraft = (
           location,
           retentionDays,
           ...patch,
+          ...roleIdPatch,
         },
       };
 };
@@ -123,6 +134,7 @@ export const useSubscriptionEditor = (
     location: sub.location ?? "",
     retentionDays: String(sub.retentionDays),
     title: sub.title ?? "",
+    ...(sub.scope === "guild" ? { roleId: sub.roleId ?? "" } : {}),
     minimumSalary:
       sub.minimumSalary === null || sub.minimumSalary === undefined
         ? ""
@@ -153,9 +165,13 @@ export const useSubscriptionEditor = (
       return;
     }
     setErrors({});
-    const { keywords, ...other } = parsed.patch;
+    const { keywords, roleId, ...other } = parsed.patch;
+    const patch = {
+      ...other,
+      ...(draft.roleId === (sub.roleId ?? "") ? {} : { roleId }),
+    };
     update.mutate(
-      { id: sub.id, patch: unchangedKeywords ? other : { ...other, keywords } },
+      { id: sub.id, patch: unchangedKeywords ? patch : { ...patch, keywords } },
       { onSuccess: onDone }
     );
   };

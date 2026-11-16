@@ -76,6 +76,21 @@ test("a later transport failure preserves recall and count for already-sent page
   expect(recorded[0]?.messageId).toBe("sent");
 });
 
+test("role tags are forwarded for server notifications and suppressed for personal scope", async () => {
+  const mentions: (string | null | undefined)[] = [];
+  const { ctx } = context(
+    async function* deliver(_channel, postings, _keyword, roleId) {
+      mentions.push(roleId);
+      yield { jobs: postings };
+    }
+  );
+  const roleId = "123456789012345678";
+  const items = jobs.slice(0, 2).map((job, seenId) => ({ job, seenId }));
+  await flushSub(ctx, { ...sub, roleId }, items);
+  await flushSub(ctx, { ...sub, guildId: "dm:user", roleId }, items);
+  expect(mentions).toEqual([roleId, null]);
+});
+
 test("alternative searches are OR, deduped and delivered as one subscription batch", async () => {
   const subscription = {
     ...sub,

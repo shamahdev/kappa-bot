@@ -15,6 +15,8 @@ import {
   subscriptionPatch,
   assertScopeAccess,
   JobSubscriptionError,
+  assertSubscriptionRole,
+  scopeKey,
 } from "../modules/job-listings/domain/subscription";
 import type { JobSubscription } from "../modules/job-listings/domain/subscription";
 import type { RouteDeps } from "./deps";
@@ -32,6 +34,7 @@ const toDto = (row: JobSubscription): SubscriptionDtoType => ({
   location: row.location,
   minimumSalary: row.minimumSalary ?? null,
   retentionDays: row.retentionDays,
+  roleId: row.roleId ?? null,
   scope: dmUserIdForScope(row.guildId) === null ? "guild" : "dm",
   source: row.source,
   title: row.title ?? null,
@@ -49,6 +52,7 @@ export const subscriptionRoutes = (deps: RouteDeps) => {
     includeUnspecifiedEnvironment: t.Optional(t.Boolean()),
     includeUnspecifiedSalary: t.Optional(t.Boolean()),
     minimumSalary: t.Optional(t.Union([t.Number(), t.Null()])),
+    roleId: t.Optional(t.Union([t.String(), t.Null()])),
     title: t.Optional(t.Union([t.String(), t.Null()])),
     workEnvironments: t.Optional(
       t.Array(
@@ -116,6 +120,16 @@ export const subscriptionRoutes = (deps: RouteDeps) => {
         const { actor } = createHttpJobAccess(deps, user.discordId);
         let channelId: string;
         try {
+          const scope =
+            body.guildId === undefined
+              ? { kind: "personal" as const }
+              : { guildId: body.guildId, kind: "guild" as const };
+          await assertScopeAccess(actor, scope);
+          await assertSubscriptionRole(
+            actor,
+            scopeKey(actor, scope),
+            subscriptionPatch(body).roleId
+          );
           if (body.guildId === undefined) {
             ({ id: channelId } = await ensureDmChannel(
               config.discordToken,

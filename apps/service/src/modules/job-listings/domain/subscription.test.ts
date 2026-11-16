@@ -111,6 +111,21 @@ describe("shared validation", () => {
       retentionDays: 365,
     });
   });
+  test("role IDs reject arbitrary mentions and support explicit removal", () => {
+    for (const roleId of [
+      "",
+      "@everyone",
+      "<@&123456789012345678>",
+      "123",
+      "-123456789012345678",
+    ]) {
+      expect(() => subscriptionPatch({ roleId })).toThrow(JobSubscriptionError);
+    }
+    expect(subscriptionPatch({ roleId: " 123456789012345678 " })).toEqual({
+      roleId: "123456789012345678",
+    });
+    expect(subscriptionPatch({ roleId: null })).toEqual({ roleId: null });
+  });
   test("existing retention contract is integer 1–365", () => {
     expect(subscriptionRetentionDays(1)).toBe(1);
     expect(subscriptionRetentionDays(365)).toBe(365);

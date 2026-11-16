@@ -46,6 +46,38 @@ const labels = (role: string) =>
   );
 
 describe("shadcn Dialog (Modal)", () => {
+  test("notification role controls are hidden for personal subscriptions and editable for server subscriptions", async () => {
+    const { SubscriptionOptions } = await import("./subscription-options");
+    const draft: SubscriptionDraft = {
+      keywords: "frontend",
+      location: "Indonesia",
+      retentionDays: "14",
+    };
+    const setField = mock();
+    await mount(
+      <SubscriptionOptions draft={draft} disabled={false} setField={setField} />
+    );
+    expect(document.body.textContent).not.toContain("Notification role ID");
+    await act(() =>
+      root?.render(
+        <SubscriptionOptions
+          draft={{ ...draft, roleId: "123456789012345678" }}
+          disabled={false}
+          setField={setField}
+        />
+      )
+    );
+    expect(document.body.textContent).toContain(
+      "Notification role ID (optional)"
+    );
+    expect(
+      (
+        document.querySelector(
+          'input[name="notification-role-id-(optional)"]'
+        ) as HTMLInputElement
+      )?.value
+    ).toBe("123456789012345678");
+  });
   test("subscription environments support multiple selection and use no native select", async () => {
     const { SubscriptionOptions } = await import("./subscription-options");
     const { useState } = await import("react");

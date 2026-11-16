@@ -14,7 +14,7 @@ export const PICKER_IDS = {
 } as const;
 
 export const subscriptionLine = (s: JobSubscription): string =>
-  `${s.isActive ? "Active" : "Inactive"} · \`${s.source}\` ${subscriptionDisplayTitle(s)}${s.title ? ` (${s.keywords})` : ""}${s.location ? ` · ${s.location}` : ""}${s.workEnvironments?.length ? ` · ${s.workEnvironments.join(", ")}` : ""}${s.minimumSalary === null || s.minimumSalary === undefined ? "" : ` · ≥ IDR ${s.minimumSalary.toLocaleString("id-ID")}/month (advertised upper pay)`} → <#${s.channelId}>`;
+  `${s.isActive ? "Active" : "Inactive"} · \`${s.source}\` ${subscriptionDisplayTitle(s)}${s.title ? ` (${s.keywords})` : ""}${s.location ? ` · ${s.location}` : ""}${s.workEnvironments?.length ? ` · ${s.workEnvironments.join(", ")}` : ""}${s.minimumSalary === null || s.minimumSalary === undefined ? "" : ` · ≥ IDR ${s.minimumSalary.toLocaleString("id-ID")}/month (advertised upper pay)`}${s.roleId && !s.guildId.startsWith("dm:") ? ` · tag <@&${s.roleId}>` : ""} → <#${s.channelId}>`;
 
 export const fetchResultEmbed = (result: PollResult): EmbedBuilder => {
   const timeFormatted = (result.durationMs / 1000).toFixed(2);

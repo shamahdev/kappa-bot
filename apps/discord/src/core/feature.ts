@@ -1,6 +1,7 @@
 import type { JobListings } from "@kappa/service/job-listings";
 import type {
   APIEmbed,
+  APIAllowedMentions,
   ChatInputCommandInteraction,
   SlashCommandBuilder,
   SlashCommandSubcommandsOnlyBuilder,
@@ -10,6 +11,7 @@ import type { AppConfig } from "./config";
 import type { Logger } from "./logger";
 
 export interface MessagePayload {
+  allowed_mentions?: APIAllowedMentions;
   content?: string;
   embeds?: APIEmbed[];
 }

@@ -39,6 +39,7 @@ const SubscriptionOptions = {
   includeUnspecifiedEnvironment: Schema.optional(Schema.Boolean),
   includeUnspecifiedSalary: Schema.optional(Schema.Boolean),
   minimumSalary: Schema.optional(Schema.NullOr(Schema.Number)),
+  roleId: Schema.optional(Schema.NullOr(Schema.String)),
   title: Schema.optional(Schema.NullOr(Schema.String)),
   workEnvironments: Schema.optional(Schema.Array(WorkEnvironment)),
 };

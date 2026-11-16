@@ -86,6 +86,53 @@ describe("subscription application access", () => {
 });
 
 describe("subscription writes", () => {
+  test("role tags are server-only and validated before writes", async () => {
+    const roleId = "123456789012345678";
+    const personal = { ...row, guildId: "dm:alice" };
+    const store = testDatabase([[personal]], [personal]);
+    const service = createJobSubscriptions(store.db);
+    await expect(
+      service.create(actor, {
+        channelId: "channel",
+        keywords: "frontend",
+        roleId,
+        scope: { kind: "personal" },
+        source: "all",
+      })
+    ).rejects.toMatchObject({ code: "VALIDATION" });
+    await expect(service.update(actor, 1, { roleId })).rejects.toMatchObject({
+      code: "VALIDATION",
+    });
+    expect(store.writes).toEqual([]);
+    expect(store.transactionCount).toBe(0);
+  });
+
+  test("server role changes require a current permission grant and mentionable role in the same server", async () => {
+    const roleId = "123456789012345678";
+    const server = { ...row, guildId: "managed", roleId };
+    const store = testDatabase([[server], [server], [server]], [server]);
+    const roleChecks: string[][] = [];
+    const manager = {
+      ...actor,
+      canMentionRole: (guildId: string, role: string) => {
+        roleChecks.push([guildId, role]);
+        return Promise.resolve(role === roleId);
+      },
+    };
+    const service = createJobSubscriptions(store.db);
+    await service.update(manager, 1, { roleId });
+    expect(store.writes[0]?.values).toEqual({ roleId });
+    await expect(
+      service.update(manager, 1, { roleId: "123456789012345679" })
+    ).rejects.toMatchObject({ code: "VALIDATION" });
+    expect(store.writes).toHaveLength(1);
+    await service.update(actor, 1, { roleId: null });
+    expect(store.writes[1]?.values).toEqual({ roleId: null });
+    expect(roleChecks).toEqual([
+      ["managed", roleId],
+      ["managed", "123456789012345679"],
+    ]);
+  });
   test("filter/title edits preserve legacy keyword text; explicit keyword edits split alternatives", async () => {
     const legacy = {
       ...row,

@@ -32,6 +32,16 @@ export const SubscriptionOptions = ({
   errors?: SubscriptionFieldErrors;
 }) => (
   <VStack gap={3}>
+    {draft.roleId === undefined ? null : (
+      <TextInput
+        label="Notification role ID (optional)"
+        description="Copy a mentionable server role's ID in Discord Developer Mode. The role is pinged once per notification. Leave blank for no tag."
+        value={draft.roleId}
+        error={errors.roleId}
+        disabled={disabled}
+        onChange={(event) => setField("roleId", event.target.value)}
+      />
+    )}
     <TextInput
       label="Subscription title (optional)"
       value={draft.title ?? ""}

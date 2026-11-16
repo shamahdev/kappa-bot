@@ -98,6 +98,19 @@ export const gatewayDeliverer =
     if (!(channel && channel.isSendable())) {
       throw new Error(`channel ${channelId} is not sendable`);
     }
-    const sent = await channel.send(payload);
+    const { allowed_mentions: allowedMentions, ...message } = payload;
+    const sent = await channel.send({
+      ...message,
+      ...(allowedMentions
+        ? {
+            allowedMentions: {
+              parse: allowedMentions.parse,
+              repliedUser: allowedMentions.replied_user,
+              roles: allowedMentions.roles,
+              users: allowedMentions.users,
+            },
+          }
+        : {}),
+    });
     return { messageId: sent.id };
   };
