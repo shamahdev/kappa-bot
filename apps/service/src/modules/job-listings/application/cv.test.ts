@@ -5,15 +5,12 @@ import {
   CV_MAX_FILENAME,
   CV_MAX_PDF_BYTES,
   CV_MIN_CHARS,
+  cvFilenameError,
+  cvTextError,
 } from "@kappa/contracts";
 import type { Database } from "@kappa/db";
 
-import {
-  CV_MAX_UPLOAD_BYTES,
-  createCvProfiles,
-  cvFilenameError,
-  cvTextError,
-} from "./cv";
+import { createCvProfiles } from "./cv";
 import { testDatabase } from "./test-database";
 
 const profile = {
@@ -72,12 +69,11 @@ describe("shared CV validation and persistence", () => {
     expect(fake.writes[0].values).toMatchObject({ filename: null });
   });
   test("PDF upload byte limit uses the shared constant and rejects before extraction or writes", async () => {
-    expect(CV_MAX_UPLOAD_BYTES).toBe(CV_MAX_PDF_BYTES);
     const fake = testDatabase();
     await expect(
       createCvProfiles(fake.db).savePdf(
         "alice",
-        new Uint8Array(CV_MAX_UPLOAD_BYTES + 1),
+        new Uint8Array(CV_MAX_PDF_BYTES + 1),
         "cv.pdf"
       )
     ).rejects.toMatchObject({

@@ -3,9 +3,10 @@ import { fileURLToPath } from "node:url";
 import { Glob } from "bun";
 
 import type { Feature } from "./feature";
+import { FeatureRegistry } from "./registry";
 
 /** Auto-discovers src/features/*\/index.ts (default export must be a Feature). */
-export const loadFeatures = async (): Promise<Feature[]> => {
+const loadFeatures = async (): Promise<Feature[]> => {
   const dir = fileURLToPath(new URL("../features/", import.meta.url));
   const glob = new Glob("*/index.ts");
   const features: Feature[] = [];
@@ -22,4 +23,12 @@ export const loadFeatures = async (): Promise<Feature[]> => {
   }
   features.sort((a, b) => a.name.localeCompare(b.name));
   return features;
+};
+
+export const loadRegistry = async (): Promise<FeatureRegistry> => {
+  const registry = new FeatureRegistry();
+  for (const feature of await loadFeatures()) {
+    registry.add(feature);
+  }
+  return registry;
 };

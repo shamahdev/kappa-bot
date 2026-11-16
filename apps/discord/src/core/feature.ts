@@ -34,15 +34,11 @@ export interface CommandDef {
 
 export interface EventDef {
   event: string;
-  once?: boolean;
   handler: (ctx: FeatureContext, ...args: unknown[]) => Promise<void> | void;
 }
 
 export interface Feature {
   name: string;
-  description: string;
   commands?: CommandDef[];
   events?: EventDef[];
 }
-
-export const defineFeature = (feature: Feature): Feature => feature;

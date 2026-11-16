@@ -1,4 +1,11 @@
-import { isSubscriptionSource, SUBSCRIPTION_SOURCES } from "@kappa/contracts";
+import {
+  isSubscriptionSource,
+  SUBSCRIPTION_SOURCES,
+  RETENTION_DAYS_MIN,
+  RETENTION_DAYS_MAX,
+} from "@kappa/contracts";
+
+import type { FingerprintQuery } from "./posting";
 
 export interface JobActor {
   userId: string;
@@ -25,6 +32,16 @@ export interface JobSubscription {
   createdBy: string | null;
   createdAt: Date;
 }
+
+export const postingQueryForSubscription = (
+  sub: JobSubscription
+): FingerprintQuery => ({
+  distance: sub.distance,
+  filters: sub.filters ?? {},
+  geoId: sub.geoId,
+  keywords: sub.keywords ?? "",
+  location: sub.location,
+});
 
 export class JobSubscriptionError extends Error {
   readonly code: "FORBIDDEN" | "NOT_FOUND" | "VALIDATION";
@@ -123,10 +140,14 @@ export const subscriptionLocation = (location: string): string => {
 
 export const subscriptionRetentionDays = (days: number): number => {
   // Existing subscription contract: an integer from 1 through 365 days.
-  if (!Number.isInteger(days) || days < 1 || days > 365) {
+  if (
+    !Number.isInteger(days) ||
+    days < RETENTION_DAYS_MIN ||
+    days > RETENTION_DAYS_MAX
+  ) {
     throw new JobSubscriptionError(
       "VALIDATION",
-      "retentionDays must be an integer 1–365"
+      `retentionDays must be an integer ${RETENTION_DAYS_MIN}–${RETENTION_DAYS_MAX}`
     );
   }
   return days;

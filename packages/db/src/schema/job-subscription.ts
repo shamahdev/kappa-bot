@@ -1,3 +1,8 @@
+import {
+  DEFAULT_JOB_SOURCE,
+  DEFAULT_RETENTION_DAYS,
+  DEFAULT_POLL_INTERVAL_MINUTES,
+} from "@kappa/contracts";
 import type {
   JobPosting,
   MatchBreakdownType,
@@ -65,8 +70,10 @@ export const subscriptions = pgTable(
     isActive: boolean("is_active").notNull().default(true),
     keywords: text("keywords"),
     location: text("location"),
-    retentionDays: integer("retention_days").notNull().default(14),
-    source: text("source").notNull().default("linkedin"),
+    retentionDays: integer("retention_days")
+      .notNull()
+      .default(DEFAULT_RETENTION_DAYS),
+    source: text("source").notNull().default(DEFAULT_JOB_SOURCE),
   },
   (t) => [
     index("subs_guild_channel_idx").on(t.guildId, t.channelId),
@@ -126,7 +133,7 @@ export const seenJobs = pgTable(
       company: string;
       location: string;
     }>(),
-    source: text("source").notNull().default("linkedin"),
+    source: text("source").notNull().default(DEFAULT_JOB_SOURCE),
     subscriptionId: integer("subscription_id")
       .notNull()
       .references(() => subscriptions.id, { onDelete: "cascade" }),
@@ -282,7 +289,9 @@ export const botConfig = pgTable(
   {
     // Singleton: only row allowed (CHECK id=1).
     id: smallint("id").primaryKey(),
-    pollIntervalMinutes: integer("poll_interval_minutes").notNull().default(30),
+    pollIntervalMinutes: integer("poll_interval_minutes")
+      .notNull()
+      .default(DEFAULT_POLL_INTERVAL_MINUTES),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -298,7 +307,6 @@ export const botConfig = pgTable(
  * receives the current listing on its first tick instead of being skipped.
  */
 export const fingerprintSnapshots = pgTable("fingerprint_snapshots", {
-  // Poller's filter key.
   fingerprint: text("fingerprint").primaryKey(),
   jobCount: integer("job_count").notNull().default(0),
   // sha1 over sorted source:id pairs
@@ -321,10 +329,8 @@ export const deliveryMessages = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
-    // Exact display order for this message.
     jobs: jsonb("jobs").$type<JobPosting[]>().notNull(),
     keyword: text("keyword"),
-    // Bot delivery message id.
     messageId: text("message_id").primaryKey(),
   },
   (t) => [index("delivery_messages_created_at_idx").on(t.createdAt)]

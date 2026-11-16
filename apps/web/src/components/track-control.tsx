@@ -5,7 +5,8 @@ import {
 import type { ApplicationStatusType } from "@kappa/contracts";
 import { ChevronDownIcon } from "lucide-react";
 
-import { apiMessage, useTrackApplication } from "../lib/queries";
+import { apiMessage } from "../lib/api";
+import { useTrackApplication } from "../lib/queries";
 import {
   DropdownMenu,
   DropdownMenuContent,

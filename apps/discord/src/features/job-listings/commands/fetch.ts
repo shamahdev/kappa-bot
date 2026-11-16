@@ -1,10 +1,14 @@
-import type { PollResult } from "@kappa/service/job-listings";
-import { EmbedBuilder } from "discord.js";
 import type { ChatInputCommandInteraction } from "discord.js";
 
 import type { FeatureContext } from "../../../core/feature";
-import { activeChannelSubs, pickerRow } from "./_pick";
-import { errorEmbed, jobActor, jobScope, requireManageGuild } from "./_shared";
+import {
+  errorEmbed,
+  jobActor,
+  jobScope,
+  requireManageGuild,
+} from "../interactions";
+import { activeSubscriptions, pickerRow } from "../picker";
+import { PICKER_IDS } from "../presentation";
 
 export const executeFetch = async (
   interaction: ChatInputCommandInteraction,
@@ -22,7 +26,7 @@ export const executeFetch = async (
 
   await interaction.deferReply();
 
-  const subs = await activeChannelSubs(
+  const subs = await activeSubscriptions(
     ctx,
     jobActor(interaction),
     jobScope(interaction),
@@ -41,7 +45,7 @@ export const executeFetch = async (
   await interaction.editReply({
     components: [
       pickerRow(
-        "jobs:fetch",
+        PICKER_IDS.fetch,
         subs,
         interaction,
         "All in this channel"
@@ -49,26 +53,4 @@ export const executeFetch = async (
     ],
     content: "Fetch now — all subscriptions here, or one:",
   });
-};
-
-export const fetchResultEmbed = (result: PollResult): EmbedBuilder => {
-  const timeFormatted = (result.durationMs / 1000).toFixed(2);
-  const subText =
-    result.subscriptionsCount === 1
-      ? "1 subscription"
-      : `${result.subscriptionsCount} subscriptions`;
-  const jobText =
-    result.newJobsDelivered === 1
-      ? "1 new job"
-      : `${result.newJobsDelivered} new jobs`;
-  return new EmbedBuilder()
-    .setColor(0x3f_6b_55)
-    .setTitle("Manual fetch complete")
-    .setDescription(
-      [
-        `Polled **${subText}**`,
-        `Delivered **${jobText}** to subscribed channels`,
-        `Completed in **${timeFormatted}s**`,
-      ].join("\n")
-    );
 };

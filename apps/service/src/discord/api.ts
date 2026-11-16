@@ -3,6 +3,8 @@
 
 import { setTimeout as sleep } from "node:timers/promises";
 
+import { OAUTH_SCOPES } from "@kappa/contracts";
+
 const API = "https://discord.com/api/v10";
 
 /**
@@ -105,7 +107,7 @@ export const authorizeUrl = (args: {
     client_id: args.clientId,
     redirect_uri: args.redirectUri,
     response_type: "code",
-    scope: "identify guilds",
+    scope: OAUTH_SCOPES,
     state: args.state,
   });
   return `https://discord.com/oauth2/authorize?${params.toString()}`;

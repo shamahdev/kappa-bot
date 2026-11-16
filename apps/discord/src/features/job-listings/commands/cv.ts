@@ -1,10 +1,10 @@
-import { CV_MAX_TEXT_BYTES } from "@kappa/contracts";
-import { CV_MAX_UPLOAD_BYTES } from "@kappa/service/job-listings";
+import { cvFileMaxBytes, cvSizeLabel } from "@kappa/contracts";
 import { EmbedBuilder } from "discord.js";
 import type { ChatInputCommandInteraction } from "discord.js";
 
 import type { FeatureContext } from "../../../core/feature";
-import { errorEmbed, isDMInteraction } from "./_shared";
+import { errorEmbed, isDMInteraction } from "../interactions";
+import { EMBED_COLOR } from "../presentation";
 
 /** CV matching is personal-only: guild callers are sent to the bot DM. */
 const requireDM = async (
@@ -22,13 +22,8 @@ const requireDM = async (
   return false;
 };
 
-const sizeLabel = (bytes: number): string =>
-  bytes >= 1_000_000
-    ? `${Math.round(bytes / 1_000_000)}MB`
-    : `${Math.round(bytes / 1024)}KB`;
-
 const uploadSizeError = (bytes: number, maxBytes: number): string =>
-  `That file is too big (${Math.round(bytes / 1024)}KB) — max ${sizeLabel(maxBytes)}.`;
+  `That file is too big (${Math.round(bytes / 1024)}KB) — max ${cvSizeLabel(maxBytes)}.`;
 
 export const executeCvUpload = async (
   interaction: ChatInputCommandInteraction,
@@ -39,8 +34,7 @@ export const executeCvUpload = async (
   }
   await interaction.deferReply({ ephemeral: true });
   const file = interaction.options.getAttachment("file", true);
-  const isPdf = file.name.trim().toLowerCase().endsWith(".pdf");
-  const maxBytes = isPdf ? CV_MAX_UPLOAD_BYTES : CV_MAX_TEXT_BYTES;
+  const maxBytes = cvFileMaxBytes(file.name);
   if (file.size > maxBytes) {
     await interaction.editReply({
       embeds: [errorEmbed(uploadSizeError(file.size, maxBytes))],
@@ -78,7 +72,7 @@ export const executeCvUpload = async (
   await interaction.editReply({
     embeds: [
       new EmbedBuilder()
-        .setColor(0x3f_6b_55)
+        .setColor(EMBED_COLOR)
         .setTitle("CV saved")
         .setDescription(
           [
@@ -104,7 +98,7 @@ export const executeCvStatus = async (
     await interaction.editReply({
       embeds: [
         new EmbedBuilder()
-          .setColor(0x3f_6b_55)
+          .setColor(EMBED_COLOR)
           .setTitle("No CV yet")
           .setDescription(
             "Upload one with `/jobs cv_upload` (`.pdf`/`.txt`/`.md`) to get A–E match grades on your personal job cards."
@@ -116,7 +110,7 @@ export const executeCvStatus = async (
   await interaction.editReply({
     embeds: [
       new EmbedBuilder()
-        .setColor(0x3f_6b_55)
+        .setColor(EMBED_COLOR)
         .setTitle("Your CV")
         .setDescription(
           [
@@ -141,7 +135,7 @@ export const executeCvRemove = async (
   await interaction.editReply({
     embeds: [
       new EmbedBuilder()
-        .setColor(0x3f_6b_55)
+        .setColor(EMBED_COLOR)
         .setDescription(
           removed
             ? "Your CV was removed — job cards and tracked applications will no longer show match scores. Existing CV reports remain in your dashboard."

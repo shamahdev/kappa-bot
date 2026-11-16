@@ -4,18 +4,14 @@
 
 import { registerCommands } from "../client";
 import { loadConfig } from "../config";
-import { loadFeatures } from "../loader";
+import { loadRegistry } from "../loader";
 import { createLogger } from "../logger";
-import { FeatureRegistry } from "../registry";
 
 const main = async () => {
   const config = loadConfig();
   const log = createLogger(config);
+  const registry = await loadRegistry();
   if (!config.clientId) {
-    const registry = new FeatureRegistry();
-    for (const feature of await loadFeatures()) {
-      registry.add(feature);
-    }
     console.log(
       `CLIENT_ID is blank — REST PUT skipped. Discovered commands: ${registry
         .commandsFlat()
@@ -23,10 +19,6 @@ const main = async () => {
         .join(", ")}`
     );
     return;
-  }
-  const registry = new FeatureRegistry();
-  for (const feature of await loadFeatures()) {
-    registry.add(feature);
   }
   await registerCommands(
     registry,

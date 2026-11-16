@@ -37,7 +37,7 @@ const baselineOf = (
 };
 
 /** Serialize only owner-facing report content, never raw postings or CV text. */
-export const reportDto = (
+const reportDto = (
   row: ReportRow,
   previous?: ReportRow,
   liveSeenIds?: Set<number>
@@ -66,7 +66,7 @@ export const reportDto = (
     windowStart: row.windowStart.toISOString(),
   });
 
-export const reportListItem = (row: ReportRow, previous?: ReportRow) =>
+const reportListItem = (row: ReportRow, previous?: ReportRow) =>
   decodeCvReportListItem({
     createdAt: row.createdAt.toISOString(),
     cvUploadedAt: row.cvUploadedAt?.toISOString() ?? null,

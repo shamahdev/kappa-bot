@@ -1,6 +1,6 @@
 import type { FeatureContext } from "../../../core/feature";
-import { applicationErrorMessage } from "../commands/_shared";
 import { cardPayload } from "../embed";
+import { applicationErrorMessage } from "../interactions";
 
 interface ReplyMessage {
   author?: { id?: string; bot?: boolean } | null;

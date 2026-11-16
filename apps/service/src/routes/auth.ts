@@ -1,12 +1,14 @@
+import { API_V1, ROUTES, OAUTH_SCOPES } from "@kappa/contracts";
 import { discordConnections, sessions, users } from "@kappa/db";
 import { eq } from "drizzle-orm";
 import { Elysia, redirect, t } from "elysia";
 
-import { resolveSession } from "../core/auth";
+import { sessionUser } from "../core/auth";
 import {
   clearSessionCookie,
   readSessionToken,
   serializeSessionCookie,
+  SESSION_MAX_AGE_SECONDS,
 } from "../core/cookies";
 import {
   hashToken,
@@ -15,20 +17,17 @@ import {
   signState,
   verifyState,
 } from "../core/crypto";
-import { err } from "../core/errors";
+import { unauthorized } from "../core/errors";
 import { authorizeUrl, exchangeCode, fetchMe } from "../discord/api";
 import type { RouteDeps } from "./deps";
-
-// 30d
-const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 export const authRoutes = (deps: RouteDeps) => {
   const { config, db, log } = deps;
   const redirectUri = `${config.serviceUrl}${config.redirectPath}`;
 
-  return new Elysia({ prefix: "/api/v1" })
+  return new Elysia({ prefix: API_V1 })
     .get(
-      "/auth/discord/login",
+      ROUTES.authLogin,
       ({ query }) => {
         const returnTo = sanitizeReturnTo(query.return_to);
         const state = signState(returnTo, config.sessionSecret);
@@ -40,7 +39,7 @@ export const authRoutes = (deps: RouteDeps) => {
       { query: t.Object({ return_to: t.Optional(t.String()) }) }
     )
     .get(
-      "/auth/discord/callback",
+      ROUTES.authCallback,
       async ({ query, request }) => {
         const fail = (reason: string) => {
           log.warn(
@@ -92,7 +91,7 @@ export const authRoutes = (deps: RouteDeps) => {
             accessToken: tokens.accessToken,
             provider: "discord",
             refreshToken: tokens.refreshToken,
-            scopes: "identify guilds",
+            scopes: OAUTH_SCOPES,
             tokenExpiresAt: tokens.expiresAt,
             userId: me.id,
           })
@@ -100,14 +99,14 @@ export const authRoutes = (deps: RouteDeps) => {
             set: {
               accessToken: tokens.accessToken,
               refreshToken: tokens.refreshToken,
-              scopes: "identify guilds",
+              scopes: OAUTH_SCOPES,
               tokenExpiresAt: tokens.expiresAt,
             },
             target: [discordConnections.userId, discordConnections.provider],
           });
         const token = newSessionToken();
         await db.insert(sessions).values({
-          expiresAt: new Date(Date.now() + SESSION_TTL_MS),
+          expiresAt: new Date(Date.now() + SESSION_MAX_AGE_SECONDS * 1000),
           tokenHash: hashToken(token),
           userId: me.id,
         });
@@ -127,7 +126,7 @@ export const authRoutes = (deps: RouteDeps) => {
         }),
       }
     )
-    .post("/auth/logout", async ({ request, set }) => {
+    .post(ROUTES.authLogout, async ({ request, set }) => {
       const token = readSessionToken(request.headers.get("cookie"));
       if (token) {
         await db
@@ -137,13 +136,10 @@ export const authRoutes = (deps: RouteDeps) => {
       set.headers["set-cookie"] = clearSessionCookie(config.isProd);
       return { ok: true };
     })
-    .get("/auth/me", async ({ request, status }) => {
-      const user = await resolveSession(
-        db,
-        readSessionToken(request.headers.get("cookie"))
-      );
+    .get(ROUTES.authMe, async ({ request, status }) => {
+      const user = await sessionUser(db, request);
       if (!user) {
-        return status(401, err("UNAUTHORIZED", "sign in with Discord first"));
+        return status(401, unauthorized());
       }
       return { user };
     });

@@ -11,7 +11,7 @@ import { dmScopeKey, JobSubscriptionError } from "../domain/subscription";
 
 type ApplicationRow = typeof jobApplications.$inferSelect;
 
-export const applicationDto = (row: ApplicationRow): ApplicationDtoType => ({
+const applicationDto = (row: ApplicationRow): ApplicationDtoType => ({
   company: row.company,
   createdAt: row.createdAt.toISOString(),
   id: row.id,

@@ -1,10 +1,11 @@
+import { DEFAULT_JOB_PAGE_SIZE } from "@kappa/contracts";
 import { useEffect, useState } from "react";
 
+import type { JobsParams } from "./api";
 import { useJobs } from "./queries";
-import type { JobsParams } from "./queries";
 
 // Retain the existing Jobs UI pagination and search debounce settings.
-const PAGE_SIZE = 20;
+const PAGE_SIZE = DEFAULT_JOB_PAGE_SIZE;
 export const ALL_SOURCES = "All sources";
 export type JobsBase = { scope: "dm" } | { guild: string };
 
@@ -72,7 +73,6 @@ export const useJobsTable = (base: JobsBase) => {
   }
 
   const jobs = useJobs(
-    true,
     jobsParams(base, { q: debouncedQ, source, subscriptionId, tracking }, page)
   );
   const total = jobs.data?.total ?? 0;

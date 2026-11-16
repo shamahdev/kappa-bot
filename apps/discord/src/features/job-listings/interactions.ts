@@ -1,9 +1,12 @@
 import type { JobActor, JobScope } from "@kappa/service/job-listings";
+import { JobSubscriptionError } from "@kappa/service/job-listings";
 import { EmbedBuilder, PermissionFlagsBits } from "discord.js";
 import type {
   ChatInputCommandInteraction,
   StringSelectMenuInteraction,
 } from "discord.js";
+
+import { ERROR_COLOR } from "./presentation";
 
 export type JobInteraction =
   | ChatInputCommandInteraction
@@ -33,7 +36,7 @@ export const jobActor = (
 });
 
 export const errorEmbed = (message: string): EmbedBuilder =>
-  new EmbedBuilder().setColor(0xe5_48_4d).setDescription(message);
+  new EmbedBuilder().setColor(ERROR_COLOR).setDescription(message);
 
 /** Shared early UX gate. The application independently checks access on every operation. */
 export const requireManageGuild = async (
@@ -63,13 +66,7 @@ export const applicationErrorMessage = (
   error: unknown,
   fallback = "Something went wrong. Please try again."
 ): string => {
-  if (
-    error instanceof Error &&
-    "code" in error &&
-    (error.code === "FORBIDDEN" ||
-      error.code === "NOT_FOUND" ||
-      error.code === "VALIDATION")
-  ) {
+  if (error instanceof JobSubscriptionError) {
     return error.message;
   }
   return fallback;

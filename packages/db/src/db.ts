@@ -7,15 +7,17 @@ import { Pool } from "pg";
 
 export type Database = NodePgDatabase;
 
-let pool: Pool | undefined;
-
 export const createDb = (
   connectionString: string
 ): {
   db: Database;
   pool: Pool;
 } => {
-  pool = new Pool({ connectionString, idleTimeoutMillis: 30_000, max: 10 });
+  const pool = new Pool({
+    connectionString,
+    idleTimeoutMillis: 30_000,
+    max: 10,
+  });
   return { db: drizzle(pool), pool };
 };
 
@@ -32,9 +34,4 @@ export const runMigrations = async (directUrl: string): Promise<void> => {
   } finally {
     await p.end();
   }
-};
-
-export const closeDb = async (): Promise<void> => {
-  await pool?.end();
-  pool = undefined;
 };

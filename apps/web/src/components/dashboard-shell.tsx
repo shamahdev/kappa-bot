@@ -2,12 +2,13 @@ import { Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { guildIconUrl, userAvatarUrl } from "../lib/api";
-import { useGuilds, useLogout, useRequireAuth } from "../lib/queries";
+import { useGuilds, useLogout, useRequireAuth, useMe } from "../lib/queries";
+import { QueryError } from "./api-feedback";
 import { DashboardIcon } from "./dashboard-icon";
 import type { DashboardIconName } from "./dashboard-icon";
 import { KappaMark } from "./kappa-mark";
 import { Sheet, SheetClose, SheetContent, SheetTitle } from "./shadcn/sheet";
-import { Avatar, LoadingNote, QueryError, Select } from "./ui";
+import { Avatar, LoadingNote, Select } from "./ui";
 
 import "./dashboard-shell.css";
 
@@ -160,7 +161,7 @@ const SidebarContent = ({
 }) => {
   const pathname = useLocation({ select: (location) => location.pathname });
   const navigate = useNavigate();
-  const me = useRequireAuth();
+  const me = useMe();
   const guilds = useGuilds(Boolean(me.data));
   const logout = useLogout();
   const routeGuildId = pathname.startsWith("/dashboard/servers/")

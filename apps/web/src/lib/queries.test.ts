@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 
+import type { SubscriptionDtoType } from "@kappa/contracts";
 import { MutationObserver, QueryClient } from "@tanstack/react-query";
 
 import {
@@ -8,7 +9,6 @@ import {
   queryKeys,
   updateSubscriptionOptions,
 } from "./queries";
-import type { SubscriptionDtoType } from "./queries";
 
 const sub: SubscriptionDtoType = {
   id: 7,

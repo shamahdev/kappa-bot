@@ -1,11 +1,11 @@
 import { createFileRoute, Outlet, useLocation } from "@tanstack/react-router";
 
+import { QueryError } from "../../../components/api-feedback";
 import {
   Avatar,
   EmptyList,
   LoadingNote,
   PageHeader,
-  QueryError,
   VStack,
 } from "../../../components/ui";
 import { guildIconUrl } from "../../../lib/api";

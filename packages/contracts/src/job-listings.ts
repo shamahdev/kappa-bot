@@ -9,6 +9,7 @@ export const JOB_SOURCES = [
 
 export type JobSourceId = (typeof JOB_SOURCES)[number]["id"];
 export type JobSourceSelection = JobSourceId | "all";
+export const DEFAULT_JOB_SOURCE: JobSourceId = "linkedin";
 export const JOB_SOURCE_OPTIONS = [
   { id: "all", name: "All Sources" },
   ...JOB_SOURCES,
@@ -33,3 +34,12 @@ export interface JobPosting {
   logo: string | null;
   description?: string | null;
 }
+
+const listedAt = (posting: JobPosting): number => {
+  const time = posting.datetime ? Date.parse(posting.datetime) : Number.NaN;
+  return Number.isNaN(time) ? Number.NEGATIVE_INFINITY : time;
+};
+
+/** Undated postings retain their input order after dated postings. */
+export const sortPostingsNewestFirst = (postings: JobPosting[]): JobPosting[] =>
+  postings.toSorted((a, b) => listedAt(b) - listedAt(a));

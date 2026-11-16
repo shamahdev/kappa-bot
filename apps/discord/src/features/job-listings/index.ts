@@ -1,16 +1,15 @@
-import { JOB_SOURCE_OPTIONS } from "@kappa/contracts";
+import { JOB_SOURCE_OPTIONS, DEFAULT_RETENTION_DAYS } from "@kappa/contracts";
 import {
   ApplicationIntegrationType,
   ChannelType,
   InteractionContextType,
   PermissionFlagsBits,
   SlashCommandBuilder,
+  SlashCommandSubcommandBuilder,
 } from "discord.js";
 import type { ChatInputCommandInteraction } from "discord.js";
 
-import { defineFeature } from "../../core/feature";
-import type { FeatureContext } from "../../core/feature";
-import { applicationErrorMessage, errorEmbed } from "./commands/_shared";
+import type { FeatureContext, Feature } from "../../core/feature";
 import { executeConfig } from "./commands/config";
 import {
   executeCvRemove,
@@ -27,26 +26,11 @@ import { onChannelDelete } from "./events/channel-delete";
 import { onComponent } from "./events/components";
 import { onGuildDelete } from "./events/guild-delete";
 import { onMessage } from "./events/reply";
+import { applicationErrorMessage, errorEmbed } from "./interactions";
 
-export { createDiscordNotifications } from "./notifications";
-
-export const jobsCommand = new SlashCommandBuilder()
-  .setName("jobs")
-  .setDescription("Manage job subscriptions")
-  .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
-  // Guild default above still gates guild installs; contexts + user-install
-  // make /jobs usable in DMs, where the caller manages their own DM subs.
-  .setContexts(
-    InteractionContextType.Guild,
-    InteractionContextType.BotDM,
-    InteractionContextType.PrivateChannel
-  )
-  .setIntegrationTypes(
-    ApplicationIntegrationType.GuildInstall,
-    ApplicationIntegrationType.UserInstall
-  )
-  .addSubcommand((s) =>
-    s
+const subcommands = [
+  {
+    data: new SlashCommandSubcommandBuilder()
       .setName("subscribe")
       .setDescription("Create a job subscription")
       .addStringOption((o) =>
@@ -72,46 +56,57 @@ export const jobsCommand = new SlashCommandBuilder()
           .setName("channel")
           .setDescription("Text channel (default current)")
           .addChannelTypes(ChannelType.GuildText)
-      )
-  )
-  .addSubcommand((s) =>
-    s
+      ),
+    execute: executeSubscribe,
+  },
+  {
+    data: new SlashCommandSubcommandBuilder()
       .setName("list")
       .setDescription("List active subscriptions")
       .addChannelOption((o) =>
         o.setName("channel").setDescription("Filter by channel")
-      )
-  )
-  .addSubcommand((s) =>
-    s
+      ),
+    execute: executeList,
+  },
+  {
+    data: new SlashCommandSubcommandBuilder()
       .setName("unsubscribe")
-      .setDescription("Remove a subscription (pick from a menu)")
-  )
-  .addSubcommand((s) =>
-    s
+      .setDescription("Remove a subscription (pick from a menu)"),
+    execute: executeUnsubscribe,
+  },
+  {
+    data: new SlashCommandSubcommandBuilder()
       .setName("config")
       .setDescription("Scoped retention and read-only global poll interval")
       .addIntegerOption((o) =>
         o
           .setName("retention_days")
-          .setDescription("Seen-job retention (14 default)")
-      )
-  )
-  .addSubcommand((s) =>
-    s
+          .setDescription(
+            `Seen-job retention (${DEFAULT_RETENTION_DAYS} default)`
+          )
+      ),
+    execute: executeConfig,
+  },
+  {
+    data: new SlashCommandSubcommandBuilder()
       .setName("fetch")
-      .setDescription("Manually trigger a check for this channel (all or one)")
-  )
-  .addSubcommand((s) =>
-    s
+      .setDescription("Manually trigger a check for this channel (all or one)"),
+    execute: executeFetch,
+  },
+  {
+    data: new SlashCommandSubcommandBuilder()
       .setName("fetch_latest")
-      .setDescription("Show the single latest job for a subscription here")
-  )
-  .addSubcommand((s) =>
-    s.setName("health").setDescription("Check which job sources are active")
-  )
-  .addSubcommand((s) =>
-    s
+      .setDescription("Show the single latest job for a subscription here"),
+    execute: executeShowLatest,
+  },
+  {
+    data: new SlashCommandSubcommandBuilder()
+      .setName("health")
+      .setDescription("Check which job sources are active"),
+    execute: executeHealth,
+  },
+  {
+    data: new SlashCommandSubcommandBuilder()
       .setName("cv_upload")
       .setDescription("Upload your CV for A–E match grades (DM only)")
       .addAttachmentOption((o) =>
@@ -119,54 +114,52 @@ export const jobsCommand = new SlashCommandBuilder()
           .setName("file")
           .setDescription("Your CV (.pdf, .txt, or .md)")
           .setRequired(true)
-      )
+      ),
+    execute: executeCvUpload,
+  },
+  {
+    data: new SlashCommandSubcommandBuilder()
+      .setName("cv_status")
+      .setDescription("Show your saved CV (DM only)"),
+    execute: executeCvStatus,
+  },
+  {
+    data: new SlashCommandSubcommandBuilder()
+      .setName("cv_remove")
+      .setDescription("Remove your saved CV (DM only)"),
+    execute: executeCvRemove,
+  },
+];
+
+export const jobsCommand = new SlashCommandBuilder()
+  .setName("jobs")
+  .setDescription("Manage job subscriptions")
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+  // Guild defaults gate server installs; user installs also support private subscriptions.
+  .setContexts(
+    InteractionContextType.Guild,
+    InteractionContextType.BotDM,
+    InteractionContextType.PrivateChannel
   )
-  .addSubcommand((s) =>
-    s.setName("cv_status").setDescription("Show your saved CV (DM only)")
-  )
-  .addSubcommand((s) =>
-    s.setName("cv_remove").setDescription("Remove your saved CV (DM only)")
+  .setIntegrationTypes(
+    ApplicationIntegrationType.GuildInstall,
+    ApplicationIntegrationType.UserInstall
   );
+
+for (const subcommand of subcommands) {
+  jobsCommand.addSubcommand(subcommand.data);
+}
 
 const dispatchJobs = async (
   interaction: ChatInputCommandInteraction,
   ctx: FeatureContext
 ): Promise<void> => {
-  switch (interaction.options.getSubcommand()) {
-    case "subscribe": {
-      return executeSubscribe(interaction, ctx);
-    }
-    case "list": {
-      return executeList(interaction, ctx);
-    }
-    case "unsubscribe": {
-      return executeUnsubscribe(interaction, ctx);
-    }
-    case "config": {
-      return executeConfig(interaction, ctx);
-    }
-    case "fetch": {
-      return executeFetch(interaction, ctx);
-    }
-    case "fetch_latest": {
-      return executeShowLatest(interaction, ctx);
-    }
-    case "health": {
-      return executeHealth(interaction, ctx);
-    }
-    case "cv_upload": {
-      return executeCvUpload(interaction, ctx);
-    }
-    case "cv_status": {
-      return executeCvStatus(interaction, ctx);
-    }
-    case "cv_remove": {
-      return executeCvRemove(interaction, ctx);
-    }
-    default: {
-      await interaction.reply({ content: "Unknown subcommand." });
-    }
+  const name = interaction.options.getSubcommand();
+  const subcommand = subcommands.find((entry) => entry.data.name === name);
+  if (subcommand) {
+    return subcommand.execute(interaction, ctx);
   }
+  await interaction.reply({ content: "Unknown subcommand." });
 };
 
 const executeJobs = async (
@@ -184,9 +177,8 @@ const executeJobs = async (
   }
 };
 
-export default defineFeature({
+const feature: Feature = {
   commands: [{ data: jobsCommand, execute: executeJobs }],
-  description: "Channel and personal job subscriptions",
   events: [
     { event: "guildDelete", handler: onGuildDelete },
     { event: "channelDelete", handler: onChannelDelete },
@@ -194,4 +186,6 @@ export default defineFeature({
     { event: "messageCreate", handler: onMessage },
   ],
   name: "job-listings",
-});
+};
+
+export default feature;

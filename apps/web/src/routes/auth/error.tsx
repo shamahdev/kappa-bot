@@ -1,13 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 
+import { DiscordLogin } from "../../components/api-feedback";
 import { KappaMark } from "../../components/kappa-mark";
-import {
-  Button,
-  DiscordLogin,
-  HStack,
-  PageHeader,
-  Text,
-} from "../../components/ui";
+import { Button, HStack, PageHeader, Text } from "../../components/ui";
 
 export const Route = createFileRoute("/auth/error")({
   head: () => ({ meta: [{ title: "Sign-in error | Kappa" }] }),

@@ -75,13 +75,10 @@ export const isIndonesiaOpenLocation = (jobLocation: string): boolean => {
  * otherwise direct substring (either direction) wins, with the Indonesia
  * worldwide-remote fallback above.
  *
- * Set `remoteFallback=false` for EU-centric boards (Arbeitnow) where a bare
- * "Remote" location means remote-within-Europe, not worldwide.
  */
 export const matchesLocation = (
   jobLocation: string,
-  locationFilter: string,
-  remoteFallback = true
+  locationFilter: string
 ): boolean => {
   const filter = locationFilter.toLowerCase().trim();
   if (!filter) {
@@ -101,11 +98,7 @@ export const matchesLocation = (
   if (tokens.some((t) => loc.includes(t))) {
     return true;
   }
-  if (
-    remoteFallback &&
-    isIndonesiaFilter(filter) &&
-    isIndonesiaOpenLocation(jobLocation)
-  ) {
+  if (isIndonesiaFilter(filter) && isIndonesiaOpenLocation(jobLocation)) {
     return true;
   }
   return false;

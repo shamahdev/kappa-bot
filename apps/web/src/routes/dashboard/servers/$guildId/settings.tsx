@@ -1,14 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 
+import { QueryError } from "../../../../components/api-feedback";
 import { SubscriptionsTable } from "../../../../components/subscriptions";
 import type { OpenPanel } from "../../../../components/subscriptions";
-import {
-  InfoNote,
-  LoadingNote,
-  QueryError,
-  VStack,
-} from "../../../../components/ui";
+import { InfoNote, LoadingNote, VStack } from "../../../../components/ui";
 import { useSubscriptions } from "../../../../lib/queries";
 
 const ServerSettingsPage = () => {

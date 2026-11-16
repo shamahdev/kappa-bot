@@ -1,3 +1,4 @@
+import { normalizeText } from "@kappa/contracts";
 // PDF text extraction for CV uploads (unpdf/pdf.js, Bun-compatible).
 // Shared by the discord attachment path and the service file-upload path.
 import { extractText } from "unpdf";
@@ -19,11 +20,7 @@ export const extractPdfText = async (data: Uint8Array): Promise<string> => {
       "Could not read this PDF — it may be corrupted. Try exporting and uploading a .txt file."
     );
   }
-  const text = raw
-    .replaceAll(/\r\n?/gu, "\n")
-    .replaceAll(/[ \t]+$/gmu, "")
-    .replaceAll(/\n{3,}/gu, "\n\n")
-    .trim();
+  const text = normalizeText(raw);
   if (!text) {
     throw new Error(
       "No text found in this PDF — it may be scanned. Try exporting and uploading a .txt file."

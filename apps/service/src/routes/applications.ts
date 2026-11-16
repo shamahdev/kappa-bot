@@ -1,9 +1,8 @@
-import { APPLICATION_STATUSES } from "@kappa/contracts";
+import { APPLICATION_STATUSES, API_V1, ROUTES } from "@kappa/contracts";
 import { Elysia, t } from "elysia";
 
-import { resolveSession } from "../core/auth";
-import { readSessionToken } from "../core/cookies";
-import { err } from "../core/errors";
+import { sessionUser } from "../core/auth";
+import { err, unauthorized } from "../core/errors";
 import { createJobApplications } from "../modules/job-listings/application/applications";
 import { JobSubscriptionError } from "../modules/job-listings/domain/subscription";
 import type { RouteDeps } from "./deps";
@@ -16,25 +15,22 @@ const positiveId = (raw: string) => {
 
 export const applicationRoutes = ({ db }: RouteDeps) => {
   const applications = createJobApplications(db);
-  const sessionUser = (request: Request) =>
-    resolveSession(db, readSessionToken(request.headers.get("cookie")));
-  const unauthorized = err("UNAUTHORIZED", "sign in with Discord first");
   const notFound = err("NOT_FOUND", "application not found");
 
-  return new Elysia({ prefix: "/api/v1/applications" })
-    .get("/", async ({ request, status: reply }) => {
-      const user = await sessionUser(request);
+  return new Elysia({ prefix: API_V1 })
+    .get(ROUTES.applications, async ({ request, status: reply }) => {
+      const user = await sessionUser(db, request);
       if (!user) {
-        return reply(401, unauthorized);
+        return reply(401, unauthorized());
       }
       return { applications: await applications.list(user.discordId) };
     })
     .post(
-      "/",
+      ROUTES.applications,
       async ({ request, body, status: reply }) => {
-        const user = await sessionUser(request);
+        const user = await sessionUser(db, request);
         if (!user) {
-          return reply(401, unauthorized);
+          return reply(401, unauthorized());
         }
         try {
           return reply(
@@ -58,11 +54,11 @@ export const applicationRoutes = ({ db }: RouteDeps) => {
       { body: t.Object({ seenJobId: t.Integer({ minimum: 1 }), status }) }
     )
     .patch(
-      "/:id",
+      ROUTES.applicationById,
       async ({ request, params, body, status: reply }) => {
-        const user = await sessionUser(request);
+        const user = await sessionUser(db, request);
         if (!user) {
-          return reply(401, unauthorized);
+          return reply(401, unauthorized());
         }
         const id = positiveId(params.id);
         const row = id
@@ -73,11 +69,11 @@ export const applicationRoutes = ({ db }: RouteDeps) => {
       { body: t.Object({ status }), params: t.Object({ id: t.String() }) }
     )
     .delete(
-      "/:id",
+      ROUTES.applicationById,
       async ({ request, params, status: reply }) => {
-        const user = await sessionUser(request);
+        const user = await sessionUser(db, request);
         if (!user) {
-          return reply(401, unauthorized);
+          return reply(401, unauthorized());
         }
         const id = positiveId(params.id);
         return id && (await applications.remove(user.discordId, id))

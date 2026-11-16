@@ -1,12 +1,13 @@
 // Unified Source Adapter registry for all job sources.
-import { JOB_SOURCE_SELECTIONS, JOB_SOURCES } from "@kappa/contracts";
-import type { JobSourceId, JobSourceSelection } from "@kappa/contracts";
+import { JOB_SOURCES } from "@kappa/contracts";
+import type { JobSourceId } from "@kappa/contracts";
 
 import type {
   FingerprintQuery,
   JobDetail,
   JobPosting,
 } from "../../domain/posting";
+import { listingDetail } from "../../domain/posting";
 import { ENV as GLINTS_ENV, searchGlints } from "./glints";
 import { ENV as INDEED_ENV, searchIndeed } from "./indeed";
 import { ENV as JOBSTREET_ENV, searchJobstreet } from "./jobstreet";
@@ -36,12 +37,6 @@ export const OPT_IN_SOURCES = JOB_SOURCES.map((source) => source.id).filter(
   isOptInSource
 );
 
-export const SUPPORTED_SOURCES = JOB_SOURCE_SELECTIONS;
-export type SupportedSource = JobSourceSelection;
-
-export const isSupportedSource = (source: string): source is SupportedSource =>
-  (SUPPORTED_SOURCES as readonly string[]).includes(source);
-
 /**
  * Sources polled for `source='all'`: concrete always, plus each opt-in source
  * whose cookies are configured. Missing-cookie sources are skipped before any
@@ -65,11 +60,7 @@ type SourceDetail = (job: JobPosting) => Promise<JobDetail | null>;
 
 /** Detail passthrough for adapters whose list rows already carry it (all but LinkedIn). */
 const rowDetail = (job: JobPosting): Promise<JobDetail | null> =>
-  Promise.resolve({
-    closed: false,
-    description: job.description ?? null,
-    salary: job.salary ?? null,
-  });
+  Promise.resolve(listingDetail(job));
 
 /** Concrete integrations; selection expansion and public source metadata are separate. */
 const SOURCE_ADAPTERS: Record<

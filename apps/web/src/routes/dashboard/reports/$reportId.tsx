@@ -6,6 +6,7 @@ import {
 import type { CvReportType } from "@kappa/contracts";
 import { createFileRoute, Link } from "@tanstack/react-router";
 
+import { QueryError } from "../../../components/api-feedback";
 import {
   cvReportLabel,
   DeltaChip,
@@ -26,13 +27,12 @@ import {
   HStack,
   InfoNote,
   LoadingNote,
-  QueryError,
   Text,
   VStack,
 } from "../../../components/ui";
+import { apiMessage } from "../../../lib/api";
 import { fullDate } from "../../../lib/format";
 import {
-  apiMessage,
   useApplications,
   useCvReport,
   useCvReports,
@@ -177,7 +177,7 @@ const Factors = ({ report }: { report: CvReportType }) => {
 
 /** Older/newer neighbours in the same history the Home list shows. */
 const ReportNav = ({ report }: { report: CvReportType }) => {
-  const reports = useCvReports(true, 1, 100);
+  const reports = useCvReports(1, 100);
   const list = reports.data?.reports ?? [];
   const index = list.findIndex((item) => item.id === report.id);
   if (index === -1) {
@@ -222,7 +222,7 @@ const jobAssessmentNote = (
 };
 
 const ReportJobs = ({ report }: { report: CvReportType }) => {
-  const applications = useApplications(true);
+  const applications = useApplications();
   const statusFor = (url: string, source: string) =>
     applications.data?.find((row) => row.url === url && row.source === source)
       ?.status ?? null;
@@ -268,7 +268,7 @@ const ReportJobs = ({ report }: { report: CvReportType }) => {
 
 const ReportPage = () => {
   const { reportId } = Route.useParams();
-  const query = useCvReport(Number(reportId), true);
+  const query = useCvReport(Number(reportId));
   const retry = useRetryCvReport();
   if (query.isPending) {
     return <LoadingNote>Loading CV report…</LoadingNote>;

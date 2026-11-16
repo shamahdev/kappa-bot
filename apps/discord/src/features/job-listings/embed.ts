@@ -1,4 +1,10 @@
-import { jobSourceName, MATCH_GRADE_LABELS } from "@kappa/contracts";
+import {
+  jobSourceName,
+  MATCH_GRADE_LABELS,
+  normalizeText,
+  DEFAULT_JOB_SOURCE,
+  sortPostingsNewestFirst,
+} from "@kappa/contracts";
 import type {
   EnrichedJobPosting,
   JobDetail,
@@ -9,8 +15,8 @@ import { EmbedBuilder } from "discord.js";
 import type { APIEmbed } from "discord.js";
 
 import type { MessagePayload } from "../../core/feature";
+import { EMBED_COLOR } from "./presentation";
 
-const FALLBACK_COLOR = 0x3f_6b_55;
 // Discord embed limits. The existing list capacity applies to each page, not a source's total.
 const MAX_DESCRIPTION = 4096;
 const MAX_TITLE = 256;
@@ -26,25 +32,18 @@ const truncate = (text: string, length: number): string => {
   return `${text.slice(0, Math.max(0, length - 1)).trimEnd()}…`;
 };
 
-export const formatSourceName = (source = "linkedin"): string =>
+export const formatSourceName = (source: string = DEFAULT_JOB_SOURCE): string =>
   jobSourceName(source);
 
-export const formatFooterText = (
-  keyword?: string | null,
-  source?: string
-): string =>
+const formatFooterText = (keyword?: string | null, source?: string): string =>
   `'${keyword?.trim() || "all"}' keyword in '${formatSourceName(source)}'`;
 
 /** Normalize source text, preserving paragraph breaks and the title link for the full description. */
-export const formatCardDescription = (
+const formatCardDescription = (
   raw: string,
   limit = MAX_DESCRIPTION
 ): string => {
-  const text = raw
-    .replaceAll(/\r\n?/gu, "\n")
-    .replaceAll(/[ \t]+$/gmu, "")
-    .replaceAll(/\n{3,}/gu, "\n\n")
-    .trim();
+  const text = normalizeText(raw);
   if (text.length <= limit) {
     return text;
   }
@@ -60,7 +59,7 @@ export const formatCardDescription = (
 };
 
 /** Pure rendering: enrichment and matching belong to the application, never the view. */
-export const embedForJobPosting = (
+const embedForJobPosting = (
   job: JobPosting,
   detail?: JobDetail | null,
   keyword?: string | null,
@@ -113,7 +112,7 @@ export const embedForJobPosting = (
     return [{ ...field, value }];
   });
   const embed = new EmbedBuilder()
-    .setColor(FALLBACK_COLOR)
+    .setColor(EMBED_COLOR)
     .setTitle(title)
     .setURL(job.url)
     .addFields(safeFields)
@@ -144,16 +143,7 @@ export const cardPayload = (
   ],
 });
 
-const listedAt = (job: JobPosting): number => {
-  const time = job.datetime ? Date.parse(job.datetime) : Number.NaN;
-  return Number.isNaN(time) ? Number.NEGATIVE_INFINITY : time;
-};
-
-/** Newest first; stable sort keeps undated postings in their input order at the end. */
-export const sortNewestFirst = (jobs: JobPosting[]): JobPosting[] =>
-  jobs.toSorted((a, b) => listedAt(b) - listedAt(a));
-
-export const formatSourceTitle = (
+const formatSourceTitle = (
   count: number,
   keyword?: string | null,
   source?: string
@@ -164,7 +154,7 @@ const replyHint = (count: number): string =>
   `Reply with ${count === 1 ? "1" : `1-${count}`} to get the summary of the job`;
 
 /** One valid Markdown link per job; only the visible label is shortened. */
-export const deliveryEntry = (job: JobPosting, index: number): string => {
+const deliveryEntry = (job: JobPosting, index: number): string => {
   const prefix = `${index + 1}. `;
   const title =
     `${job.position} @ ${job.company}`
@@ -196,8 +186,8 @@ export const deliveryPages = (
   keyword?: string | null
 ): DeliveryPage[] => {
   const groups = new Map<string, JobPosting[]>();
-  for (const job of sortNewestFirst(jobs)) {
-    const source = job.source || "linkedin";
+  for (const job of sortPostingsNewestFirst(jobs)) {
+    const source = job.source || DEFAULT_JOB_SOURCE;
     const group = groups.get(source);
     if (group) {
       group.push(job);
@@ -219,7 +209,7 @@ export const deliveryPages = (
         payload: {
           embeds: [
             {
-              color: FALLBACK_COLOR,
+              color: EMBED_COLOR,
               description: lines.join("\n"),
               footer: { text: replyHint(pageJobs.length) },
               title: truncate(

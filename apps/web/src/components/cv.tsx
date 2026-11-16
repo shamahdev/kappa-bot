@@ -1,14 +1,20 @@
+import {
+  CV_EXTENSIONS,
+  CV_MAX_PDF_BYTES,
+  CV_MAX_TEXT_BYTES,
+  cvSizeLabel,
+} from "@kappa/contracts";
 import { useId } from "react";
 
 import { useCv } from "../lib/queries";
 import { useCvEditor } from "../lib/use-cv-editor";
+import { QueryError } from "./api-feedback";
 import {
   Button,
   ErrorNote,
   HStack,
   InfoNote,
   LoadingNote,
-  QueryError,
   Text,
   VStack,
 } from "./ui";
@@ -77,7 +83,7 @@ export const CvPanel = () => {
             id={id}
             className={styles.fileInput}
             type="file"
-            accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown"
+            accept={`${CV_EXTENSIONS.join(",")},application/pdf,text/plain,text/markdown`}
             aria-describedby={`${id}-description${editor.errorMessage ? ` ${id}-error` : ""}`}
             aria-invalid={Boolean(editor.errorMessage) || undefined}
             aria-busy={editor.upload.isPending || undefined}
@@ -89,8 +95,8 @@ export const CvPanel = () => {
             }}
           />
           <p id={`${id}-description`} className={styles.fileDescription}>
-            PDF up to 2MB; TXT or MD up to 500KB. Uploading replaces your saved
-            CV.
+            PDF up to {cvSizeLabel(CV_MAX_PDF_BYTES)}; TXT or MD up to{" "}
+            {cvSizeLabel(CV_MAX_TEXT_BYTES)}. Uploading replaces your saved CV.
           </p>
         </div>
       )}

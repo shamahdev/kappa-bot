@@ -2,7 +2,8 @@ import { EmbedBuilder } from "discord.js";
 import type { ChatInputCommandInteraction } from "discord.js";
 
 import type { FeatureContext } from "../../../core/feature";
-import { jobActor, jobScope, requireManageGuild } from "./_shared";
+import { jobActor, jobScope, requireManageGuild } from "../interactions";
+import { EMBED_COLOR, subscriptionLine } from "../presentation";
 
 /** Retention is scoped; the global poll interval is informational only. */
 export const executeConfig = async (
@@ -21,10 +22,7 @@ export const executeConfig = async (
   }
   const pollMinutes = await ctx.jobListings.subscriptions.pollIntervalMinutes();
   const rows = await ctx.jobListings.subscriptions.list(actor, scope);
-  const lines = rows.map(
-    (s) =>
-      `${s.isActive ? "Active" : "Inactive"} · \`${s.source}\` ${s.keywords ?? "—"}${s.location ? ` · ${s.location}` : ""} → <#${s.channelId}>`
-  );
+  const lines = rows.map(subscriptionLine);
   const sections = [
     `Poll: every **${pollMinutes}m** (operator-managed; changes apply after restart)`,
   ];
@@ -41,7 +39,7 @@ export const executeConfig = async (
   await interaction.editReply({
     embeds: [
       new EmbedBuilder()
-        .setColor(0x3f_6b_55)
+        .setColor(EMBED_COLOR)
         .setTitle(retention === null ? "Job config" : "Config updated")
         .setDescription(sections.join("\n\n")),
     ],

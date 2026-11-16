@@ -1,3 +1,4 @@
+import { sortPostingsNewestFirst } from "@kappa/contracts";
 import type { Database, GenerationLock } from "@kappa/db";
 
 import type { Logger } from "../../core/logger";
@@ -10,9 +11,9 @@ import { createDeliveryRecall } from "./application/recall";
 import { sourceHealth } from "./application/source-health";
 import { createJobSubscriptions } from "./application/subscriptions";
 import type { JobActor, JobScope } from "./domain/subscription";
+import { postingQueryForSubscription } from "./domain/subscription";
 import { searchSelection } from "./infrastructure/sources";
 
-export { CV_MAX_UPLOAD_BYTES, cvFilenameError } from "./application/cv";
 export type { PollResult } from "./application/polling";
 export type { JobNotifications } from "./application/ports";
 export { createJobPollingSchedule } from "./application/scheduler";
@@ -30,11 +31,6 @@ export type {
   JobSubscriptionPatch,
 } from "./domain/subscription";
 export { JobSubscriptionError } from "./domain/subscription";
-
-const timestamp = (value: string | null) =>
-  value
-    ? Date.parse(value) || Number.NEGATIVE_INFINITY
-    : Number.NEGATIVE_INFINITY;
 
 /** No listeners or connections are created by importing this module. */
 export const createJobListings = (deps: {
@@ -60,18 +56,10 @@ export const createJobListings = (deps: {
       const sub = await subscriptions.get(actor, id);
       const jobs = await searchSelection(
         sub.source,
-        {
-          distance: sub.distance,
-          filters: sub.filters,
-          geoId: sub.geoId,
-          keywords: sub.keywords ?? "",
-          location: sub.location,
-        },
+        postingQueryForSubscription(sub),
         `latest:${sub.id}`
       );
-      const [newest] = jobs.toSorted(
-        (a, b) => timestamp(b.datetime) - timestamp(a.datetime)
-      );
+      const [newest] = sortPostingsNewestFirst(jobs);
       if (!newest) {
         return null;
       }

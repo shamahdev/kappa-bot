@@ -4,15 +4,16 @@ import type { ChatInputCommandInteraction } from "discord.js";
 
 import type { FeatureContext } from "../../../core/feature";
 import { formatSourceName } from "../embed";
-import { requireManageGuild } from "./_shared";
+import { requireManageGuild } from "../interactions";
+import { EMBED_COLOR } from "../presentation";
 
-export const healthEmbed = (rows: SourceHealth[]): EmbedBuilder => {
+const healthEmbed = (rows: SourceHealth[]): EmbedBuilder => {
   const lines = rows.map(
     (r) =>
       `${r.active ? "Ready" : "Inactive"} · ${formatSourceName(r.source)} — ${r.detail}`
   );
   return new EmbedBuilder()
-    .setColor(0x3f_6b_55)
+    .setColor(EMBED_COLOR)
     .setTitle("Job source health")
     .setDescription(lines.join("\n"));
 };

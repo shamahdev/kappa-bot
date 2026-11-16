@@ -17,7 +17,12 @@ export {
 export type { AccountSummaryType, DeleteAccountResponseType } from "./account";
 export { AccountSummary, DeleteAccountResponse } from "./account";
 export type { AuthMeResponseType, UserDtoType } from "./auth";
-export { AuthMeResponse, UserDto } from "./auth";
+export {
+  AuthMeResponse,
+  UserDto,
+  OAUTH_SCOPES,
+  SESSION_TTL_DAYS,
+} from "./auth";
 export type {
   CvReportAssessmentType,
   CvReportBaselineType,
@@ -53,6 +58,13 @@ export {
   CV_MAX_PDF_BYTES,
   CV_MAX_TEXT_BYTES,
   CV_MIN_CHARS,
+  CV_EXTENSIONS,
+  cvFileKind,
+  cvFileMaxBytes,
+  cvSizeLabel,
+  cvFilenameError,
+  cvTextError,
+  cvFileSizeError,
   CvDto,
   SaveCvBody,
 } from "./cv";
@@ -69,7 +81,9 @@ export {
   JOB_SOURCE_OPTIONS,
   JOB_SOURCE_SELECTIONS,
   JOB_SOURCES,
+  DEFAULT_JOB_SOURCE,
   jobSourceName,
+  sortPostingsNewestFirst,
 } from "./job-listings";
 export type { JobDtoType, JobsResponseType } from "./jobs";
 export { JobDto, JobsResponse } from "./jobs";
@@ -88,7 +102,21 @@ export {
   weightedMatchScore,
   decodeMatchBreakdown,
 } from "./matching";
-export { API_V1, PATHS, SESSION_COOKIE } from "./paths";
+export {
+  API_V1,
+  ROUTES,
+  PATHS,
+  SESSION_COOKIE,
+  WEB_ROUTES,
+  DEFAULT_RETURN_TO,
+} from "./paths";
+export { normalizeText } from "./text";
+export {
+  MAX_API_PAGE_SIZE,
+  DEFAULT_JOB_PAGE_SIZE,
+  DEFAULT_CV_REPORT_PAGE_SIZE,
+  positiveIntegerParam,
+} from "./pagination";
 export { safeHttpUrl } from "./url";
 export type {
   CreateSubscriptionBodyType,
@@ -104,6 +132,10 @@ export {
   DeleteSubscriptionResponse,
   isSubscriptionSource,
   SUBSCRIPTION_SOURCES,
+  RETENTION_DAYS_MIN,
+  RETENTION_DAYS_MAX,
+  DEFAULT_RETENTION_DAYS,
+  DEFAULT_POLL_INTERVAL_MINUTES,
   SubscriptionDto,
   SubscriptionScope,
   SubscriptionSource,

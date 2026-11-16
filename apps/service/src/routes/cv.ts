@@ -1,13 +1,15 @@
 import type { CvDtoType } from "@kappa/contracts";
+import {
+  API_V1,
+  ROUTES,
+  CV_MAX_PDF_BYTES,
+  cvSizeLabel,
+} from "@kappa/contracts";
 import { Elysia, t } from "elysia";
 
-import { resolveSession } from "../core/auth";
-import { readSessionToken } from "../core/cookies";
-import { err } from "../core/errors";
-import {
-  CV_MAX_UPLOAD_BYTES,
-  createCvProfiles,
-} from "../modules/job-listings/application/cv";
+import { sessionUser } from "../core/auth";
+import { err, unauthorized } from "../core/errors";
+import { createCvProfiles } from "../modules/job-listings/application/cv";
 import type { CvProfile } from "../modules/job-listings/application/cv";
 import { JobSubscriptionError } from "../modules/job-listings/domain/subscription";
 import type { RouteDeps } from "./deps";
@@ -24,31 +26,22 @@ export const cvRoutes = (deps: RouteDeps) => {
   const { db } = deps;
   const profiles = createCvProfiles(db);
   return (
-    new Elysia({ prefix: "/api/v1" })
-      .get("/cv", async ({ request, status }) => {
-        const user = await resolveSession(
-          db,
-          readSessionToken(request.headers.get("cookie"))
-        );
+    new Elysia({ prefix: API_V1 })
+      .get(ROUTES.cv, async ({ request, status }) => {
+        const user = await sessionUser(db, request);
         if (!user) {
-          return status(401, err("UNAUTHORIZED", "sign in with Discord first"));
+          return status(401, unauthorized());
         }
         const profile = await profiles.get(user.discordId);
         return profile ? toDto(profile) : EMPTY;
       })
       // Preserve the existing input endpoint, but never echo submitted/stored text.
       .put(
-        "/cv",
+        ROUTES.cv,
         async ({ request, body, status }) => {
-          const user = await resolveSession(
-            db,
-            readSessionToken(request.headers.get("cookie"))
-          );
+          const user = await sessionUser(db, request);
           if (!user) {
-            return status(
-              401,
-              err("UNAUTHORIZED", "sign in with Discord first")
-            );
+            return status(401, unauthorized());
           }
           try {
             return toDto(
@@ -72,23 +65,20 @@ export const cvRoutes = (deps: RouteDeps) => {
         }
       )
       .post(
-        "/cv/file",
+        ROUTES.cvFile,
         async ({ request, body, status }) => {
-          const user = await resolveSession(
-            db,
-            readSessionToken(request.headers.get("cookie"))
-          );
+          const user = await sessionUser(db, request);
           if (!user) {
-            return status(
-              401,
-              err("UNAUTHORIZED", "sign in with Discord first")
-            );
+            return status(401, unauthorized());
           }
           const { file } = body;
-          if (file.size > CV_MAX_UPLOAD_BYTES) {
+          if (file.size > CV_MAX_PDF_BYTES) {
             return status(
               400,
-              err("VALIDATION", "File must be 2MB or smaller")
+              err(
+                "VALIDATION",
+                `File must be ${cvSizeLabel(CV_MAX_PDF_BYTES)} or smaller`
+              )
             );
           }
           try {
@@ -108,13 +98,10 @@ export const cvRoutes = (deps: RouteDeps) => {
         },
         { body: t.Object({ file: t.File() }) }
       )
-      .delete("/cv", async ({ request, status }) => {
-        const user = await resolveSession(
-          db,
-          readSessionToken(request.headers.get("cookie"))
-        );
+      .delete(ROUTES.cv, async ({ request, status }) => {
+        const user = await sessionUser(db, request);
         if (!user) {
-          return status(401, err("UNAUTHORIZED", "sign in with Discord first"));
+          return status(401, unauthorized());
         }
         await profiles.remove(user.discordId);
         return EMPTY;

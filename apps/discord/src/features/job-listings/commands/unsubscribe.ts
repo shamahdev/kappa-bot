@@ -1,9 +1,14 @@
-import { EmbedBuilder } from "discord.js";
 import type { ChatInputCommandInteraction } from "discord.js";
 
 import type { FeatureContext } from "../../../core/feature";
-import { activeGuildSubs, pickerRow } from "./_pick";
-import { errorEmbed, jobActor, jobScope, requireManageGuild } from "./_shared";
+import {
+  errorEmbed,
+  jobActor,
+  jobScope,
+  requireManageGuild,
+} from "../interactions";
+import { activeSubscriptions, pickerRow } from "../picker";
+import { PICKER_IDS } from "../presentation";
 
 export const executeUnsubscribe = async (
   interaction: ChatInputCommandInteraction,
@@ -13,7 +18,7 @@ export const executeUnsubscribe = async (
     return;
   }
   await interaction.deferReply();
-  const subs = await activeGuildSubs(
+  const subs = await activeSubscriptions(
     ctx,
     jobActor(interaction),
     jobScope(interaction)
@@ -25,14 +30,7 @@ export const executeUnsubscribe = async (
     return;
   }
   await interaction.editReply({
-    components: [pickerRow("jobs:unsub", subs, interaction).toJSON()],
+    components: [pickerRow(PICKER_IDS.unsub, subs, interaction).toJSON()],
     content: "Pick a subscription to remove:",
   });
 };
-
-export const removedEmbed = (summary: string): EmbedBuilder =>
-  new EmbedBuilder()
-    .setColor(0x3f_6b_55)
-    .setDescription(
-      `Removed subscription (${summary}). Past deliveries stay deleted with it.`
-    );

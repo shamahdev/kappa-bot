@@ -1,8 +1,12 @@
+import { RETENTION_DAYS_MIN, RETENTION_DAYS_MAX } from "@kappa/contracts";
+import type {
+  UpdateSubscriptionBodyType,
+  SubscriptionDtoType,
+} from "@kappa/contracts";
 import { useState } from "react";
 
-import type { UpdateSubscriptionBodyType } from "./api";
-import { apiMessage, useUpdateSubscription } from "./queries";
-import type { SubscriptionDtoType } from "./queries";
+import { apiMessage } from "./api";
+import { useUpdateSubscription } from "./queries";
 
 export interface SubscriptionDraft {
   keywords: string;
@@ -37,10 +41,10 @@ export const parseSubscriptionDraft = (
   // The service remains authoritative for every submitted patch.
   if (
     !/^\d+$/u.test(retentionText) ||
-    retentionDays < 1 ||
-    retentionDays > 365
+    retentionDays < RETENTION_DAYS_MIN ||
+    retentionDays > RETENTION_DAYS_MAX
   ) {
-    errors.retentionDays = "Enter a whole number from 1 to 365.";
+    errors.retentionDays = `Enter a whole number from ${RETENTION_DAYS_MIN} to ${RETENTION_DAYS_MAX}.`;
   }
 
   return Object.keys(errors).length > 0

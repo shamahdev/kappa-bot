@@ -1,13 +1,10 @@
 import { describe, expect, test } from "bun:test";
 
-import { JOB_SOURCE_SELECTIONS } from "@kappa/contracts";
-
 import type { FingerprintQuery, JobPosting } from "../../domain/posting";
 import {
   fetchJobPostingDetail,
   pollSources,
   resolveSourceSelection,
-  SUPPORTED_SOURCES,
   searchJobPostings,
   searchSelection,
 } from "./index";
@@ -28,7 +25,6 @@ const posting = (source: string): JobPosting => ({
 
 describe("source selection", () => {
   test("uses the canonical selections and keeps always-on sources without cookies", () => {
-    expect(SUPPORTED_SOURCES).toBe(JOB_SOURCE_SELECTIONS);
     expect(pollSources({})).toEqual(["linkedin", "kalibrr", "techinasia"]);
     expect(resolveSourceSelection("all", {})).toEqual(pollSources({}));
   });

@@ -1,68 +1,11 @@
 // Kalibrr Southeast Asia job board adapter.
 // Public search API: GET https://www.kalibrr.com/api/job_board/search
 import type { FingerprintQuery, JobPosting } from "../../domain/posting";
+import { formatAgo, stripHtml } from "./shared";
 
 const BASE = "https://www.kalibrr.com/api/job_board/search";
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
-
-const formatAgo = (dateString: string | null | undefined): string => {
-  if (!dateString) {
-    return "recently";
-  }
-  const t = Date.parse(dateString);
-  if (Number.isNaN(t)) {
-    return "recently";
-  }
-  const sec = Math.max(0, Math.floor((Date.now() - t) / 1000));
-  if (sec < 60) {
-    return "just now";
-  }
-  const min = Math.floor(sec / 60);
-  if (min < 60) {
-    return `${min} minute${min === 1 ? "" : "s"} ago`;
-  }
-  const hr = Math.floor(min / 60);
-  if (hr < 24) {
-    return `${hr} hour${hr === 1 ? "" : "s"} ago`;
-  }
-  const day = Math.floor(hr / 24);
-  if (day < 7) {
-    return `${day} day${day === 1 ? "" : "s"} ago`;
-  }
-  const week = Math.floor(day / 7);
-  if (week < 5) {
-    return `${week} week${week === 1 ? "" : "s"} ago`;
-  }
-  const month = Math.floor(day / 30);
-  if (month < 12) {
-    return `${month} month${month === 1 ? "" : "s"} ago`;
-  }
-  const year = Math.floor(day / 365);
-  return `${year} year${year === 1 ? "" : "s"} ago`;
-};
-
-const stripHtml = (html: string | null | undefined): string | null => {
-  if (!html) {
-    return null;
-  }
-  return (
-    html
-      .replaceAll(/<br\s*\/?>/giu, "\n")
-      .replaceAll(/<\/p>/giu, "\n\n")
-      .replaceAll(/<\/li>/giu, "\n")
-      .replaceAll(/<li[^>]*>/giu, "• ")
-      .replaceAll(/<[^>]+>/gu, "")
-      .replaceAll("&nbsp;", " ")
-      .replaceAll("&amp;", "&")
-      .replaceAll("&lt;", "<")
-      .replaceAll("&gt;", ">")
-      .replaceAll("&quot;", '"')
-      .replaceAll("&#39;", "'")
-      .replaceAll(/\n{3,}/gu, "\n\n")
-      .trim() || null
-  );
-};
 
 const formatSalary = (
   min?: number | null,

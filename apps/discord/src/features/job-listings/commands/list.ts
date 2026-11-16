@@ -2,7 +2,8 @@ import { EmbedBuilder } from "discord.js";
 import type { ChatInputCommandInteraction } from "discord.js";
 
 import type { FeatureContext } from "../../../core/feature";
-import { jobActor, jobScope, requireManageGuild } from "./_shared";
+import { jobActor, jobScope, requireManageGuild } from "../interactions";
+import { EMBED_COLOR, subscriptionLine } from "../presentation";
 
 export const executeList = async (
   interaction: ChatInputCommandInteraction,
@@ -26,14 +27,11 @@ export const executeList = async (
     });
     return;
   }
-  const lines = rows.map(
-    (s) =>
-      `${s.isActive ? "Active" : "Inactive"} · \`${s.source}\` ${s.keywords ?? "—"}${s.location ? ` · ${s.location}` : ""} → <#${s.channelId}>`
-  );
+  const lines = rows.map(subscriptionLine);
   await interaction.editReply({
     embeds: [
       new EmbedBuilder()
-        .setColor(0x3f_6b_55)
+        .setColor(EMBED_COLOR)
         .setTitle("Job subscriptions")
         .setDescription(lines.join("\n")),
     ],

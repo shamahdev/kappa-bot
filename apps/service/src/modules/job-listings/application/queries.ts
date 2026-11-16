@@ -1,4 +1,9 @@
-import { SUBSCRIPTION_SOURCES } from "@kappa/contracts";
+import {
+  JOB_SOURCES,
+  MAX_API_PAGE_SIZE,
+  DEFAULT_JOB_PAGE_SIZE,
+  positiveIntegerParam,
+} from "@kappa/contracts";
 import { jobApplications, jobs, seenJobs, subscriptions } from "@kappa/db";
 import type { Database } from "@kappa/db";
 import {
@@ -21,25 +26,7 @@ import {
 } from "../domain/subscription";
 import type { JobActor, JobScope } from "../domain/subscription";
 
-const CONCRETE_SOURCES = SUBSCRIPTION_SOURCES.filter(
-  (source) => source !== "all"
-);
-// Existing jobs API pagination contract.
-const MAX_PAGE_SIZE = 100;
-
-const positiveInt = (
-  raw: string | undefined,
-  fallback: number
-): number | null => {
-  if (raw === undefined) {
-    return fallback;
-  }
-  if (!/^\d+$/u.test(raw)) {
-    return null;
-  }
-  const value = Number(raw);
-  return Number.isSafeInteger(value) && value > 0 ? value : null;
-};
+const CONCRETE_SOURCES = JOB_SOURCES.map((source) => source.id);
 
 export interface JobListingFilters {
   subscription?: string;
@@ -126,12 +113,15 @@ export const createJobQueries = (db: Database) => ({
   },
   async list(actor: JobActor, scope: JobScope, query: JobListingFilters = {}) {
     const key = await assertScopeAccess(actor, scope);
-    const page = positiveInt(query.page, 1);
-    const pageSize = positiveInt(query.pageSize, 20);
-    if (page === null || pageSize === null || pageSize > MAX_PAGE_SIZE) {
+    const page = positiveIntegerParam(query.page, 1);
+    const pageSize = positiveIntegerParam(
+      query.pageSize,
+      DEFAULT_JOB_PAGE_SIZE
+    );
+    if (page === null || pageSize === null || pageSize > MAX_API_PAGE_SIZE) {
       throw new JobSubscriptionError(
         "VALIDATION",
-        `page >= 1 and 1 <= pageSize <= ${MAX_PAGE_SIZE} required`
+        `page >= 1 and 1 <= pageSize <= ${MAX_API_PAGE_SIZE} required`
       );
     }
     if (
@@ -146,7 +136,7 @@ export const createJobQueries = (db: Database) => ({
     const subscriptionId =
       query.subscription === undefined
         ? null
-        : positiveInt(query.subscription, 0);
+        : positiveIntegerParam(query.subscription, 0);
     if (query.subscription !== undefined && subscriptionId === null) {
       throw new JobSubscriptionError(
         "VALIDATION",

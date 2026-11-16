@@ -1,8 +1,14 @@
 import type { ChatInputCommandInteraction } from "discord.js";
 
 import type { FeatureContext } from "../../../core/feature";
-import { activeChannelSubs, pickerRow } from "./_pick";
-import { errorEmbed, jobActor, jobScope, requireManageGuild } from "./_shared";
+import {
+  errorEmbed,
+  jobActor,
+  jobScope,
+  requireManageGuild,
+} from "../interactions";
+import { activeSubscriptions, pickerRow } from "../picker";
+import { PICKER_IDS } from "../presentation";
 
 export const executeShowLatest = async (
   interaction: ChatInputCommandInteraction,
@@ -18,7 +24,7 @@ export const executeShowLatest = async (
     return;
   }
   await interaction.deferReply();
-  const subs = await activeChannelSubs(
+  const subs = await activeSubscriptions(
     ctx,
     jobActor(interaction),
     jobScope(interaction),
@@ -35,7 +41,7 @@ export const executeShowLatest = async (
     return;
   }
   await interaction.editReply({
-    components: [pickerRow("jobs:latest", subs, interaction).toJSON()],
+    components: [pickerRow(PICKER_IDS.latest, subs, interaction).toJSON()],
     content: "Show the latest job for:",
   });
 };

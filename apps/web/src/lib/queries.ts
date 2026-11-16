@@ -1,7 +1,9 @@
 import type {
   ApplicationDtoType,
   ApplicationStatusType,
+  UpdateSubscriptionBodyType,
 } from "@kappa/contracts";
+import { DEFAULT_CV_REPORT_PAGE_SIZE } from "@kappa/contracts";
 import {
   mutationOptions,
   useMutation,
@@ -13,7 +15,6 @@ import { useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 
 import {
-  ApiError,
   createSubscription,
   deleteAccount,
   deleteCv,
@@ -33,26 +34,13 @@ import {
   fetchMe,
   fetchSubscriptions,
   logout,
-  saveCv,
   saveCvFile,
   updateSubscription,
 } from "./api";
-import type {
-  JobsParams,
-  SaveCvBodyType,
-  UpdateSubscriptionBodyType,
-} from "./api";
+import type { JobsParams } from "./api";
 
-export type {
-  CvDtoType,
-  GuildDtoType,
-  JobDtoType,
-  JobsParams,
-  SaveCvBodyType,
-  SubscriptionDtoType,
-} from "./api";
-export { ApiError } from "./api";
-
+const REPORTS_KEY = ["cv-reports"] as const;
+const REPORT_KEY = ["cv-report"] as const;
 export const queryKeys = {
   me: ["me"] as const,
   cv: ["cv"] as const,
@@ -62,13 +50,12 @@ export const queryKeys = {
     ["subscriptions", guildId ?? "mine"] as const,
   guilds: ["guilds"] as const,
   accountSummary: ["account-summary"] as const,
-};
-
-export const apiMessage = (error: unknown): string => {
-  if (error instanceof ApiError) {
-    return error.message;
-  }
-  return error instanceof Error ? error.message : "Something went wrong.";
+  applications: ["applications"] as const,
+  cvReports: REPORTS_KEY,
+  cvReport: REPORT_KEY,
+  reportList: (page: number, pageSize: number) =>
+    [...REPORTS_KEY, page, pageSize] as const,
+  reportDetail: (id: number) => [...REPORT_KEY, id] as const,
 };
 
 /** Current session user, or null when signed out. Never retries auth. */
@@ -109,11 +96,10 @@ export const useGuilds = (enabled: boolean) =>
     staleTime: 60_000,
   });
 
-export const useJobs = (enabled: boolean, params: JobsParams) =>
+export const useJobs = (params: JobsParams) =>
   useQuery({
     queryKey: [...queryKeys.jobs, params],
     queryFn: () => fetchJobs(params),
-    enabled,
     retry: false,
     placeholderData: (previous) => previous,
   });
@@ -176,22 +162,24 @@ export const useCreateCvReport = () => {
   const client = useQueryClient();
   return useMutation({
     mutationFn: createCvReport,
-    onSuccess: () => client.invalidateQueries({ queryKey: ["cv-reports"] }),
+    onSuccess: () =>
+      client.invalidateQueries({ queryKey: queryKeys.cvReports }),
   });
 };
 
-export const useCvReports = (enabled: boolean, page = 1, pageSize = 50) =>
+export const useCvReports = (
+  page = 1,
+  pageSize = DEFAULT_CV_REPORT_PAGE_SIZE
+) =>
   useQuery({
-    queryKey: ["cv-reports", page, pageSize],
+    queryKey: queryKeys.reportList(page, pageSize),
     queryFn: () => fetchCvReports(page, pageSize),
-    enabled,
     retry: false,
   });
-export const useCvReport = (id: number, enabled: boolean) =>
+export const useCvReport = (id: number) =>
   useQuery({
-    queryKey: ["cv-report", id],
+    queryKey: queryKeys.reportDetail(id),
     queryFn: () => fetchCvReport(id),
-    enabled,
     retry: false,
   });
 export const useRetryCvReport = () => {
@@ -199,8 +187,8 @@ export const useRetryCvReport = () => {
   return useMutation({
     mutationFn: retryCvReport,
     onSuccess: (report) => {
-      client.setQueryData(["cv-report", report.id], report);
-      void client.invalidateQueries({ queryKey: ["cv-reports"] });
+      client.setQueryData(queryKeys.reportDetail(report.id), report);
+      void client.invalidateQueries({ queryKey: queryKeys.cvReports });
     },
   });
 };
@@ -215,22 +203,11 @@ export const useCv = (enabled: boolean) =>
 
 const refreshCvDerived = (client: QueryClient) =>
   Promise.all([
-    client.invalidateQueries({ queryKey: ["cv-reports"] }),
-    client.invalidateQueries({ queryKey: ["cv-report"] }),
+    client.invalidateQueries({ queryKey: queryKeys.cvReports }),
+    client.invalidateQueries({ queryKey: queryKeys.cvReport }),
     client.invalidateQueries({ queryKey: queryKeys.jobs }),
-    client.invalidateQueries({ queryKey: ["applications"] }),
+    client.invalidateQueries({ queryKey: queryKeys.applications }),
   ]);
-
-export const useSaveCv = () => {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: (input: SaveCvBodyType) => saveCv(input),
-    onSuccess: () => {
-      void client.invalidateQueries({ queryKey: queryKeys.cv });
-      void refreshCvDerived(client);
-    },
-  });
-};
 
 export const useSaveCvFile = () => {
   const client = useQueryClient();
@@ -282,19 +259,16 @@ export const useLogout = () => {
   });
 };
 
-const APPLICATIONS_KEY = ["applications"] as const;
-
-export const useApplications = (enabled: boolean) =>
+export const useApplications = () =>
   useQuery({
-    queryKey: APPLICATIONS_KEY,
+    queryKey: queryKeys.applications,
     queryFn: fetchApplications,
-    enabled,
     retry: false,
   });
 
 const refreshTracking = (client: QueryClient) =>
   Promise.all([
-    client.invalidateQueries({ queryKey: APPLICATIONS_KEY }),
+    client.invalidateQueries({ queryKey: queryKeys.applications }),
     client.invalidateQueries({ queryKey: queryKeys.jobs }),
   ]);
 
@@ -314,11 +288,12 @@ export const useMoveApplication = () => {
     mutationFn: (input: { id: number; status: ApplicationStatusType }) =>
       moveApplication(input.id, input.status),
     onMutate: async (input) => {
-      await client.cancelQueries({ queryKey: APPLICATIONS_KEY });
-      const previous =
-        client.getQueryData<readonly ApplicationDtoType[]>(APPLICATIONS_KEY);
+      await client.cancelQueries({ queryKey: queryKeys.applications });
+      const previous = client.getQueryData<readonly ApplicationDtoType[]>(
+        queryKeys.applications
+      );
       client.setQueryData<readonly ApplicationDtoType[]>(
-        APPLICATIONS_KEY,
+        queryKeys.applications,
         (rows) =>
           rows?.map((row) =>
             row.id === input.id ? { ...row, status: input.status } : row
@@ -327,7 +302,7 @@ export const useMoveApplication = () => {
       return { previous };
     },
     onError: (_error, _input, context) => {
-      client.setQueryData(APPLICATIONS_KEY, context?.previous);
+      client.setQueryData(queryKeys.applications, context?.previous);
     },
     onSettled: () => refreshTracking(client),
   });

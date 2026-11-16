@@ -7,18 +7,12 @@ import type { CvReportListItemType } from "@kappa/contracts";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
-import { apiMessage, useCreateCvReport, useCvReports } from "../lib/queries";
+import { apiMessage } from "../lib/api";
+import { useCreateCvReport, useCvReports } from "../lib/queries";
+import { QueryError } from "./api-feedback";
 import { DashboardIcon } from "./dashboard-icon";
 import { GradeBadge } from "./score";
-import {
-  Button,
-  ErrorNote,
-  HStack,
-  LoadingNote,
-  QueryError,
-  Text,
-  VStack,
-} from "./ui";
+import { Button, ErrorNote, HStack, LoadingNote, Text, VStack } from "./ui";
 
 type ReportLabel = Pick<CvReportListItemType, "grade" | "status">;
 type ReportWindow = Pick<CvReportListItemType, "windowStart" | "windowEnd">;
@@ -141,7 +135,7 @@ const CvReportLink = ({ report }: { report: CvReportListItemType }) => (
 
 export const CvReportList = () => {
   const [page, setPage] = useState(1);
-  const reports = useCvReports(true, page);
+  const reports = useCvReports(page);
   const create = useCreateCvReport();
   const navigate = useNavigate();
   const { data } = reports;

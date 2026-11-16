@@ -3,13 +3,17 @@ import {
   SUBSCRIPTION_SOURCES,
   safeHttpUrl,
 } from "@kappa/contracts";
-import type { JobDtoType, MatchBreakdownType } from "@kappa/contracts";
+import type {
+  JobDtoType,
+  MatchBreakdownType,
+  SubscriptionDtoType,
+} from "@kappa/contracts";
 import { useId, useState } from "react";
 
-import type { SubscriptionDtoType } from "../lib/api";
 import { fullDate, relativeDay } from "../lib/format";
 import { ALL_SOURCES, useJobsTable } from "../lib/use-jobs-table";
 import type { JobsBase, TrackingTab } from "../lib/use-jobs-table";
+import { QueryError } from "./api-feedback";
 import { DashboardIcon } from "./dashboard-icon";
 import { Markdown } from "./markdown";
 import { FactorScore, GradeChip } from "./score";
@@ -22,7 +26,6 @@ import {
   HStack,
   LoadingNote,
   Modal,
-  QueryError,
   Select,
   Text,
   TextInput,

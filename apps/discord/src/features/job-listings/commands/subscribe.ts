@@ -2,7 +2,13 @@ import { EmbedBuilder } from "discord.js";
 import type { ChatInputCommandInteraction } from "discord.js";
 
 import type { FeatureContext } from "../../../core/feature";
-import { errorEmbed, jobActor, jobScope, requireManageGuild } from "./_shared";
+import {
+  errorEmbed,
+  jobActor,
+  jobScope,
+  requireManageGuild,
+} from "../interactions";
+import { EMBED_COLOR } from "../presentation";
 
 export const executeSubscribe = async (
   interaction: ChatInputCommandInteraction,
@@ -37,7 +43,7 @@ export const executeSubscribe = async (
   await interaction.editReply({
     embeds: [
       new EmbedBuilder()
-        .setColor(0x3f_6b_55)
+        .setColor(EMBED_COLOR)
         .setTitle("Subscription created")
         .setDescription(
           [

@@ -1,8 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 
+import { DiscordLogin } from "../components/api-feedback";
 import { LandingSoft } from "../components/landing-soft";
 import { Button } from "../components/shadcn/button";
-import { DiscordLogin } from "../components/ui";
 import { useMe } from "../lib/queries";
 import { useMounted } from "../lib/use-mounted";
 

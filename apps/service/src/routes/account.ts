@@ -1,10 +1,11 @@
+import { API_V1, ROUTES } from "@kappa/contracts";
 import { discordConnections, sessions, users } from "@kappa/db";
 import { and, count, eq, gt } from "drizzle-orm";
 import { Elysia } from "elysia";
 
-import { resolveSession } from "../core/auth";
-import { clearSessionCookie, readSessionToken } from "../core/cookies";
-import { err } from "../core/errors";
+import { sessionUser } from "../core/auth";
+import { clearSessionCookie } from "../core/cookies";
+import { unauthorized } from "../core/errors";
 import { revokeDiscordToken } from "../discord/api";
 import { removeJobListingAccountData } from "../modules/job-listings/application/cleanup";
 import { createJobQueries } from "../modules/job-listings/application/queries";
@@ -14,14 +15,11 @@ export const accountRoutes = (deps: RouteDeps) => {
   const { config, db, log } = deps;
   const jobs = createJobQueries(db);
 
-  return new Elysia({ prefix: "/api/v1" })
-    .get("/account/summary", async ({ request, status }) => {
-      const user = await resolveSession(
-        db,
-        readSessionToken(request.headers.get("cookie"))
-      );
+  return new Elysia({ prefix: API_V1 })
+    .get(ROUTES.accountSummary, async ({ request, status }) => {
+      const user = await sessionUser(db, request);
       if (!user) {
-        return status(401, err("UNAUTHORIZED", "sign in with Discord first"));
+        return status(401, unauthorized());
       }
       const uid = user.discordId;
       const [jobCounts, conns, [sessCount]] = await Promise.all([
@@ -45,13 +43,10 @@ export const accountRoutes = (deps: RouteDeps) => {
         sessionsActive: sessCount.n,
       };
     })
-    .delete("/account", async ({ request, set, status }) => {
-      const user = await resolveSession(
-        db,
-        readSessionToken(request.headers.get("cookie"))
-      );
+    .delete(ROUTES.account, async ({ request, set, status }) => {
+      const user = await sessionUser(db, request);
       if (!user) {
-        return status(401, err("UNAUTHORIZED", "sign in with Discord first"));
+        return status(401, unauthorized());
       }
       const uid = user.discordId;
       // Local deletion commits atomically; remote revoke is best-effort afterward.

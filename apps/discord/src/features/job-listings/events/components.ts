@@ -2,17 +2,16 @@ import type { JobSubscription } from "@kappa/service/job-listings";
 import type { StringSelectMenuInteraction } from "discord.js";
 
 import type { FeatureContext } from "../../../core/feature";
-import { activeChannelSubs, activeGuildSubs } from "../commands/_pick";
+import { cardPayload } from "../embed";
 import {
   applicationErrorMessage,
   errorEmbed,
   jobActor,
   jobScope,
   requireManageGuild,
-} from "../commands/_shared";
-import { fetchResultEmbed } from "../commands/fetch";
-import { removedEmbed } from "../commands/unsubscribe";
-import { cardPayload } from "../embed";
+} from "../interactions";
+import { activeSubscriptions } from "../picker";
+import { fetchResultEmbed, removedEmbed, PICKER_IDS } from "../presentation";
 
 const asSelectMenu = (
   interaction: unknown
@@ -62,12 +61,13 @@ export const onComponent = async (
   interaction: unknown
 ): Promise<void> => {
   const inter = asSelectMenu(interaction);
-  if (
-    !(
-      inter &&
-      ["jobs:unsub", "jobs:fetch", "jobs:latest"].includes(inter.customId)
-    )
-  ) {
+  if (!inter) {
+    return;
+  }
+  const picker = Object.entries(PICKER_IDS).find(
+    ([, customId]) => customId === inter.customId
+  );
+  if (!picker) {
     return;
   }
   if (!(await requireManageGuild(inter))) {
@@ -83,10 +83,7 @@ export const onComponent = async (
   };
   const actor = jobActor(inter);
   const scope = jobScope(inter);
-  const selection = parseSelection(
-    inter.customId.slice("jobs:".length),
-    inter.values
-  );
+  const selection = parseSelection(picker[0], inter.values);
   if (!selection) {
     return fail("Pick a subscription from the menu.");
   }
@@ -94,7 +91,7 @@ export const onComponent = async (
 
   try {
     if (action === "unsub") {
-      const scoped = await activeGuildSubs(ctx, actor, scope);
+      const scoped = await activeSubscriptions(ctx, actor, scope);
       if (!scoped.some((sub) => sub.id === id)) {
         return fail("Subscription not found here.");
       }
@@ -112,7 +109,7 @@ export const onComponent = async (
       return fail("Run this from a channel.");
     }
     // A valid subscription in another channel must not be selectable from this menu.
-    const rows = await activeChannelSubs(ctx, actor, scope, inter.channelId);
+    const rows = await activeSubscriptions(ctx, actor, scope, inter.channelId);
     if (!rows.length || (id !== null && !rows.some((sub) => sub.id === id))) {
       return fail(
         "No matching active subscription in this channel. It may have been removed."

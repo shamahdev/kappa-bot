@@ -2,6 +2,7 @@ import {
   APPLICATION_STATUS_LABELS,
   BOARD_STATUSES,
   CV_REPORT_PERIOD_DAYS,
+  DEFAULT_JOB_PAGE_SIZE,
   MATCH_GRADE_LABELS,
   safeHttpUrl,
 } from "@kappa/contracts";
@@ -10,16 +11,20 @@ import { Link } from "@tanstack/react-router";
 
 import { fullDate, relativeDay } from "../lib/format";
 import { useApplications, useCvReports, useJobs } from "../lib/queries";
+import { QueryError } from "./api-feedback";
 import { DeltaChip, deltaLabel, reportWindow, scoreDelta } from "./cv-reports";
 import { DashboardIcon } from "./dashboard-icon";
 import { GradeBadge } from "./score";
 import { TrackControl } from "./track-control";
-import { LoadingNote, QueryError } from "./ui";
+import { LoadingNote } from "./ui";
 
 import "./home-panels.css";
 
-// The existing Jobs page size: Home looks at the same first page of deliveries.
-const LATEST_DELIVERIES = { page: 1, pageSize: 20, scope: "dm" } as const;
+const LATEST_DELIVERIES = {
+  page: 1,
+  pageSize: DEFAULT_JOB_PAGE_SIZE,
+  scope: "dm",
+} as const;
 
 const latestStatusNote = (
   report: CvReportListItemType | undefined
@@ -43,7 +48,7 @@ const latestStatusNote = (
 };
 
 export const LatestReportPanel = () => {
-  const reports = useCvReports(true, 1, 5);
+  const reports = useCvReports(1, 5);
   if (reports.isPending) {
     return <LoadingNote>Loading your latest report…</LoadingNote>;
   }
@@ -105,7 +110,7 @@ export const LatestReportPanel = () => {
 };
 
 export const PipelinePanel = () => {
-  const applications = useApplications(true);
+  const applications = useApplications();
   if (applications.isPending) {
     return <LoadingNote>Loading your applications…</LoadingNote>;
   }
@@ -140,7 +145,7 @@ export const PipelinePanel = () => {
 };
 
 export const StrongMatchesPanel = () => {
-  const jobs = useJobs(true, LATEST_DELIVERIES);
+  const jobs = useJobs(LATEST_DELIVERIES);
   const strong =
     jobs.data?.jobs.filter(
       (job) => job.matchGrade === "A" || job.matchGrade === "B"

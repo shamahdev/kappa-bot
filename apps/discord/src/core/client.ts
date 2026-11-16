@@ -28,7 +28,7 @@ export const createClient = (): Client =>
     partials: [Partials.Channel],
   });
 
-export const commandBodies = (registry: FeatureRegistry): unknown[] =>
+const commandBodies = (registry: FeatureRegistry): unknown[] =>
   registry.commandsFlat().map((c) => c.def.data.toJSON());
 
 /** Guild-scoped registration when GUILD_ID is set (dev), otherwise global. */
@@ -85,11 +85,7 @@ export const attachHandlers = (
         runGuarded(feature.name, `event:${def.event}`, ctx.log, () =>
           def.handler(ctx, ...args)
         );
-      if (def.once) {
-        client.once(def.event, run);
-      } else {
-        client.on(def.event, run);
-      }
+      client.on(def.event, run);
     }
   }
 };

@@ -1,3 +1,4 @@
+import { DEFAULT_POLL_INTERVAL_MINUTES } from "@kappa/contracts";
 import { botConfig, channels, guilds, subscriptions } from "@kappa/db";
 import type { Database } from "@kappa/db";
 import { and, desc, eq, or } from "drizzle-orm";
@@ -169,7 +170,7 @@ export const createJobSubscriptions = (db: Database) => {
         .from(botConfig)
         .where(eq(botConfig.id, 1));
       // Existing singleton/schema default.
-      return row?.pollIntervalMinutes ?? 30;
+      return row?.pollIntervalMinutes ?? DEFAULT_POLL_INTERVAL_MINUTES;
     },
     async remove(actor: JobActor, id: number): Promise<JobSubscription> {
       const row = await get(actor, id);

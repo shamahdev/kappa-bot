@@ -156,6 +156,10 @@ describe("deliveryPages", () => {
 });
 
 describe("createDiscordNotifications", () => {
+  const config = {
+    discordToken: "offline-token",
+    webUrl: "https://example.test",
+  };
   test("sends and yields each page lazily with the exact displayed order for persistence", async () => {
     const jobs = Array.from({ length: 42 }, (_, index) => job(index));
     const pages = deliveryPages(jobs, "engineer");
@@ -164,7 +168,7 @@ describe("createDiscordNotifications", () => {
       expect(channelId).toBe("channel");
       sent.push(payload);
       return Promise.resolve({ messageId: `message-${sent.length}` });
-    });
+    }, config);
     const batch = notifications.batch("channel", jobs, "engineer");
     const iterator = batch[Symbol.asyncIterator]();
     expect(sent).toHaveLength(0);
@@ -192,7 +196,7 @@ describe("createDiscordNotifications", () => {
         return Promise.reject(new Error("transport failed"));
       }
       return Promise.resolve({ messageId: "delivered" });
-    });
+    }, config);
     const batch = notifications.batch("channel", jobs);
     const iterator = batch[Symbol.asyncIterator]();
     const first = await iterator.next();
@@ -210,7 +214,7 @@ describe("createDiscordNotifications", () => {
     const notifications = createDiscordNotifications((_channel, payload) => {
       sent.push(payload);
       return Promise.resolve({});
-    });
+    }, config);
     await notifications.card("channel", posting, "engineer");
     expect(sent).toEqual([cardPayload(posting, "engineer")]);
   });

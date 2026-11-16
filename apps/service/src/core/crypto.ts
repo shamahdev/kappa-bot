@@ -5,6 +5,8 @@ import {
   timingSafeEqual,
 } from "node:crypto";
 
+import { DEFAULT_RETURN_TO } from "@kappa/contracts";
+
 /** Opaque session token: 32 random bytes, base64url for cookie transport. */
 export const newSessionToken = (): string =>
   randomBytes(32).toString("base64url");
@@ -49,7 +51,7 @@ export const verifyState = (state: string, secret: string): string | null => {
 /** Accepts only same-origin absolute paths (blocks `//evil` + `https:`). */
 export const sanitizeReturnTo = (
   value: string | undefined,
-  fallback = "/dashboard"
+  fallback: string = DEFAULT_RETURN_TO
 ): string => {
   if (
     typeof value === "string" &&

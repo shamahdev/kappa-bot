@@ -2,7 +2,8 @@ import { describe, expect, test } from "bun:test";
 
 import { renderToString } from "react-dom/server";
 
-import { DiscordLogin, StatusDot, Tabs } from "./ui";
+import { DiscordLogin } from "./api-feedback";
+import { Tabs } from "./ui";
 
 describe("shared UI semantics", () => {
   test("Discord authentication actions include the official symbol and destination", () => {
@@ -12,11 +13,6 @@ describe("shared UI semantics", () => {
     expect(html).toContain("/api/v1/auth/discord/login?return_to=%2Fdashboard");
     expect(html).toContain('alt=""');
     expect(html).toContain("discord-symbol-white.svg");
-  });
-  test("status includes visible text, not only an accessible dot label", () => {
-    expect(renderToString(<StatusDot label="Paused" on={false} />)).toContain(
-      ">Paused<"
-    );
   });
 
   test("local view tabs expose associated panels and omit inactive content", () => {

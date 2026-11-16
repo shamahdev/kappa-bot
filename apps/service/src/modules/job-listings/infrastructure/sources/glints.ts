@@ -8,6 +8,12 @@ import * as cheerio from "cheerio";
 import type { FingerprintQuery, JobPosting } from "../../domain/posting";
 import { cookieHeader, wafHeaders } from "./cookies";
 import { matchesLocation } from "./location";
+import {
+  formatAgo,
+  resultLimit,
+  keywordTokens,
+  matchesKeywords,
+} from "./shared";
 
 const BASE = "https://glints.com/id/opportunities/jobs/explore";
 export const ENV = "GLINTS_COOKIES";
@@ -67,50 +73,6 @@ const resolveLocation = (
     }
   }
   return { id: "", name: "All+Cities/Provinces" };
-};
-
-export const resultLimit = (filters: Record<string, string>): number => {
-  const n = Number(filters.limit);
-  if (Number.isFinite(n)) {
-    return Math.min(50, Math.max(1, Math.floor(n)));
-  }
-  return 20;
-};
-
-const formatAgo = (dateString: string | null | undefined): string => {
-  if (!dateString) {
-    return "recently";
-  }
-  const t = Date.parse(dateString);
-  if (Number.isNaN(t)) {
-    return "recently";
-  }
-  const sec = Math.max(0, Math.floor((Date.now() - t) / 1000));
-  if (sec < 60) {
-    return "just now";
-  }
-  const min = Math.floor(sec / 60);
-  if (min < 60) {
-    return `${min} minute${min === 1 ? "" : "s"} ago`;
-  }
-  const hr = Math.floor(min / 60);
-  if (hr < 24) {
-    return `${hr} hour${hr === 1 ? "" : "s"} ago`;
-  }
-  const day = Math.floor(hr / 24);
-  if (day < 7) {
-    return `${day} day${day === 1 ? "" : "s"} ago`;
-  }
-  const week = Math.floor(day / 7);
-  if (week < 5) {
-    return `${week} week${week === 1 ? "" : "s"} ago`;
-  }
-  const month = Math.floor(day / 30);
-  if (month < 12) {
-    return `${month} month${month === 1 ? "" : "s"} ago`;
-  }
-  const year = Math.floor(day / 365);
-  return `${year} year${year === 1 ? "" : "s"} ago`;
 };
 
 interface GlintsRawJob {
@@ -250,10 +212,7 @@ export const searchGlints = async (
   const cookie = cookieHeader(ENV, "glints");
   const loc = resolveLocation(query.location ?? "");
   const limit = resultLimit(query.filters);
-  const tokens = (query.keywords || "")
-    .toLowerCase()
-    .split(/\s+/u)
-    .filter(Boolean);
+  const tokens = keywordTokens(query.keywords || "");
   const locationFilter = (query.location || "").toLowerCase().trim();
 
   const out: JobPosting[] = [];
@@ -292,11 +251,8 @@ export const searchGlints = async (
       if (seen.has(job.id)) {
         continue;
       }
-      if (tokens.length > 0) {
-        const hay = `${job.position} ${job.company}`.toLowerCase();
-        if (!tokens.every((t) => hay.includes(t))) {
-          continue;
-        }
+      if (!matchesKeywords(tokens, `${job.position} ${job.company}`)) {
+        continue;
       }
       if (locationFilter && !matchesLocation(job.location, locationFilter)) {
         continue;

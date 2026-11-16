@@ -1,9 +1,9 @@
 import {
-  CV_MAX_CHARS,
   CV_MAX_FILENAME,
-  CV_MAX_PDF_BYTES,
-  CV_MAX_TEXT_BYTES,
-  CV_MIN_CHARS,
+  cvFilenameError,
+  cvFileKind,
+  cvFileSizeError,
+  cvTextError,
 } from "@kappa/contracts";
 import {
   cvProfiles,
@@ -20,37 +20,12 @@ import {
   JobSubscriptionError,
 } from "../domain/subscription";
 
-export const CV_MAX_UPLOAD_BYTES = CV_MAX_PDF_BYTES;
-
 export interface CvProfile {
   discordId: string;
   text: string;
   filename: string | null;
   updatedAt: Date;
 }
-
-/** Attachment format check shared with Discord; pasted text has no extension requirement. */
-export const cvFilenameError = (name: string): string | null => {
-  if (name.trim().length > CV_MAX_FILENAME) {
-    return `filename must be ≤ ${CV_MAX_FILENAME} characters`;
-  }
-  const lower = name.trim().toLowerCase();
-  if (
-    lower.endsWith(".pdf") ||
-    lower.endsWith(".txt") ||
-    lower.endsWith(".md")
-  ) {
-    return null;
-  }
-  return "Upload a `.pdf`, `.txt`, or `.md` file.";
-};
-
-export const cvTextError = (text: string): string | null => {
-  const { length } = text.trim();
-  return length < CV_MIN_CHARS || length > CV_MAX_CHARS
-    ? `CV text must be ${CV_MIN_CHARS}–${CV_MAX_CHARS} characters`
-    : null;
-};
 
 const filenameForSave = (filename?: string | null): string | null => {
   const normalized = filename?.trim() || null;
@@ -100,6 +75,29 @@ export const createCvProfiles = (db: Database) => {
     return row;
   };
 
+  const savePdf = async (
+    userId: string,
+    bytes: Uint8Array,
+    filename?: string | null
+  ): Promise<CvProfile> => {
+    const sizeError = cvFileSizeError("cv.pdf", bytes.byteLength);
+    if (sizeError) {
+      throw new JobSubscriptionError("VALIDATION", sizeError);
+    }
+    const name = filenameForSave(filename);
+    let text: string;
+    try {
+      const { extractPdfText } = await import("../infrastructure/pdf");
+      text = await extractPdfText(bytes);
+    } catch (error) {
+      throw new JobSubscriptionError(
+        "VALIDATION",
+        error instanceof Error ? error.message : "Could not read this PDF."
+      );
+    }
+    return save(userId, text, name);
+  };
+
   return {
     get,
     async remove(userId: string): Promise<boolean> {
@@ -138,18 +136,12 @@ export const createCvProfiles = (db: Database) => {
       if (error) {
         throw new JobSubscriptionError("VALIDATION", error);
       }
-      const isPdf = filename.trim().toLowerCase().endsWith(".pdf");
-      const maxBytes = isPdf ? CV_MAX_PDF_BYTES : CV_MAX_TEXT_BYTES;
-      if (bytes.byteLength > maxBytes) {
-        throw new JobSubscriptionError(
-          "VALIDATION",
-          isPdf
-            ? "PDF must be 2MB or smaller"
-            : "Text file must be 500KB or smaller"
-        );
+      const sizeError = cvFileSizeError(filename, bytes.byteLength);
+      if (sizeError) {
+        throw new JobSubscriptionError("VALIDATION", sizeError);
       }
-      if (isPdf) {
-        return await this.savePdf(userId, bytes, filename);
+      if (cvFileKind(filename) === "pdf") {
+        return await savePdf(userId, bytes, filename);
       }
       let text: string;
       try {
@@ -162,30 +154,7 @@ export const createCvProfiles = (db: Database) => {
       }
       return save(userId, text, filename);
     },
-    async savePdf(
-      userId: string,
-      bytes: Uint8Array,
-      filename?: string | null
-    ): Promise<CvProfile> {
-      if (bytes.byteLength > CV_MAX_UPLOAD_BYTES) {
-        throw new JobSubscriptionError(
-          "VALIDATION",
-          "PDF must be 2MB or smaller"
-        );
-      }
-      const name = filenameForSave(filename);
-      let text: string;
-      try {
-        const { extractPdfText } = await import("../infrastructure/pdf");
-        text = await extractPdfText(bytes);
-      } catch (error) {
-        throw new JobSubscriptionError(
-          "VALIDATION",
-          error instanceof Error ? error.message : "Could not read this PDF."
-        );
-      }
-      return save(userId, text, name);
-    },
+    savePdf,
     async textForScope(scopeKey: string): Promise<string | null> {
       const userId = dmUserIdForScope(scopeKey);
       if (!userId) {

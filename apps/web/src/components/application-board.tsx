@@ -14,13 +14,14 @@ import { useState } from "react";
 import type { DragEvent } from "react";
 import { toast } from "sonner";
 
+import { apiMessage } from "../lib/api";
 import { fullDate, relativeDay } from "../lib/format";
 import {
-  apiMessage,
   useApplications,
   useMoveApplication,
   useRemoveApplication,
 } from "../lib/queries";
+import { QueryError } from "./api-feedback";
 import { GradeBadge } from "./score";
 import { buttonVariants } from "./shadcn/button";
 import {
@@ -32,7 +33,7 @@ import {
   DropdownMenuTrigger,
 } from "./shadcn/dropdown-menu";
 import { ToggleGroup, ToggleGroupItem } from "./shadcn/toggle-group";
-import { Button, EmptyList, LoadingNote, QueryError } from "./ui";
+import { Button, EmptyList, LoadingNote } from "./ui";
 
 import "./application-board.css";
 
@@ -207,7 +208,7 @@ const ApplicationCard = ({
 );
 
 export const ApplicationBoard = () => {
-  const applications = useApplications(true);
+  const applications = useApplications();
   const { move, moveCard } = useBoardMove();
   const [showArchive, setShowArchive] = useState(false);
   const [mobileStatus, setMobileStatus] =

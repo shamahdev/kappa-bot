@@ -1,4 +1,3 @@
-import { Link } from "@tanstack/react-router";
 import { useId } from "react";
 import type {
   CSSProperties,
@@ -9,9 +8,6 @@ import type {
   ReactNode,
 } from "react";
 
-import discordSymbol from "../assets/brands/discord-symbol-white.svg";
-import { loginUrl } from "../lib/api";
-import { ApiError, apiMessage } from "../lib/queries";
 import { Badge as ShadcnBadge } from "./shadcn/badge";
 import { Button as ShadcnButton } from "./shadcn/button";
 import {
@@ -35,7 +31,6 @@ import {
   TabsList,
   TabsTrigger,
 } from "./shadcn/tabs";
-import { Textarea } from "./shadcn/textarea";
 
 type LayoutProps = HTMLAttributes<HTMLElement> & {
   as?: ElementType;
@@ -97,7 +92,6 @@ export const Text = ({
   />
 );
 
-// App-facing primitives keep their props; all are built on shadcn components.
 export const Button = ({
   variant = "primary",
   small = false,
@@ -149,27 +143,6 @@ export const Button = ({
     </ShadcnButton>
   );
 };
-
-export const DiscordLogin = ({
-  label = "Log in with Discord",
-  small = false,
-}: {
-  label?: string;
-  small?: boolean;
-}) => (
-  <ShadcnButton asChild size={small ? "sm" : "default"} variant="discord">
-    <a href={loginUrl}>
-      <img
-        alt=""
-        aria-hidden="true"
-        height="19"
-        src={discordSymbol}
-        width="25"
-      />
-      {label}
-    </a>
-  </ShadcnButton>
-);
 
 const FieldHelp = ({
   id,
@@ -280,46 +253,6 @@ export const Select = ({
   );
 };
 
-export const TextArea = ({
-  label,
-  description,
-  value,
-  onChange,
-  disabled = false,
-  placeholder,
-  error,
-}: {
-  label: string;
-  description?: string;
-  value: string;
-  onChange: (value: string) => void;
-  disabled?: boolean;
-  placeholder?: string;
-  error?: string;
-}) => {
-  const id = useId();
-  return (
-    <div className="app-field">
-      <Label htmlFor={id}>{label}</Label>
-      <Textarea
-        aria-describedby={description || error ? `${id}-help` : undefined}
-        aria-invalid={Boolean(error) || undefined}
-        disabled={disabled}
-        id={id}
-        name="cv"
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
-        value={value}
-      />
-      <FieldHelp
-        error={Boolean(error)}
-        id={`${id}-help`}
-        text={error || description}
-      />
-    </div>
-  );
-};
-
 export const ErrorNote = ({ children }: { children: ReactNode }) => (
   <div className="app-note app-note-error" role="alert">
     {children}
@@ -328,17 +261,6 @@ export const ErrorNote = ({ children }: { children: ReactNode }) => (
 export const InfoNote = ({ children }: { children: ReactNode }) => (
   <div className="app-note">{children}</div>
 );
-export const QueryError = ({ error }: { error: unknown }) =>
-  error instanceof ApiError && error.isReconnectRequired ? (
-    <VStack gap={3}>
-      <ErrorNote>Server data needs a fresh Discord login.</ErrorNote>
-      <HStack>
-        <DiscordLogin label="Reconnect Discord" />
-      </HStack>
-    </VStack>
-  ) : (
-    <ErrorNote>{apiMessage(error)}</ErrorNote>
-  );
 export const LoadingNote = ({
   children = "Loading…",
 }: {
@@ -352,11 +274,6 @@ export const Badge = ({
   strong?: boolean;
 }) => (
   <ShadcnBadge variant={strong ? "strong" : "default"}>{children}</ShadcnBadge>
-);
-export const StatusDot = ({ on, label }: { on: boolean; label: string }) => (
-  <ShadcnBadge className="app-status" variant={on ? "strong" : "default"}>
-    {label}
-  </ShadcnBadge>
 );
 
 export const Tabs = ({
@@ -426,11 +343,6 @@ export const EmptyList = ({
     <p>{body}</p>
     {action ? <div>{action}</div> : null}
   </div>
-);
-export const BackLink = ({ to, label }: { to: string; label: string }) => (
-  <Link className="app-back" to={to}>
-    {label}
-  </Link>
 );
 export const Avatar = ({
   name,

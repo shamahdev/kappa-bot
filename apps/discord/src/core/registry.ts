@@ -37,11 +37,11 @@ export class FeatureRegistry {
   }
 
   all(): Feature[] {
-    return this.features;
+    return [...this.features];
   }
 
   commandsFlat(): RegisteredCommand[] {
-    return this.commands;
+    return [...this.commands];
   }
 
   findCommand(name: string): RegisteredCommand | undefined {

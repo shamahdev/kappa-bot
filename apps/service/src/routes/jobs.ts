@@ -1,27 +1,23 @@
-import { matchGradeForScore } from "@kappa/contracts";
+import { API_V1, ROUTES, matchGradeForScore } from "@kappa/contracts";
 import type { ApplicationStatusType } from "@kappa/contracts";
 import { Elysia, t } from "elysia";
 
-import { resolveSession } from "../core/auth";
-import { readSessionToken } from "../core/cookies";
-import { err } from "../core/errors";
+import { sessionUser } from "../core/auth";
+import { err, unauthorized } from "../core/errors";
+import { createHttpJobAccess, jobRouteFailure } from "../core/job-access";
 import { createJobQueries } from "../modules/job-listings/application/queries";
 import type { RouteDeps } from "./deps";
-import { createHttpJobAccess, jobRouteFailure } from "./subscriptions";
 
 export const jobRoutes = (deps: RouteDeps) => {
   const { db } = deps;
   const jobs = createJobQueries(db);
 
-  return new Elysia({ prefix: "/api/v1" }).get(
-    "/jobs",
+  return new Elysia({ prefix: API_V1 }).get(
+    ROUTES.jobs,
     async ({ request, query, status }) => {
-      const user = await resolveSession(
-        db,
-        readSessionToken(request.headers.get("cookie"))
-      );
+      const user = await sessionUser(db, request);
       if (!user) {
-        return status(401, err("UNAUTHORIZED", "sign in with Discord first"));
+        return status(401, unauthorized());
       }
       // HTTP scope syntax is translated here, never passed as an authorization grant.
       const wantDm = query.scope === "dm";

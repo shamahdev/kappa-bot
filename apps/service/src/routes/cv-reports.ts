@@ -1,27 +1,19 @@
+import {
+  API_V1,
+  ROUTES,
+  MAX_API_PAGE_SIZE,
+  DEFAULT_CV_REPORT_PAGE_SIZE,
+  positiveIntegerParam,
+} from "@kappa/contracts";
 import { Elysia, t } from "elysia";
 
-import { resolveSession } from "../core/auth";
-import { readSessionToken } from "../core/cookies";
-import { err } from "../core/errors";
+import { sessionUser } from "../core/auth";
+import { err, unauthorized } from "../core/errors";
 import { createCvProfiles } from "../modules/job-listings/application/cv";
 import { createCvReportQueries } from "../modules/job-listings/application/cv-report-queries";
 import { createCvReports } from "../modules/job-listings/application/cv-reports";
 import { createJobEnrichment } from "../modules/job-listings/application/enrichment";
 import type { RouteDeps } from "./deps";
-
-const positiveInt = (
-  raw: string | undefined,
-  fallback: number
-): number | null => {
-  if (raw === undefined) {
-    return fallback;
-  }
-  if (!/^\d+$/u.test(raw)) {
-    return null;
-  }
-  const value = Number(raw);
-  return Number.isSafeInteger(value) && value > 0 ? value : null;
-};
 
 export const cvReportRoutes = ({ db, lock, log }: RouteDeps) => {
   const queries = createCvReportQueries(db);
@@ -40,20 +32,20 @@ export const cvReportRoutes = ({ db, lock, log }: RouteDeps) => {
       log.warn({ error, reportId: id }, "manual CV report failed");
     }
   };
-  const sessionUser = (request: Request) =>
-    resolveSession(db, readSessionToken(request.headers.get("cookie")));
-
-  return new Elysia({ prefix: "/api/v1/cv/reports" })
+  return new Elysia({ prefix: API_V1 })
     .get(
-      "/",
+      ROUTES.cvReports,
       async ({ request, query, status }) => {
-        const user = await sessionUser(request);
+        const user = await sessionUser(db, request);
         if (!user) {
-          return status(401, err("UNAUTHORIZED", "sign in with Discord first"));
+          return status(401, unauthorized());
         }
-        const page = positiveInt(query.page, 1);
-        const pageSize = positiveInt(query.pageSize, 50);
-        if (!page || !pageSize || pageSize > 100) {
+        const page = positiveIntegerParam(query.page, 1);
+        const pageSize = positiveIntegerParam(
+          query.pageSize,
+          DEFAULT_CV_REPORT_PAGE_SIZE
+        );
+        if (!page || !pageSize || pageSize > MAX_API_PAGE_SIZE) {
           return status(
             400,
             err("VALIDATION", "page and pageSize must be positive integers")
@@ -68,10 +60,10 @@ export const cvReportRoutes = ({ db, lock, log }: RouteDeps) => {
         }),
       }
     )
-    .post("/", async ({ request, status }) => {
-      const user = await sessionUser(request);
+    .post(ROUTES.cvReports, async ({ request, status }) => {
+      const user = await sessionUser(db, request);
       if (!user) {
-        return status(401, err("UNAUTHORIZED", "sign in with Discord first"));
+        return status(401, unauthorized());
       }
       if (!(await profiles.get(user.discordId))) {
         return status(
@@ -95,11 +87,11 @@ export const cvReportRoutes = ({ db, lock, log }: RouteDeps) => {
       return status(201, report);
     })
     .post(
-      "/:id/retry",
+      ROUTES.cvReportRetry,
       async ({ request, params, status }) => {
-        const user = await sessionUser(request);
+        const user = await sessionUser(db, request);
         if (!user) {
-          return status(401, err("UNAUTHORIZED", "sign in with Discord first"));
+          return status(401, unauthorized());
         }
         const id = Number(params.id);
         if (!Number.isSafeInteger(id) || id <= 0) {
@@ -124,11 +116,11 @@ export const cvReportRoutes = ({ db, lock, log }: RouteDeps) => {
       { params: t.Object({ id: t.String() }) }
     )
     .get(
-      "/:id",
+      ROUTES.cvReportById,
       async ({ request, params, status }) => {
-        const user = await sessionUser(request);
+        const user = await sessionUser(db, request);
         if (!user) {
-          return status(401, err("UNAUTHORIZED", "sign in with Discord first"));
+          return status(401, unauthorized());
         }
         const id = Number(params.id);
         const report =

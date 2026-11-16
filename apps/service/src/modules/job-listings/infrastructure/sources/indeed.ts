@@ -10,18 +10,11 @@ import * as cheerio from "cheerio";
 import type { FingerprintQuery, JobPosting } from "../../domain/posting";
 import { cookieHeader, wafHeaders } from "./cookies";
 import { matchesLocation } from "./location";
+import { resultLimit, keywordTokens, matchesKeywords } from "./shared";
 
 const BASE = "https://id.indeed.com/jobs";
 export const ENV = "INDEED_COOKIES";
 const MAX_PAGES = 3;
-
-export const resultLimit = (filters: Record<string, string>): number => {
-  const n = Number(filters.limit);
-  if (Number.isFinite(n)) {
-    return Math.min(50, Math.max(1, Math.floor(n)));
-  }
-  return 20;
-};
 
 /** jk → posting age text, parsed from the mosaic JSON blob in the page. */
 export const extractIndeedAges = (html: string): Map<string, string> => {
@@ -96,10 +89,7 @@ export const searchIndeed = async (
 ): Promise<JobPosting[]> => {
   const cookie = cookieHeader(ENV, "indeed");
   const limit = resultLimit(query.filters);
-  const tokens = (query.keywords || "")
-    .toLowerCase()
-    .split(/\s+/u)
-    .filter(Boolean);
+  const tokens = keywordTokens(query.keywords || "");
   const locationFilter = (query.location || "").toLowerCase().trim();
 
   const out: JobPosting[] = [];
@@ -139,11 +129,8 @@ export const searchIndeed = async (
       if (seen.has(job.id)) {
         continue;
       }
-      if (tokens.length > 0) {
-        const hay = `${job.position} ${job.company}`.toLowerCase();
-        if (!tokens.every((t) => hay.includes(t))) {
-          continue;
-        }
+      if (!matchesKeywords(tokens, `${job.position} ${job.company}`)) {
+        continue;
       }
       if (locationFilter && !matchesLocation(job.location, locationFilter)) {
         continue;

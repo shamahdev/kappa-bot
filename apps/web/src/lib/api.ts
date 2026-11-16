@@ -19,10 +19,11 @@ import {
   GuildsResponse,
   JobsResponse,
   PATHS,
-  SaveCvBody,
   SubscriptionDto,
   SubscriptionsResponse,
   UpdateSubscriptionBody,
+  DEFAULT_RETURN_TO,
+  DEFAULT_CV_REPORT_PAGE_SIZE,
 } from "@kappa/contracts";
 import type {
   AccountSummaryType,
@@ -35,29 +36,14 @@ import type {
   CvReportsResponseType,
   GuildsResponseType,
   JobsResponseType,
-  SaveCvBodyType,
   SubscriptionDtoType,
   SubscriptionsResponseType,
   UpdateSubscriptionBodyType,
 } from "@kappa/contracts";
 import { Data, Effect, Either, Layer, Schema } from "effect";
 
-export type {
-  AccountSummaryType,
-  CreateSubscriptionBodyType,
-  CvDtoType,
-  CvReportListItemType,
-  CvReportsResponseType,
-  GuildDtoType,
-  JobDtoType,
-  JobsResponseType,
-  SaveCvBodyType,
-  SubscriptionDtoType,
-  UpdateSubscriptionBodyType,
-} from "@kappa/contracts";
-
 /** Same-origin service login URL; the service 302s to Discord. */
-export const loginUrl = `${PATHS.authLogin}?return_to=${encodeURIComponent("/dashboard")}`;
+export const loginUrl = `${PATHS.authLogin}?return_to=${encodeURIComponent(DEFAULT_RETURN_TO)}`;
 
 export type Me = AuthMeResponseType["user"];
 
@@ -75,29 +61,32 @@ export class ApiError extends Data.TaggedError("ApiError")<{
   }
 }
 
-/** CDN icon URL for a guild (null when the guild has no icon). */
-export const guildIconUrl = (
-  id: string,
-  icon: string | null
-): string | null => {
-  if (!icon) {
-    return null;
+export const apiMessage = (error: unknown): string => {
+  if (error instanceof ApiError) {
+    return error.message;
   }
-  const ext = icon.startsWith("a_") ? "gif" : "png";
-  return `https://cdn.discordapp.com/icons/${id}/${icon}.${ext}?size=64`;
+  return error instanceof Error ? error.message : "Something went wrong.";
 };
 
-/** CDN avatar URL for a user (null when unset). */
+const cdnAssetUrl = (
+  kind: "icons" | "avatars",
+  id: string,
+  hash: string | null
+): string | null => {
+  if (!hash) {
+    return null;
+  }
+  const extension = hash.startsWith("a_") ? "gif" : "png";
+  return `https://cdn.discordapp.com/${kind}/${id}/${hash}.${extension}?size=64`;
+};
+
+export const guildIconUrl = (id: string, icon: string | null): string | null =>
+  cdnAssetUrl("icons", id, icon);
+
 export const userAvatarUrl = (
   id: string,
   avatar: string | null
-): string | null => {
-  if (!avatar) {
-    return null;
-  }
-  const ext = avatar.startsWith("a_") ? "gif" : "png";
-  return `https://cdn.discordapp.com/avatars/${id}/${avatar}.${ext}?size=64`;
-};
+): string | null => cdnAssetUrl("avatars", id, avatar);
 
 const OkResponse = Schema.Struct({ ok: Schema.Boolean });
 
@@ -202,8 +191,12 @@ export const logout = async (): Promise<void> => {
 export const fetchSubscriptions = (
   guildId?: string
 ): Promise<SubscriptionsResponseType["subscriptions"]> => {
-  const url = guildId
-    ? `${PATHS.subscriptions}?guild=${encodeURIComponent(guildId)}`
+  const search = new URLSearchParams();
+  if (guildId) {
+    search.set("guild", guildId);
+  }
+  const url = search.size
+    ? `${PATHS.subscriptions}?${search}`
     : PATHS.subscriptions;
   return runApi(
     request(HttpClientRequest.get(url), SubscriptionsResponse)
@@ -292,12 +285,12 @@ export const deleteSubscription = (id: number): Promise<string> =>
 
 export const fetchCvReports = (
   page = 1,
-  pageSize = 50
+  pageSize = DEFAULT_CV_REPORT_PAGE_SIZE
 ): Promise<CvReportsResponseType> =>
   runApi(
     request(
       HttpClientRequest.get(
-        `${PATHS.cvReports}?page=${page}&pageSize=${pageSize}`
+        `${PATHS.cvReports}?${new URLSearchParams({ page: String(page), pageSize: String(pageSize) })}`
       ),
       CvReportsResponse
     )
@@ -316,15 +309,6 @@ export const retryCvReport = (id: number): Promise<CvReportType> =>
 
 export const fetchCv = (): Promise<CvDtoType> =>
   runApi(request(HttpClientRequest.get(PATHS.cv), CvDto));
-
-export const saveCv = (input: SaveCvBodyType): Promise<CvDtoType> => {
-  const body = Schema.encodeSync(SaveCvBody)(input);
-  return runApi(
-    Effect.flatMap(withJsonBody(HttpClientRequest.put(PATHS.cv), body), (req) =>
-      request(req, CvDto)
-    )
-  );
-};
 
 export const deleteCv = (): Promise<CvDtoType> =>
   runApi(request(HttpClientRequest.del(PATHS.cv), CvDto));

@@ -1,6 +1,6 @@
 import "dotenv/config";
+import { PATHS } from "@kappa/contracts";
 import {
-  closeDb,
   createDb,
   createPostgresGenerationLock,
   runMigrations,
@@ -52,8 +52,8 @@ const app = new Elysia()
       return err("NOT_FOUND", "not found");
     }
   })
-  .get("/health", () => ({ ok: true, uptime: process.uptime() }))
-  .get("/metrics", ({ set }) => {
+  .get(PATHS.health, () => ({ ok: true, uptime: process.uptime() }))
+  .get(PATHS.metrics, ({ set }) => {
     set.headers["content-type"] = "text/plain; version=0.0.4";
     return renderMetrics();
   })
@@ -71,7 +71,7 @@ log.info({ port: config.port }, "service listening");
 
 const close = async () => {
   app.stop();
-  await closeDb();
+  await pool.end();
 };
 process.once("SIGINT", () => close().then(() => process.exit(0)));
 process.once("SIGTERM", () => close().then(() => process.exit(0)));

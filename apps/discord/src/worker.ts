@@ -1,4 +1,4 @@
-import { closeDb, createDb, createPostgresGenerationLock } from "@kappa/db";
+import { createDb, createPostgresGenerationLock } from "@kappa/db";
 import { createJobListings } from "@kappa/service/job-listings";
 import { REST, Routes } from "discord.js";
 
@@ -8,8 +8,7 @@ import { createLogger } from "./core/logger";
 import { createDiscordNotifications } from "./features/job-listings/notifications";
 
 /** One service-owned polling cycle, bound to the Discord REST delivery adapter. */
-export const startWorker = async (): Promise<void> => {
-  const config = loadConfig();
+export const startWorker = async (config = loadConfig()): Promise<void> => {
   const log = createLogger(config);
   const { db, pool } = createDb(config.databaseUrl);
   const rest = new REST({ version: "10" }).setToken(config.discordToken);
@@ -24,11 +23,11 @@ export const startWorker = async (): Promise<void> => {
       db,
       lock: createPostgresGenerationLock(pool),
       log,
-      notifications: createDiscordNotifications(deliverMessage),
+      notifications: createDiscordNotifications(deliverMessage, config),
     });
     await jobs.pollAll();
     log.info("worker cycle done");
   } finally {
-    await closeDb();
+    await pool.end();
   }
 };

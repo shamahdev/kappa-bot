@@ -9,6 +9,7 @@ export interface AppConfig {
   databaseUrl: string;
   databaseUrlUnpooled: string;
   logLevel: string;
+  webUrl: string;
   botRole: BotRole;
 }
 
@@ -33,5 +34,6 @@ export const loadConfig = (): AppConfig => {
     discordToken: required("DISCORD_TOKEN"),
     guildId: process.env.GUILD_ID ?? "",
     logLevel: process.env.LOG_LEVEL ?? "info",
+    webUrl: process.env.WEB_URL ?? "",
   };
 };

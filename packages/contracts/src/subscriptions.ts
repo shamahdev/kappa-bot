@@ -2,6 +2,12 @@ import { Schema } from "effect";
 
 import { JOB_SOURCE_SELECTIONS } from "./job-listings";
 
+// Existing subscription retention policy, shared with form feedback and storage defaults.
+export const RETENTION_DAYS_MIN = 1;
+export const RETENTION_DAYS_MAX = 365;
+export const DEFAULT_RETENTION_DAYS = 14;
+export const DEFAULT_POLL_INTERVAL_MINUTES = 30;
+
 export const SUBSCRIPTION_SOURCES = JOB_SOURCE_SELECTIONS;
 
 export const isSubscriptionSource = (

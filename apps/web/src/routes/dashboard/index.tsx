@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 
+import { QueryError } from "../../components/api-feedback";
 import { CvReportList } from "../../components/cv-reports";
 import {
   LatestReportPanel,
@@ -12,7 +13,6 @@ import {
   HStack,
   LoadingNote,
   PageHeader,
-  QueryError,
   SectionCard,
   Text,
   VStack,

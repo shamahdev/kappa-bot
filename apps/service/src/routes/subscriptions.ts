@@ -1,22 +1,18 @@
+import { API_V1, ROUTES } from "@kappa/contracts";
 import type { SubscriptionDtoType } from "@kappa/contracts";
 import { Elysia, t } from "elysia";
 
-import { resolveSession } from "../core/auth";
-import { readSessionToken } from "../core/cookies";
-import { err } from "../core/errors";
-import { listManageableGuilds } from "../core/guild-access";
+import { sessionUser } from "../core/auth";
+import { err, unauthorized } from "../core/errors";
+import { createHttpJobAccess, jobRouteFailure } from "../core/job-access";
 import { ensureDmChannel } from "../discord/api";
 import { createJobSubscriptions } from "../modules/job-listings/application/subscriptions";
 import {
   dmUserIdForScope,
-  JobSubscriptionError,
   subscriptionKeywords,
   subscriptionSource,
 } from "../modules/job-listings/domain/subscription";
-import type {
-  JobActor,
-  JobSubscription,
-} from "../modules/job-listings/domain/subscription";
+import type { JobSubscription } from "../modules/job-listings/domain/subscription";
 import type { RouteDeps } from "./deps";
 
 const toDto = (row: JobSubscription): SubscriptionDtoType => ({
@@ -32,75 +28,6 @@ const toDto = (row: JobSubscription): SubscriptionDtoType => ({
   source: row.source,
 });
 
-class HttpJobAccessError extends Error {
-  readonly kind: "reconnect" | "transport";
-  readonly cause?: unknown;
-
-  constructor(kind: "reconnect" | "transport", cause?: unknown) {
-    super(kind);
-    this.name = "HttpJobAccessError";
-    this.kind = kind;
-    this.cause = cause;
-  }
-}
-
-/** Trusted, request-local actor. No browser-provided grants or creator bypass. */
-export const createHttpJobAccess = (deps: RouteDeps, userId: string) => {
-  let pending: ReturnType<typeof listManageableGuilds> | undefined;
-  const manageableGuilds = async () => {
-    pending ??= listManageableGuilds(deps.db, deps.config, userId);
-    let guilds;
-    try {
-      guilds = await pending;
-    } catch (error) {
-      throw new HttpJobAccessError("transport", error);
-    }
-    if (!guilds) {
-      throw new HttpJobAccessError("reconnect");
-    }
-    return guilds;
-  };
-  const actor: JobActor = {
-    canManageGuild: async (guildId) => {
-      const guilds = await manageableGuilds();
-      return guilds.some((guild) => guild.id === guildId);
-    },
-    userId,
-  };
-  return { actor, manageableGuilds };
-};
-
-/** Controller-only mapping: mask forbidden rows and preserve OAuth envelopes. */
-export const jobRouteFailure = (
-  error: unknown,
-  deps: RouteDeps,
-  userId: string
-): {
-  status: 400 | 404 | 409 | 502;
-  body: ReturnType<typeof err>;
-} | null => {
-  if (error instanceof JobSubscriptionError) {
-    return error.code === "VALIDATION"
-      ? { body: err("VALIDATION", error.message), status: 400 }
-      : { body: err("NOT_FOUND", "subscription not found"), status: 404 };
-  }
-  if (error instanceof HttpJobAccessError) {
-    if (error.kind === "reconnect") {
-      return {
-        body: err("RECONNECT_REQUIRED", "reconnect Discord to manage servers"),
-        status: 409,
-      };
-    }
-    deps.log.warn({ error: error.cause, userId }, "job access discord failure");
-    return {
-      body: err("OAUTH_FAILED", "discord request failed, try again later"),
-      status: 502,
-    };
-  }
-  return null;
-};
-
-/** One-line sub summary for the delete-subscription Brief. */
 const summarize = (row: JobSubscription): string =>
   `\`${row.source}\` ${row.keywords ?? "—"} · ${row.location ?? "—"} → <#${row.channelId}>`;
 
@@ -108,16 +35,13 @@ export const subscriptionRoutes = (deps: RouteDeps) => {
   const { config, db, log } = deps;
   const subscriptions = createJobSubscriptions(db);
 
-  return new Elysia({ prefix: "/api/v1" })
+  return new Elysia({ prefix: API_V1 })
     .get(
-      "/subscriptions",
+      ROUTES.subscriptions,
       async ({ request, query, status }) => {
-        const user = await resolveSession(
-          db,
-          readSessionToken(request.headers.get("cookie"))
-        );
+        const user = await sessionUser(db, request);
         if (!user) {
-          return status(401, err("UNAUTHORIZED", "sign in with Discord first"));
+          return status(401, unauthorized());
         }
         const { actor } = createHttpJobAccess(deps, user.discordId);
         try {
@@ -139,14 +63,11 @@ export const subscriptionRoutes = (deps: RouteDeps) => {
       { query: t.Object({ guild: t.Optional(t.String()) }) }
     )
     .post(
-      "/subscriptions",
+      ROUTES.subscriptions,
       async ({ request, body, status }) => {
-        const user = await resolveSession(
-          db,
-          readSessionToken(request.headers.get("cookie"))
-        );
+        const user = await sessionUser(db, request);
         if (!user) {
-          return status(401, err("UNAUTHORIZED", "sign in with Discord first"));
+          return status(401, unauthorized());
         }
         // Fail invalid input before creating a Discord destination.
         try {
@@ -196,14 +117,11 @@ export const subscriptionRoutes = (deps: RouteDeps) => {
       { body: t.Object({ keywords: t.String(), source: t.String() }) }
     )
     .patch(
-      "/subscriptions/:id",
+      ROUTES.subscriptionById,
       async ({ request, params, body, status }) => {
-        const user = await resolveSession(
-          db,
-          readSessionToken(request.headers.get("cookie"))
-        );
+        const user = await sessionUser(db, request);
         if (!user) {
-          return status(401, err("UNAUTHORIZED", "sign in with Discord first"));
+          return status(401, unauthorized());
         }
         try {
           const { actor } = createHttpJobAccess(deps, user.discordId);
@@ -227,14 +145,11 @@ export const subscriptionRoutes = (deps: RouteDeps) => {
       }
     )
     .delete(
-      "/subscriptions/:id",
+      ROUTES.subscriptionById,
       async ({ request, params, status }) => {
-        const user = await resolveSession(
-          db,
-          readSessionToken(request.headers.get("cookie"))
-        );
+        const user = await sessionUser(db, request);
         if (!user) {
-          return status(401, err("UNAUTHORIZED", "sign in with Discord first"));
+          return status(401, unauthorized());
         }
         try {
           const { actor } = createHttpJobAccess(deps, user.discordId);

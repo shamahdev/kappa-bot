@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 
+import { DEFAULT_RETENTION_DAYS } from "@kappa/contracts";
 import {
   deliveryMessages,
   fingerprintSnapshots,
@@ -11,6 +12,7 @@ import { eq, lt, notExists, notInArray, sql } from "drizzle-orm";
 
 import { incCounter, setGauge } from "../../../core/metrics";
 import type { FingerprintQuery, JobPosting } from "../domain/posting";
+import { postingQueryForSubscription } from "../domain/subscription";
 import {
   ensureJobIds,
   jobKey,
@@ -35,13 +37,7 @@ const fingerprintOf = (
   sourceOverride?: string
 ): { key: string; query: FingerprintQuery } => {
   const source = sourceOverride ?? sub.source;
-  const query: FingerprintQuery = {
-    distance: sub.distance,
-    filters: (sub.filters ?? {}) as Record<string, string>,
-    geoId: sub.geoId,
-    keywords: sub.keywords ?? "",
-    location: sub.location,
-  };
+  const query = postingQueryForSubscription(sub);
   const key = createHash("sha1")
     .update(
       JSON.stringify([
@@ -99,8 +95,8 @@ type FingerprintSnapshot = typeof fingerprintSnapshots.$inferSelect;
  * pairs. Same ids → same dedup/delivery outcome, so a tick whose hash
  * matches the stored snapshot can skip the per-subscription collect.
  */
-export const listingHashFor = (jobs: JobPosting[]): string => {
-  const ids = jobs.map((job) => `${job.source}:${job.id}`).toSorted();
+const listingHashFor = (jobs: JobPosting[]): string => {
+  const ids = jobs.map((job) => jobKey(job.source, job.id)).toSorted();
   return createHash("sha1").update(JSON.stringify(ids)).digest("hex");
 };
 
@@ -114,7 +110,7 @@ const sameIds = (a: number[], b: number[]): boolean =>
  * tick), and the snapshot is fresher than the group's tightest seen_jobs TTL
  * (so a long outage still re-delivers after retention expiry, as before).
  */
-export const shouldSkipGroup = (
+const shouldSkipGroup = (
   snapshot: FingerprintSnapshot | undefined,
   listingHash: string,
   subIds: number[],
@@ -428,7 +424,7 @@ export const pollSubscriptions = async (
       // oxlint-disable-next-line no-await-in-loop
       const snapshot = await readSnapshot(ctx, key);
       const minRetention = Math.min(
-        ...group.subs.map((sub) => sub.retentionDays ?? 14)
+        ...group.subs.map((sub) => sub.retentionDays ?? DEFAULT_RETENTION_DAYS)
       );
       if (shouldSkipGroup(snapshot, listingHash, subIds, minRetention)) {
         fingerprintsSkipped += 1;

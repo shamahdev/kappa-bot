@@ -13,13 +13,13 @@ import {
 } from "discord.js";
 import type { Interaction } from "discord.js";
 
-import type { FeatureContext } from "../../../core/feature";
+import type { FeatureContext } from "../../core/feature";
 
-export const activeChannelSubs = async (
+export const activeSubscriptions = async (
   ctx: FeatureContext,
   actor: JobActor,
   scope: JobScope,
-  channelId: string
+  channelId?: string
 ): Promise<JobSubscription[]> => {
   const subs = await ctx.jobListings.subscriptions.list(
     actor,
@@ -29,23 +29,14 @@ export const activeChannelSubs = async (
   return subs.filter((sub) => sub.isActive);
 };
 
-export const activeGuildSubs = async (
-  ctx: FeatureContext,
-  actor: JobActor,
-  scope: JobScope
-): Promise<JobSubscription[]> => {
-  const subs = await ctx.jobListings.subscriptions.list(actor, scope);
-  return subs.filter((sub) => sub.isActive);
-};
-
 /** Human label for a picker option — no id. Max 100 chars (Discord limit). */
-export const subscriptionLabel = (s: JobSubscription): string =>
+const subscriptionLabel = (s: JobSubscription): string =>
   `${s.keywords ?? "—"} · ${s.source}${s.location ? ` · ${s.location}` : ""}`.slice(
     0,
     100
   );
 
-export const channelNameOf = (
+const channelNameOf = (
   interaction: Interaction,
   channelId: string
 ): string | null => {

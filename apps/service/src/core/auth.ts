@@ -1,14 +1,12 @@
+import type { UserDtoType } from "@kappa/contracts";
 import { sessions, users } from "@kappa/db";
 import type { Database } from "@kappa/db";
 import { eq } from "drizzle-orm";
 
+import { readSessionToken } from "./cookies";
 import { hashToken } from "./crypto";
 
-export interface AuthedUser {
-  discordId: string;
-  username: string;
-  avatar: string | null;
-}
+export type AuthedUser = UserDtoType;
 
 /**
  * Resolves the opaque cookie token to its user (null when missing, unknown,
@@ -41,3 +39,6 @@ export const resolveSession = async (
     username: row.user.username,
   };
 };
+
+export const sessionUser = (db: Database, request: Request) =>
+  resolveSession(db, readSessionToken(request.headers.get("cookie")));

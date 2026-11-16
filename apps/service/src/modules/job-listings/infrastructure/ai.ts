@@ -23,11 +23,7 @@ import { APICallError, generateText } from "ai";
 
 import type { JobMatch } from "../domain/posting";
 
-export type { JobMatch } from "../domain/posting";
-
-// Chars of description sent to the model.
 const MAX_INPUT = 6000;
-// Chars kept for the summary.
 const MAX_SUMMARY = 1500;
 // Postings can be arbitrarily long; the CV is already capped at upload.
 const MAX_MATCH_POSTING = 12_000;

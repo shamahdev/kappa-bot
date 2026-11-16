@@ -1,13 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 
+import { QueryError } from "../../components/api-feedback";
 import { CvPanel } from "../../components/cv";
 import { CreateForm, SubscriptionsTable } from "../../components/subscriptions";
 import type { OpenPanel } from "../../components/subscriptions";
 import {
   LoadingNote,
   PageHeader,
-  QueryError,
   SectionCard,
   VStack,
 } from "../../components/ui";

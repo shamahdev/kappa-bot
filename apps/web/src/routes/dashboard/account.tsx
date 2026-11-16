@@ -3,28 +3,28 @@ import {
   Link as RouterLink,
   useNavigate,
 } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
+import { QueryError } from "../../components/api-feedback";
 import {
   Button,
   ErrorNote,
   HStack,
   LoadingNote,
   PageHeader,
-  QueryError,
   SectionCard,
   Text,
   TextInput,
   VStack,
 } from "../../components/ui";
+import { apiMessage } from "../../lib/api";
 import {
-  apiMessage,
   useAccountSummary,
   useDeleteAccount,
-  useMe,
+  useRequireAuth,
 } from "../../lib/queries";
 
-import styles from "./settings.module.css";
+import styles from "./account.module.css";
 
 export const Route = createFileRoute("/dashboard/account")({
   ssr: false,
@@ -36,16 +36,10 @@ const CONFIRM_PHRASE = "delete my account";
 
 const AccountComponent = () => {
   const navigate = useNavigate();
-  const me = useMe();
+  const me = useRequireAuth();
   const summary = useAccountSummary(Boolean(me.data));
   const destroy = useDeleteAccount();
   const [phrase, setPhrase] = useState("");
-
-  useEffect(() => {
-    if (me.data === null) {
-      void navigate({ to: "/" });
-    }
-  }, [me.data, navigate]);
 
   if (me.isError) {
     return <QueryError error={me.error} />;

@@ -15,6 +15,12 @@ import { dmScopeKey } from "../domain/subscription";
 export const jobKey = (source: string, externalId: string): string =>
   `${source}:${externalId}`;
 
+const matchValues = (match: JobMatch) => ({
+  matchBreakdown: match.factors,
+  matchReason: match.reason,
+  matchScore: match.score,
+});
+
 /**
  * Ensure one jobs row per posting in a fetched listing; returns the id by
  * `jobKey`. First sighting wins the listing fields. Throws on failure — the
@@ -117,11 +123,7 @@ export const storeMatchScore = async (
   try {
     await db
       .update(seenJobs)
-      .set({
-        matchBreakdown: match.factors,
-        matchReason: match.reason,
-        matchScore: match.score,
-      })
+      .set(matchValues(match))
       .where(eq(seenJobs.id, seenId));
   } catch (error) {
     log.warn(
@@ -164,11 +166,7 @@ export const storeMatchScoreForChannelDelivery = async (
       // oxlint-disable-next-line no-await-in-loop
       await db
         .update(seenJobs)
-        .set({
-          matchBreakdown: args.match.factors,
-          matchReason: args.match.reason,
-          matchScore: args.match.score,
-        })
+        .set(matchValues(args.match))
         .where(eq(seenJobs.id, row.id));
     }
   } catch (error) {

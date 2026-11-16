@@ -1,11 +1,8 @@
-import {
-  CV_MAX_PDF_BYTES,
-  CV_MAX_TEXT_BYTES,
-  CV_MAX_FILENAME,
-} from "@kappa/contracts";
+import { CV_MAX_FILENAME, cvFileKind, cvFileSizeError } from "@kappa/contracts";
 import { useState } from "react";
 
-import { apiMessage, useDeleteCv, useSaveCvFile } from "./queries";
+import { apiMessage } from "./api";
+import { useDeleteCv, useSaveCvFile } from "./queries";
 
 /** Upload-only CV state: extracted content never reaches the browser. */
 export const useCvEditor = () => {
@@ -32,22 +29,17 @@ export const useCvEditor = () => {
     }
     resetErrors();
     setConfirmingRemoval(false);
-    const name = file.name.trim().toLowerCase();
     if (file.name.trim().length > CV_MAX_FILENAME) {
       setFileError(`Filename must be ${CV_MAX_FILENAME} characters or fewer.`);
       return;
     }
-    const isPdf = name.endsWith(".pdf");
-    if (!isPdf && !name.endsWith(".txt") && !name.endsWith(".md")) {
+    if (cvFileKind(file.name) === null) {
       setFileError("Upload a .pdf, .txt, or .md file.");
       return;
     }
-    if (file.size > (isPdf ? CV_MAX_PDF_BYTES : CV_MAX_TEXT_BYTES)) {
-      setFileError(
-        isPdf
-          ? "PDF must be 2MB or smaller."
-          : "Text file must be 500KB or smaller."
-      );
+    const sizeError = cvFileSizeError(file.name, file.size);
+    if (sizeError) {
+      setFileError(`${sizeError}.`);
       return;
     }
     // Send original bytes to the service. Never call file.text() client-side.

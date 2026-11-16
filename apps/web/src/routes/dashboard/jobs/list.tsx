@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 
+import { QueryError } from "../../../components/api-feedback";
 import { JobsTable } from "../../../components/jobs";
-import { PageHeader, QueryError, VStack } from "../../../components/ui";
+import { PageHeader, VStack } from "../../../components/ui";
 import { useRequireAuth, useSubscriptions } from "../../../lib/queries";
 
 const PersonalJobListPage = () => {

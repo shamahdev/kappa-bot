@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 
+import { QueryError } from "../../../../components/api-feedback";
 import { JobsTable } from "../../../../components/jobs";
-import { QueryError, VStack } from "../../../../components/ui";
+import { VStack } from "../../../../components/ui";
 import { useSubscriptions } from "../../../../lib/queries";
 
 const ServerJobsPage = () => {

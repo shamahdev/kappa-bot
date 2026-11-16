@@ -1,5 +1,4 @@
 import {
-  closeDb,
   createDb,
   createPostgresGenerationLock,
   runMigrations,
@@ -20,10 +19,10 @@ import {
 import { loadConfig } from "./core/config";
 import type { AppConfig } from "./core/config";
 import type { FeatureContext } from "./core/feature";
-import { loadFeatures } from "./core/loader";
+import { loadRegistry } from "./core/loader";
 import { createLogger } from "./core/logger";
 import type { Logger } from "./core/logger";
-import { FeatureRegistry } from "./core/registry";
+import type { FeatureRegistry } from "./core/registry";
 import { createDiscordNotifications } from "./features/job-listings/notifications";
 
 export interface Gateway {
@@ -36,8 +35,7 @@ export interface Gateway {
 }
 
 /** Boots everything except the network listeners (login + listen). */
-export const createApp = async (): Promise<Gateway> => {
-  const config = loadConfig();
+export const createApp = async (config = loadConfig()): Promise<Gateway> => {
   const log = createLogger(config);
 
   if (config.databaseUrlUnpooled) {
@@ -48,10 +46,7 @@ export const createApp = async (): Promise<Gateway> => {
   }
 
   const { db, pool } = createDb(config.databaseUrl);
-  const registry = new FeatureRegistry();
-  for (const feature of await loadFeatures()) {
-    registry.add(feature);
-  }
+  const registry = await loadRegistry();
   log.info({ features: registry.names() }, "features loaded");
 
   const client = createClient();
@@ -59,7 +54,7 @@ export const createApp = async (): Promise<Gateway> => {
     db,
     lock: createPostgresGenerationLock(pool),
     log,
-    notifications: createDiscordNotifications(gatewayDeliverer(client)),
+    notifications: createDiscordNotifications(gatewayDeliverer(client), config),
   });
   const ctx: FeatureContext = { config, jobListings, log };
   attachHandlers(client, registry, ctx);
@@ -74,7 +69,7 @@ export const createApp = async (): Promise<Gateway> => {
     closing = true;
     await polling.stop();
     client.destroy();
-    await closeDb();
+    await pool.end();
   };
   process.once("SIGINT", () => {
     void close().then(() => process.exit(0));
@@ -90,9 +85,9 @@ export const createApp = async (): Promise<Gateway> => {
 };
 
 /** Gateway hosts the service module's poller; HTTP listeners remain in the service app. */
-export const startGateway = async (): Promise<Gateway> => {
-  const app = await createApp();
-  const { config, log, client, polling } = app;
+export const startGateway = async (config = loadConfig()): Promise<Gateway> => {
+  const app = await createApp(config);
+  const { log, client, polling } = app;
 
   if (config.clientId) {
     await registerCommands(

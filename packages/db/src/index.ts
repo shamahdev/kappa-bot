@@ -1,5 +1,5 @@
 // @kappa/db — drizzle schema + pg Pool DB layer shared by all apps.
-export { closeDb, createDb, type Database, runMigrations } from "./db";
+export { createDb, type Database, runMigrations } from "./db";
 export {
   createMemoryGenerationLock,
   createPostgresGenerationLock,

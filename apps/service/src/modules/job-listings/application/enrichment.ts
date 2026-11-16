@@ -7,6 +7,7 @@ import type {
   JobMatch,
   JobPosting,
 } from "../domain/posting";
+import { listingDetail } from "../domain/posting";
 import { scoreJobMatch, summarizeJob } from "../infrastructure/ai";
 import {
   readCachedSummary,
@@ -40,11 +41,7 @@ export const createJobEnrichment = ({
     // Prefer source detail; list rows can still carry useful text when detail fails.
     let input = detail?.description ? detail : null;
     if (!input && job.description) {
-      input = {
-        closed: false,
-        description: job.description,
-        salary: job.salary ?? null,
-      };
+      input = listingDetail(job);
     }
     return input ?? detail;
   };

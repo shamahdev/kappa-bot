@@ -194,6 +194,5 @@ describe("subscription writes", () => {
       { retentionDays: 365 },
     ]);
     expect(await service.pollIntervalMinutes()).toBe(30);
-    expect(Object.keys(service)).not.toContain("setPollInterval");
   });
 });

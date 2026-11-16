@@ -1,9 +1,7 @@
-import { SESSION_COOKIE } from "@kappa/contracts";
+import { SESSION_COOKIE, SESSION_TTL_DAYS } from "@kappa/contracts";
 
-// 30d
-export const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
+export const SESSION_MAX_AGE_SECONDS = SESSION_TTL_DAYS * 24 * 60 * 60;
 
-/** Reads the session token from a Cookie header (or null when absent). */
 export const readSessionToken = (
   cookieHeader: string | null
 ): string | null => {
@@ -27,7 +25,6 @@ const cookieAttrs = (isProd: boolean, maxAge: number): string =>
   // HttpOnly + SameSite=Lax always; Secure only in prod (plain-http dev/VPS-test stays usable).
   `Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${isProd ? "; Secure" : ""}`;
 
-/** `Set-Cookie` value carrying a fresh session token. */
 export const serializeSessionCookie = (
   token: string,
   isProd: boolean

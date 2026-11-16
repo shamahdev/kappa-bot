@@ -20,6 +20,12 @@ export interface JobDetail {
   closed: boolean;
 }
 
+export const listingDetail = (job: JobPosting): JobDetail => ({
+  closed: false,
+  description: job.description ?? null,
+  salary: job.salary ?? null,
+});
+
 /** Weighted factor assessment shared by service, web and Discord. */
 export type JobMatch = JobMatchType;
 

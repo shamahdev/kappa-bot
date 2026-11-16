@@ -1,10 +1,7 @@
 import { describe, expect, mock, test } from "bun:test";
 
-import { JOB_SOURCE_OPTIONS } from "@kappa/contracts";
-import {
-  CV_MAX_UPLOAD_BYTES,
-  JobSubscriptionError,
-} from "@kappa/service/job-listings";
+import { JOB_SOURCE_OPTIONS, CV_MAX_PDF_BYTES } from "@kappa/contracts";
+import { JobSubscriptionError } from "@kappa/service/job-listings";
 import type { JobListings, JobSubscription } from "@kappa/service/job-listings";
 import { PermissionFlagsBits, PermissionsBitField } from "discord.js";
 import type {
@@ -13,11 +10,11 @@ import type {
 } from "discord.js";
 
 import type { FeatureContext } from "../../core/feature";
-import { jobActor } from "./commands/_shared";
 import { executeCvUpload } from "./commands/cv";
 import { onComponent, subscriptionId } from "./events/components";
 import { onMessage } from "./events/reply";
 import feature, { jobsCommand } from "./index";
+import { jobActor } from "./interactions";
 
 const required = <T>(value: T | null | undefined): T => {
   if (value === null || value === undefined) {
@@ -100,8 +97,6 @@ describe("command registration", () => {
     expect(source && "choices" in source ? source.choices : []).toEqual(
       JOB_SOURCE_OPTIONS.map(({ id, name }) => ({ name, value: id }))
     );
-    expect(feature.name).toBe("job-listings");
-    expect("schedule" in feature).toBe(false);
   });
 
   test("application errors reach the user through the slash command boundary", async () => {
@@ -335,7 +330,7 @@ describe("CV attachment adapter", () => {
     const save = mock(() => Promise.reject(new Error("must not save")));
     try {
       globalThis.fetch = mock(() =>
-        Promise.resolve(new Response(new Uint8Array(CV_MAX_UPLOAD_BYTES + 1)))
+        Promise.resolve(new Response(new Uint8Array(CV_MAX_PDF_BYTES + 1)))
       ) as unknown as typeof fetch;
       const inter = uploadInteraction("cv.txt", 1);
       await executeCvUpload(

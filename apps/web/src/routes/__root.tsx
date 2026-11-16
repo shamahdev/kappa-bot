@@ -12,9 +12,10 @@ import { useMemo } from "react";
 import type { ReactNode } from "react";
 
 import "../styles.css";
+import { DiscordLogin } from "../components/api-feedback";
 import { KappaMark } from "../components/kappa-mark";
 import { Toaster } from "../components/shadcn/sonner";
-import { Button, DiscordLogin } from "../components/ui";
+import { Button } from "../components/ui";
 import { useLogout, useMe } from "../lib/queries";
 import { useMounted } from "../lib/use-mounted";
 
